@@ -6,7 +6,7 @@ run start to finish. Ticked items were verified on 7 September 2026.
 ## Works today
 
 - [x] `demo` passes on the synthetic sensor — `python3 fingerprint/fingerprint.py demo`
-- [x] `pytest fingerprint` — 7 tests
+- [x] `pytest fingerprint ingest` — 26 tests
 - [x] Flow A on real CR3: 16 frames enrolled, `.npz` written, commitment printed
 - [x] Flow C upper branch, offline: 13/13 held-out frames MATCH via the CLI,
       PCE 1,895 to 56,255, exit 0
@@ -46,13 +46,14 @@ either.
 - [ ] Fill in the Gate B table in `docs/gates.md`
 - [ ] Decide: retroactive claim live, or archive-claim tool only
 
-**4. Record construction — `ingest/`.** All ten functions across the three
-modules are stubs.
+**4. Record construction — `ingest/`.** Done, 17 tests.
 
-- [ ] `hashing.py` — pixel SHA-256 and perceptual hash
-- [ ] `record.py` — Birthmark-shaped `ImageRecord` plus PRNU attestation
-- [ ] `merkle.py` — session batching, one root per shoot
-- [ ] A record built from a real frame, round-tripped and hashed the same twice
+- [x] `hashing.py` — pixel SHA-256 (metadata-independent), DCT pHash, HMAC
+- [x] `record.py` — `ImageRecord`, secp256k1 signing, ERC-7053 commit shape
+- [x] `merkle.py` — sorted keccak256 pairs, odd node promoted (OpenZeppelin
+      rules, so the Solidity verifier agrees)
+- [x] A record built from IMG_0230 against the real fingerprint: PCE 1,895,
+      signature recovers, session proof verifies
 
 **5. Contracts — `contracts/src/Registry.sol`.** Every function reverts
 `not implemented`.
@@ -95,7 +96,7 @@ stubbed.
 | `fingerprint/prnu.py` | 20 | 1 — `crop_and_scale_search` |
 | `fingerprint/fingerprint.py` | 9 | 0 |
 | `fingerprint/stress.py` | 0 | 2 |
-| `ingest/` | 0 | 10 |
+| `ingest/` | 13 | 0 |
 | `scoring/app.py` | 1 | 2 |
 | `contracts/src/Registry.sol` | 0 | 6 functions revert |
 
