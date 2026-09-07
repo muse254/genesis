@@ -1,4 +1,9 @@
-# Genesis
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="logos/genesis-lockup-horizontal-white.png">
+    <img src="logos/genesis-lockup-horizontal-ink.png" alt="Genesis" width="440">
+  </picture>
+</p>
 
 **Origin registry for photographers — prove an image came out of a specific camera body.**
 
@@ -30,9 +35,6 @@ image against it.
 
 We certify: exposed on camera body X · camera body registered to identity Y · first
 registered at time T · these derivatives descend from that original.
-
-`BUILD.md` is the source of truth. Where it and this README disagree,
-`BUILD.md` wins.
 
 ## The maths behind K
 
