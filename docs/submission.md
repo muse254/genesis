@@ -9,18 +9,20 @@ submitting. Measurements are in `docs/gates.md`.
 ## How it's made
 
 **Imaging core — Python.** `rawpy` (LibRaw bindings) reads Canon CR3 and
-returns `raw_image_visible`. The mosaic is split into its four Bayer
-sublattices, each plane corrected against its own black level and normalised
-to [0, 1]. Nothing in the pipeline demosaics.
+returns the raw mosaic, which is split into its four Bayer sublattices, each
+plane corrected against its own black level. Nothing in the pipeline
+demosaics.
 
-Per plane: a Mihcak wavelet Wiener denoiser — `PyWavelets`, db8, 4 levels,
-local variance taken as the minimum over 3/5/7/9 windows via
-`scipy.ndimage.uniform_filter` — yields the noise residual W. The maximum
-likelihood estimator `K̂ = Σ(W·I)/Σ(I²)` builds the fingerprint across 40+
-frames. Post-processing zero-means rows and columns, then applies a DFT
-Wiener filter. Matching is Peak to Correlation Energy over an FFT
-cross-correlation. `numpy` throughout; equation numbers follow Fridrich 2009.
-PCE peaks over all shifts, so its null sits near 2·ln(N) rather than zero.
+Per plane: a wavelet Wiener denoiser (`PyWavelets`, `scipy`) yields a noise
+residual, a maximum likelihood estimator builds the fingerprint K across 40+
+frames, post-processing strips the artefacts shared by every body of the
+model, and matching is Peak to Correlation Energy over an FFT
+cross-correlation. `numpy` throughout.
+
+The maths — sensor model, estimator, PCE and the denoiser — is Fridrich,
+*Digital Image Forensics Using Sensor Noise*, IEEE Signal Processing Magazine
+26(2), 2009, cited by equation number in `fingerprint/prnu.py`:
+http://ws2.binghamton.edu/fridrich/Research/full_paper_02.pdf
 
 **CLI:** `enroll`, `test`, `pair`, `demo`. K is stored locally as `.npz`.
 Only a SHA-256 commitment over a pinned serialisation leaves the machine.
