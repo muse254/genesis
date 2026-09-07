@@ -5,7 +5,7 @@ description = "Origin registry for photographers — PRNU sensor fingerprints on
 requires-python = ">=3.11"
 
 [tool.pytest.ini_options]
-testpaths = ["fingerprint", "ingest"]
+testpaths = ["fingerprint", "ingest", "scoring"]
 python_files = ["validate_*.py", "test_*.py"]
 
 [tool.ruff]

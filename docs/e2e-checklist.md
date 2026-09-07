@@ -6,7 +6,7 @@ run start to finish. Ticked items were verified on 7 September 2026.
 ## Works today
 
 - [x] `demo` passes on the synthetic sensor — `python3 fingerprint/fingerprint.py demo`
-- [x] `pytest fingerprint ingest` — 26 tests
+- [x] `pytest` — 31 tests; `forge test` — 12
 - [x] Flow A on real CR3: 16 frames enrolled, `.npz` written, commitment printed
 - [x] Flow C upper branch, offline: 13/13 held-out frames MATCH via the CLI,
       PCE 1,895 to 56,255, exit 0
@@ -40,15 +40,13 @@ false-positive rate, and a second enrolment so the test runs both ways.
 - [x] Check `exiftool -SerialNumber` before trusting any file as a negative —
       two candidates turned out to be our own camera
 
-**3. Gate B — `prnu.crop_and_scale_search`.** Not written; `test --crop-scale`
-exits 2. `fingerprint/stress.py` is also empty — both `ladder` and
-`to_web_jpeg` are stubs, so there is no way to generate the stimulus yet
-either.
+**3. Gate B.** Done — conditional pass.
 
-- [ ] `to_web_jpeg`: export an enrolled frame at ~1800px, JPEG q80
-- [ ] Search over scale, record best PCE and the scale it occurred at
-- [ ] Fill in the Gate B table in `docs/gates.md`
-- [ ] Decide: retroactive claim live, or archive-claim tool only
+- [x] `to_web_jpeg` and the eight-rung ladder in `fingerprint/stress.py`
+- [x] `crop_and_scale_search` over scale and all eight orientations
+- [x] Gate B table filled in `docs/gates.md`
+- [x] Decided: the retroactive claim is live at 1800px quality 95 (408) and
+      dead at the same size quality 80 (37). The claim has to name the quality
 
 **4. Record construction — `ingest/`.** Done, 17 tests.
 
@@ -81,11 +79,15 @@ either.
 - [ ] Index `BodyRegistered` / `ImageRegistered` / `SessionCommitted`
 - [ ] Resolve a perceptual hash to a body record
 
-**8. Scoring service and verify page.** `scoring/app.py` has both endpoints
-stubbed.
+**8. Scoring service and verify page.** Done bar the chain read.
 
-- [ ] `uvicorn scoring.app:app` — upload an image, get a PCE and a lookup
-- [ ] Verify page: upload, score, resolve, verdict
+- [x] `uvicorn scoring.app:app` — upload an image, get a PCE and a lookup.
+      Picks the aligned or the scale-search path from the pixels
+- [x] Verify page: upload, score, verdict. Vite plus viem, no framework
+- [ ] The exact branch is wired but inert until a registry address exists;
+      set `VITE_REGISTRY_ADDRESS` and `VITE_RPC_URL` to light it up
+- [ ] The perceptual branch re-scores against every body the service holds,
+      which is right for one photographer and does not scale. Needs §7
 
 ## The offline run, which works today
 
@@ -112,11 +114,11 @@ to register anything that does not clear the threshold.
 
 | Module | Implemented | Stubs |
 | --- | --- | --- |
-| `fingerprint/prnu.py` | 20 | 1 — `crop_and_scale_search` |
+| `fingerprint/prnu.py` | 25 | 0 |
 | `fingerprint/fingerprint.py` | 9 | 0 |
-| `fingerprint/stress.py` | 0 | 2 |
+| `fingerprint/stress.py` | 5 | 0 |
 | `ingest/` | 13 | 0 |
-| `scoring/app.py` | 1 | 2 |
+| `scoring/app.py` | 7 | 0 |
 | `contracts/src/Registry.sol` | 8 | 0 |
 
 ## Standing constraints

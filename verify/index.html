@@ -4,6 +4,34 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Genesis — verify</title>
+    <style>
+      :root { color-scheme: light dark; --ink: #1c1c1a; --paper: #fbfbf9; --line: #d8d6d0; }
+      @media (prefers-color-scheme: dark) {
+        :root { --ink: #ececea; --paper: #161614; --line: #37342e; }
+      }
+      body { margin: 0; background: var(--paper); color: var(--ink);
+             font: 16px/1.55 ui-sans-serif, system-ui, -apple-system, sans-serif; }
+      main { max-width: 42rem; margin: 0 auto; padding: 3rem 1.25rem; }
+      h1 { font-size: 1.6rem; margin: 0 0 .35rem; letter-spacing: -.01em; }
+      .lede { margin: 0 0 2rem; opacity: .75; }
+      input[type=file] { display: block; width: 100%; padding: 1.75rem 1rem;
+        border: 1.5px dashed var(--line); border-radius: .6rem; background: transparent;
+        color: inherit; cursor: pointer; }
+      #result { margin-top: 1.75rem; padding: 1.1rem 1.25rem; border: 1px solid var(--line);
+        border-radius: .6rem; border-left-width: 4px; }
+      #result.match { border-left-color: #0a8f4d; }
+      #result.no-match { border-left-color: #9a7b12; }
+      #result.error { border-left-color: #b3261e; }
+      #result.working { border-left-color: var(--line); opacity: .7; }
+      #result h2 { font-size: 1.05rem; margin: 0 0 .75rem; }
+      dl { margin: 0; }
+      .row { display: flex; gap: 1rem; padding: .3rem 0; border-top: 1px solid var(--line); }
+      .row:first-of-type { border-top: 0; }
+      dt { flex: 0 0 9.5rem; opacity: .7; }
+      dd { margin: 0; font-variant-numeric: tabular-nums; }
+      .caveat, footer p { font-size: .875rem; opacity: .7; }
+      footer { margin-top: 2.5rem; padding-top: 1rem; border-top: 1px solid var(--line); }
+    </style>
   </head>
   <body>
     <!--
@@ -14,7 +42,7 @@
     -->
     <main>
       <h1>Verify an image</h1>
-      <p>Drop a photograph. We tell you which camera body exposed it — or that we don't know.</p>
+      <p class="lede">Drop a photograph. We tell you which camera body exposed it — or that we don't know.</p>
       <input id="file" type="file" accept="image/*" />
       <section id="result" hidden></section>
       <footer>
