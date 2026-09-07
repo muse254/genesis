@@ -41,8 +41,22 @@ fingerprint commitment and revocation status. `[UNBUILT]`
 to a body record; a Subgraph MCP server exposes the same lookup to agents.
 `[UNBUILT]`
 
-**Chainlink CRE.** A confidential workflow scores a 512² residual crop
-against the reference, which stays private. `[UNBUILT]`
+**Chainlink CRE.** Scoring an image needs K, but K is the one thing that can
+never be handed out — anyone holding a body's fingerprint can forge that
+body's images. So the FastAPI scorer above has the photographer's fingerprint
+sitting on a server they have to trust.
+
+A CRE confidential workflow removes that server. The workflow code is public
+and its data is not: K rides in as a Vault DON secret and is only ever
+decrypted inside the enclave. A verifier extracts the noise residual from
+their image locally, sends a 512² crop, and gets back a signed PCE score. The
+fingerprint never leaves the enclave, the image never leaves the verifier,
+and the score is attested rather than asserted by whoever runs the service.
+
+The correlation kernel is rewritten in TypeScript against `@chainlink/cre-sdk`
+(Go or TS only, compiled to WASM) and must agree with the Python
+preprocessing. Fallback if a ~1 MB reference will not ride as a Vault secret:
+Confidential HTTP fetch. `[UNBUILT]`
 
 **Scoring and verify.** FastAPI wraps the imaging core; the verify page is a
 single page, no framework, `viem` for chain reads. `[UNBUILT]`
