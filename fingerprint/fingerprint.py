@@ -70,15 +70,10 @@ def cmd_test(args) -> int:
     With --crop-scale, runs the Gate B search so web-mangled JPEGs still
     resolve.
     """
-    if args.crop_scale:
-        print(
-            "--crop-scale needs prnu.crop_and_scale_search, which is the Gate B "
-            "path and is not written yet.",
-            file=sys.stderr,
-        )
-        return 2
-
     reference, meta = prnu.load_fingerprint(args.fingerprint)
+    if args.crop_scale:
+        return _test_scaled(args, reference, meta)
+
     print(f"{args.fingerprint}: {meta.get('frames', '?')} enrolment frames\n")
 
     failures = 0
@@ -95,6 +90,42 @@ def cmd_test(args) -> int:
         verdict = "MATCH" if pce >= prnu.PCE_THRESHOLD else "no match"
         print(f"{Path(path).name}: {verdict}  PCE {pce:.1f}   {saturated:.1%} saturated")
         failures += pce < prnu.PCE_THRESHOLD
+
+    return 1 if failures else 0
+
+
+def _test_scaled(args, reference, meta) -> int:
+    """Score images that have been resized -- the Gate B path.
+
+    A resized image has no photosite lattice left, so this drops to a single
+    combined field and searches for the scale that puts the fingerprint back
+    in register.
+    """
+    from PIL import Image
+
+    from fingerprint import stress
+
+    Image.MAX_IMAGE_PIXELS = None
+    field = prnu.sensor_field(reference)
+    print(f"{args.fingerprint}: {meta.get('frames', '?')} enrolment frames, scale search\n")
+
+    failures = 0
+    for path in _expand(args.images, delivered=True):
+        if Path(path).suffix.lower() in RAW_SUFFIXES:
+            image = stress.develop(path)
+        else:
+            with Image.open(path) as im:
+                image = im.convert("RGB")
+
+        residual = prnu.noise_residual(stress.green_channel(image))
+        match = prnu.crop_and_scale_search(residual, field)
+
+        verdict = "MATCH" if match.pce >= prnu.PCE_THRESHOLD else "no match"
+        print(
+            f"{Path(path).name}: {verdict}  PCE {match.pce:.1f}  "
+            f"scale {match.scale:.3f}  {match.orientation}"
+        )
+        failures += match.pce < prnu.PCE_THRESHOLD
 
     return 1 if failures else 0
 

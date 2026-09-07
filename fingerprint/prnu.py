@@ -31,6 +31,7 @@ import hashlib
 import json
 import warnings
 from pathlib import Path
+from typing import NamedTuple
 
 import numpy as np
 import pywt
@@ -272,7 +273,11 @@ def noise_residual(plane: "np.ndarray", sigma: float = SIGMA) -> "np.ndarray":
     plane = np.asarray(plane, dtype=np.float32)
     sigma2 = float(sigma) ** 2
 
-    coeffs = pywt.wavedec2(plane, WAVELET, level=WAVELET_LEVELS, mode="symmetric")
+    # A small image cannot carry four levels of db8 without every coefficient
+    # picking up boundary effects. Clamp rather than produce quiet rubbish --
+    # a web thumbnail is exactly the case that hits this.
+    levels = min(WAVELET_LEVELS, pywt.dwt_max_level(min(plane.shape), WAVELET))
+    coeffs = pywt.wavedec2(plane, WAVELET, level=max(levels, 1), mode="symmetric")
 
     out = [np.zeros_like(coeffs[0])]  # the approximation carries the scene, not the noise
     for details in coeffs[1:]:
@@ -543,22 +548,124 @@ def score(planes, reference, mask_saturated: bool = True) -> float:
     return _pce_of(total) if total is not None else 0.0
 
 
-def crop_and_scale_search(residual, reference, scales=None, verbose: bool = False):
-    """Search over scale (and offset) for a match -- the Gate B path.
+def sensor_field(planes, greens=(1, 3)):
+    """Collapse per-plane fingerprints into one field to match a resized image.
+
+    A resized photograph has no photosite lattice left, so the per-plane
+    fingerprints have to be combined before they can be compared with it.
+    The green planes are averaged and the others dropped: green is half the
+    photosites and most of the luminance a resize preserves.
+    """
+    available = [c for c in greens if c in planes]
+    if not available:
+        available = sorted(planes)
+    return np.mean([planes[c] for c in available], axis=0).astype(np.float32)
+
+
+def _area_resize(field, size):
+    """Downscale by averaging, not by sampling.
+
+    This is the whole trick of the scale search. Resizing an image *averages*
+    neighbouring pixels, so the fingerprint left in the result is the area
+    average of K. Interpolating K instead -- ``zoom``, bicubic, anything that
+    samples -- keeps high-frequency detail the resized image no longer has,
+    and the two decorrelate. Measured: interpolation scores at the null where
+    area averaging scores 408.
+    """
+    from PIL import Image
+
+    return np.asarray(
+        Image.fromarray(np.asarray(field, dtype=np.float32), mode="F").resize(size, Image.BOX),
+        dtype=np.float32,
+    )
+
+
+class ScaleMatch(NamedTuple):
+    """Result of :func:`crop_and_scale_search`."""
+
+    pce: float
+    scale: float
+    rotation: int  #: quarter turns anticlockwise applied to the candidate
+    mirrored: bool  #: whether the candidate had to be flipped left-right
+
+    @property
+    def orientation(self) -> str:
+        """How the candidate sits relative to the sensor, in words."""
+        turn = f"{self.rotation * 90} deg"
+        return f"mirrored, {turn}" if self.mirrored else turn
+
+
+def crop_and_scale_search(residual, reference, scales=None, verbose=False, exhaustive=False):
+    """Search over scale and orientation for a match -- the Gate B path.
 
     A web JPEG has been resized and re-encoded, so the test residual is no
-    longer pixel-aligned with K. Resample the test residual over a range of
-    scales (``scipy.ndimage.zoom``) and keep the best PCE.
+    longer pixel-aligned with K. The nominal scale follows from the two
+    shapes; what is unknown is the exact factor, because a platform may crop
+    a few pixels or round differently. So search a narrow band around nominal
+    and keep the best PCE.
 
-    This function is what makes demo step 4 -- the money shot -- possible.
-    If Gate B fails, this is the code that gets cut with it.
+    The reference is resampled rather than the residual: it is the side that
+    must be made to look like it went through the resize, and doing it this
+    way keeps every correlation at the small size, which is what makes the
+    search affordable.
+
+    Parameters
+    ----------
+    residual : np.ndarray
+        Noise residual of the candidate image.
+    reference : np.ndarray
+        One fingerprint field, as :func:`sensor_field` returns.
+    scales : sequence[float], optional
+        Multipliers on the nominal scale. Defaults to +/-6% in 13 steps.
+    verbose : bool
+        Print each combination as it is tried.
+    exhaustive : bool
+        Try every orientation at every scale. By default the orientation is
+        settled first at nominal scale, then only the winner is scanned over
+        scale -- eight correlations plus thirteen rather than a hundred and
+        four.
+
+    All eight orientations are tried, not four. A fingerprint lives in sensor
+    space, which is always landscape, while a developed portrait photograph
+    has been turned ninety degrees, and an image that has passed through an
+    editor or a careless upload may also be flipped. PCE is shift-invariant
+    but neither rotation- nor reflection-invariant, so any of those scores at
+    the null until it is put back. The orientation tag would say which, but
+    this is the path for images whose metadata is gone, so the answer has to
+    come from the pixels.
 
     Returns
     -------
-    tuple[float, float]
-        (best PCE, scale at which it occurred).
+    ScaleMatch
+        (best PCE, the multiplier, the quarter turns, whether mirrored).
     """
-    raise NotImplementedError
+    residual = np.asarray(residual, dtype=np.float32)
+    scales = np.linspace(0.94, 1.06, 13) if scales is None else np.asarray(scales)
+    orientations = [(turns, flip) for flip in (False, True) for turns in (0, 1, 2, 3)]
+
+    def attempt(turns, flip, f):
+        candidate = np.rot90(np.fliplr(residual) if flip else residual, turns)
+        height, width = candidate.shape
+        resized = _area_resize(reference, (int(round(width * f)), int(round(height * f))))
+        h = min(resized.shape[0], height)
+        w = min(resized.shape[1], width)
+        value = pce(np.ascontiguousarray(candidate[:h, :w]), resized[:h, :w])
+        if verbose:
+            side = "mirrored " if flip else ""
+            print(f"  {side}rot {turns * 90:>3} scale {f:.3f}: PCE {value:.1f}")
+        return ScaleMatch(value, float(f), int(turns), bool(flip))
+
+    if exhaustive:
+        return max(
+            (attempt(t, m, f) for t, m in orientations for f in scales),
+            key=lambda r: abs(r.pce),
+        )
+
+    settled = max((attempt(t, m, 1.0) for t, m in orientations), key=lambda r: abs(r.pce))
+    return max(
+        (attempt(settled.rotation, settled.mirrored, f) for f in scales),
+        key=lambda r: abs(r.pce),
+    )
 
 
 # --- persistence -----------------------------------------------------------

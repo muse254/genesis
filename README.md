@@ -214,16 +214,25 @@ Nothing downstream matters until both have run. See `docs/gates.md`.
 
 ## Status
 
-The enrolment math is written and passes on a synthetic sensor: CFA split,
-wavelet Wiener residual, ML estimator, zero-mean plus DFT Wiener
-post-processing, PCE, and the pinned commitment hash. `enroll`, `test` and
-`pair` run against RAW files; `demo` runs without a camera.
+| | Component | State |
+| --- | --- | --- |
+| ██████████ | `fingerprint/` — enrolment, scoring, commitment | done, 7 tests |
+| ██████████ | Gate A — does K exist on this body | **passed**, one body |
+| ███████░░░ | Gate B — does K survive the web | **conditional pass** |
+| ██████████ | `fingerprint/stress.py` — degradation ladder | done |
+| ░░░░░░░░░░ | `ingest/` — hashing, record, Merkle | 10 stubs |
+| ░░░░░░░░░░ | `contracts/` — ERC-7053 registry | 6 functions revert |
+| ░░░░░░░░░░ | `identity/` — ENSv2 subnames | not started |
+| ░░░░░░░░░░ | `subgraph/` — image → record | not started |
+| ░░░░░░░░░░ | `scoring/` — FastAPI wrapper | 2 stubs |
+| ░░░░░░░░░░ | `verify/` — the page | not started |
+| ░░░░░░░░░░ | `mcp/` — Subgraph MCP server | not started |
 
-Everything else in this tree is still a stub — ingest, contracts, subgraph,
-scoring, verify. The Gate B crop-and-scale search is not written.
+Three of eleven done. The imaging core works on real files: `enroll`, `test`
+and `pair` run against RAW and delivered JPEGs, `demo` runs without a camera.
+Everything downstream of it is scaffolding.
 
-Gate A has run on a real body and passed; Gate B has not run. See **Where
-this stands on real cameras** above and `docs/gates.md`.
+`docs/e2e-checklist.md` is the ordered list of what unblocks what.
 
 ## Further Work?
 

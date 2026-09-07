@@ -13,6 +13,7 @@ these everywhere -- here, in the README, and in the pitch (BUILD.md sec.15).
 from __future__ import annotations
 
 import numpy as np
+from PIL import Image
 
 from fingerprint import prnu
 
@@ -234,3 +235,67 @@ def test_delivered_image_maps_back_to_the_photosite_lattice():
     for c, plane in planes.items():
         assert plane.shape == (4, 4)
         assert np.allclose(plane, values[c], atol=1 / 255), f"plane {c} sampled wrong"
+
+
+def test_scale_search_finds_a_resized_match():
+    """A downscaled frame still matches, once the reference is area-averaged.
+
+    Resizing averages neighbouring pixels, so the fingerprint left behind is
+    the area average of K. The search has to model that; sampling K instead
+    lands at the null, which is the failure this test guards against.
+    """
+    from PIL import Image
+
+    from fingerprint import stress
+
+    body = _four_plane_body(seed=10)
+    frames = [_four_plane_exposure(body, seed=200 + 10 * n) for n in range(FRAMES)]
+    k = prnu.postprocess(prnu.estimate_fingerprint(frames))
+    field = prnu.sensor_field(k)
+
+    held_out = _four_plane_exposure(body, seed=9000)
+    probe = prnu.sensor_field(held_out)
+
+    half = (probe.shape[1] // 2, probe.shape[0] // 2)
+    shrunk = np.asarray(
+        Image.fromarray(probe, mode="F").resize(half, Image.LANCZOS), dtype=np.float32
+    )
+    residual = prnu.noise_residual(shrunk)
+
+    match = prnu.crop_and_scale_search(residual, field)
+    assert match.pce >= MIN_MATCH_PCE, f"resized frame scored {match.pce:.1f}"
+    assert 0.9 <= match.scale <= 1.1, f"peak at an implausible scale {match.scale:.3f}"
+
+    # A quarter-turned copy must still be found, and reported as turned.
+    turned = prnu.crop_and_scale_search(np.rot90(residual, 1), field)
+    assert turned.pce >= MIN_MATCH_PCE, f"portrait copy scored {turned.pce:.1f}"
+    assert turned.rotation == 3 and not turned.mirrored, f"reported {turned.orientation}"
+
+    # So must a mirrored one -- an editor or a careless upload can flip a
+    # photograph, and a flip is not a rotation.
+    flipped = prnu.crop_and_scale_search(np.fliplr(residual), field)
+    assert flipped.pce >= MIN_MATCH_PCE, f"mirrored copy scored {flipped.pce:.1f}"
+    assert flipped.mirrored, f"reported {flipped.orientation}"
+
+    # The null here has to be a different body, not a rotated copy of this
+    # one: once the search tries all eight orientations it simply undoes the
+    # rotation and matches. A rotated K stops being a negative control the
+    # moment orientation is part of the search.
+    other = _four_plane_body(seed=50)
+    other_frames = [_four_plane_exposure(other, seed=700 + 10 * n) for n in range(FRAMES)]
+    other_field = prnu.sensor_field(prnu.postprocess(prnu.estimate_fingerprint(other_frames)))
+
+    null = prnu.crop_and_scale_search(residual, other_field)
+    assert abs(null.pce) <= MAX_MISMATCH_PCE, f"another body scored {null.pce:.1f}"
+
+
+def test_web_jpeg_export_round_trips():
+    """`to_web_jpeg` returns the pixels a downloader would actually get."""
+    from fingerprint import stress
+
+    rng = np.random.default_rng(0)
+    source = Image.fromarray(rng.integers(0, 255, (400, 600, 3), dtype=np.uint8))
+
+    out = stress.to_web_jpeg(source, longest_edge=300, quality=80)
+    assert max(out.size) == 300
+    assert stress.green_channel(out).shape == (200, 300)
