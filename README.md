@@ -274,12 +274,12 @@ Nothing downstream matters until both have run. See `docs/gates.md`.
 | ██████████ | `ingest/` — hashing, record, Merkle | done, 17 tests |
 | ██████████ | `contracts/` — ERC-7053 registry | done, 12 tests |
 | ░░░░░░░░░░ | `identity/` — ENSv2 subnames | not started |
-| ░░░░░░░░░░ | `subgraph/` — image → record | not started |
+| ███████░░░ | `subgraph/` — image → record | builds, 5 mapping tests; needs a deployment |
 | ██████████ | `scoring/` — FastAPI wrapper | done, 5 tests |
 | ███████░░░ | `verify/` — the page | works; chain read needs a deployment |
 | ░░░░░░░░░░ | `mcp/` — Subgraph MCP server | not started |
 
-Seven of eleven done. The imaging core works on real files: `enroll`, `test`
+Eight of eleven done. The imaging core works on real files: `enroll`, `test`
 and `pair` run against RAW and delivered JPEGs, `demo` runs without a camera.
 Everything downstream of it is scaffolding.
 

@@ -25,6 +25,23 @@ type Image @entity {
   session: Session
 }
 
+"""
+One ERC-7053 commit. The standard indexes assertions and explicitly declines
+to validate what is behind them, so this is kept apart from Image: an indexer
+following only the standard sees the same log without inheriting our opinion
+about what the commit data means.
+"""
+type CommitLog @entity(immutable: true) {
+  id: Bytes!
+  recorder: Bytes!
+  assetCid: String!
+  commitData: String!
+  "Set when the CID is the genesis: URI minted by ingest/record.py"
+  image: Image
+  blockNumber: BigInt!
+  timestamp: BigInt!
+}
+
 type Session @entity {
   id: Bytes!
   merkleRoot: Bytes!

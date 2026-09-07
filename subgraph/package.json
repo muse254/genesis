@@ -1,0 +1,14 @@
+{
+  "name": "genesis-subgraph",
+  "private": true,
+  "scripts": {
+    "codegen": "graph codegen",
+    "build": "graph build",
+    "deploy": "graph deploy genesis"
+  },
+  "dependencies": {
+    "@graphprotocol/graph-cli": "^0.90.0",
+    "@graphprotocol/graph-ts": "^0.35.0",
+    "matchstick-as": "^0.6.0"
+  }
+}

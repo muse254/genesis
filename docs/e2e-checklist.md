@@ -74,10 +74,16 @@ false-positive rate, and a second enrolment so the test runs both ways.
 - [ ] Register `r10-4471.cam.osoro.eth` live, no hardcoded values
 - [ ] Pin the four ENSv2 addresses in `identity/addresses.md` and freeze
 
-**7. Subgraph.**
+**7. Subgraph.** Written and tested; deployment waits on §6.
 
-- [ ] Index `BodyRegistered` / `ImageRegistered` / `SessionCommitted`
-- [ ] Resolve a perceptual hash to a body record
+- [x] Index `BodyRegistered` / `BodyRevoked` / `ImageRegistered` /
+      `SessionCommitted` / `Commit`
+- [x] `graph codegen && graph build` clean; 5 matchstick tests against mocked
+      contract calls
+- [x] Handlers read the full record back from storage, since the events carry
+      only hash, body and score
+- [ ] Fill the address and `startBlock` in `subgraph.yaml` after the deploy
+- [ ] Deploy to Subgraph Studio and point the verify page at it
 
 **8. Scoring service and verify page.** Done bar the chain read.
 
