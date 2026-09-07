@@ -6,7 +6,7 @@ run start to finish. Ticked items were verified on 7 September 2026.
 ## Works today
 
 - [x] `demo` passes on the synthetic sensor — `python3 fingerprint/fingerprint.py demo`
-- [x] `pytest fingerprint` — 6 tests
+- [x] `pytest fingerprint` — 7 tests
 - [x] Flow A on real CR3: 16 frames enrolled, `.npz` written, commitment printed
 - [x] Flow C upper branch, offline: 13/13 held-out frames MATCH via the CLI,
       PCE 1,895 to 56,255, exit 0
@@ -36,15 +36,18 @@ that can actually break the claim.
       fingerprint, inside the null band
 - [ ] Same model, different body — the one that actually sets the threshold
 
-**3. Gate B — `prnu.crop_and_scale_search`.** Not written. Until it is,
-`test --crop-scale` exits 2 and demo step 4 does not exist.
+**3. Gate B — `prnu.crop_and_scale_search`.** Not written; `test --crop-scale`
+exits 2. `fingerprint/stress.py` is also empty — both `ladder` and
+`to_web_jpeg` are stubs, so there is no way to generate the stimulus yet
+either.
 
-- [ ] Export an enrolled frame at ~1800px, JPEG q80 (`fingerprint/stress.py`)
+- [ ] `to_web_jpeg`: export an enrolled frame at ~1800px, JPEG q80
 - [ ] Search over scale, record best PCE and the scale it occurred at
 - [ ] Fill in the Gate B table in `docs/gates.md`
 - [ ] Decide: retroactive claim live, or archive-claim tool only
 
-**4. Record construction — `ingest/`.** All three modules are stubs.
+**4. Record construction — `ingest/`.** All ten functions across the three
+modules are stubs.
 
 - [ ] `hashing.py` — pixel SHA-256 and perceptual hash
 - [ ] `record.py` — Birthmark-shaped `ImageRecord` plus PRNU attestation
@@ -69,7 +72,8 @@ that can actually break the claim.
 - [ ] Index `BodyRegistered` / `ImageRegistered` / `SessionCommitted`
 - [ ] Resolve a perceptual hash to a body record
 
-**8. Scoring service and verify page.**
+**8. Scoring service and verify page.** `scoring/app.py` has both endpoints
+stubbed.
 
 - [ ] `uvicorn scoring.app:app` — upload an image, get a PCE and a lookup
 - [ ] Verify page: upload, score, resolve, verdict
@@ -83,6 +87,17 @@ that can actually break the claim.
       resolves through the pHash-plus-PRNU branch
 - [ ] Verify page shows body, identity and registration time
 - [ ] Whole path repeated on a clean machine, following `README.md` from the top
+
+## Verified state, 7 September 2026
+
+| Module | Implemented | Stubs |
+| --- | --- | --- |
+| `fingerprint/prnu.py` | 20 | 1 — `crop_and_scale_search` |
+| `fingerprint/fingerprint.py` | 9 | 0 |
+| `fingerprint/stress.py` | 0 | 2 |
+| `ingest/` | 0 | 10 |
+| `scoring/app.py` | 1 | 2 |
+| `contracts/src/Registry.sol` | 0 | 6 functions revert |
 
 ## Standing constraints
 
