@@ -1,6 +1,8 @@
-# Certify the Camera
+# Genesis
 
 **Origin registry for photographers — prove an image came out of a specific camera body.**
+
+> *Let there be light* — and a record of the sensor it fell on.
 
 ETHOnline 2026 · 4–16 September · 13 days
 
@@ -132,35 +134,60 @@ Birthmark needs Canon to ship firmware. We need the photographer's own files.
 
 Three flows. Build backwards from the demo (§6).
 
-### Flow A — Enrol (once, from an existing archive)
+```mermaid
+flowchart TB
+  subgraph Enrol["Flow A · Enrol — once per camera body"]
+    direction TB
+    subgraph EnrolLocal["CLI on the photographer's machine · fingerprint/"]
+      A1["40+ RAW frames from the archive"] --> A2["CFA plane split"]
+      A2 --> A3["wavelet Wiener residual"]
+      A3 --> A4["ML estimator ΣWI/ΣI² → K"]
+    end
+    A4 --> A5[("local disk · data/<br/>K itself is never published")]
+    A4 --> A6["CLI · ingest/<br/>commitment hash of K"]
+    subgraph EnrolChain["on chain · Sepolia"]
+      A7["contract · Registry.registerBody<br/>bodyId · fingerprintCommitment · ensNode"]
+      A8["contract · ENSv2<br/>subname r10-4471.cam.osoro.eth"]
+    end
+    A6 --> A7
+    A7 <--> A8
+  end
 
-```
-40+ RAWs  →  CFA plane split  →  wavelet Wiener residual
-          →  ML estimator ΣWI/ΣI²  →  K
-          →  private reference store (never published)
-          →  commitment hash  →  body record on chain + ENS name
+  subgraph Register["Flow B · Register — per image"]
+    direction TB
+    subgraph RegLocal["CLI on the photographer's machine · ingest/ + fingerprint/"]
+      B1["RAW"] --> B2["SHA-256 of pixel data<br/>+ perceptual hash"]
+      B1 --> B3["residual → PCE against K"]
+      B2 --> B4["Birthmark-shaped ImageRecord<br/>+ PRNU attestation"]
+      B3 --> B4
+    end
+    subgraph RegChain["on chain · Sepolia"]
+      B5["contract · Registry.registerImage"]
+      B6["contract · Registry.commitSession<br/>one Merkle root per shoot, not one write per frame"]
+      B7["contract · ERC-7053 commit()"]
+    end
+    B4 --> B5
+    B4 --> B6
+    B5 --> B7
+  end
+
+  subgraph Verify["Flow C · Verify — anyone, any image, anywhere"]
+    direction TB
+    C1["web page · verify/ (browser)<br/>image upload"] --> C2{"exact pixel hash hit?"}
+    C2 -->|yes| C3["record — untouched file"]
+    C2 -->|no| C4["index · subgraph/ on The Graph<br/>pHash lookup → candidate records"]
+    C4 --> C5["HTTP service · scoring/ (FastAPI)<br/>PRNU re-score — the browser cannot do this"]
+    C5 --> C6["web page · verify/<br/>verdict + confidence"]
+  end
+
+  A5 -.->|K stays local| B3
+  A7 -.->|events indexed| C4
+  B5 -.->|events indexed| C2
 ```
 
-### Flow B — Register (per image)
-
-```
-CR3  ─┬─→  SHA-256 of pixel data  +  perceptual hash
-      └─→  residual → PCE against K
-           ↓
-     Birthmark-shaped record  +  PRNU attestation
-           ↓
-     ERC-7053 commit()
-```
-
-### Flow C — Verify (anyone, any image, anywhere)
-
-```
-image  →  SHA-256 of pixel data  →  exact hit?
-                                     ├─ yes → record          (untouched file)
-                                     └─ no  → pHash lookup → candidate records
-                                              → PRNU re-score against that body
-                                              → verdict + confidence
-```
+Enrol and register are a CLI on the photographer's machine — that is where the
+RAW archive and K already are. Verify is the one browser surface, and it posts
+to the scoring service because the scorer is Python (§8).
 
 **Flow C's lower branch is the differentiator.** An exact pixel hash dies the
 moment a platform re-encodes or resizes. Everything that has actually been out
@@ -231,7 +258,7 @@ If step 4 works, the pitch writes itself. If it doesn't, see Gate B.
 ## 7. Repo layout
 
 ```
-certify-the-camera/
+genesis/
 ├── fingerprint/          # Python — the imaging core  (BUILT)
 │   ├── prnu.py           # CFA split, wavelet Wiener, ML estimator, PCE
 │   ├── fingerprint.py    # CLI: enroll · test · pair · demo

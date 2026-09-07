@@ -1,7 +1,7 @@
 specVersion: 0.0.5
 description: >-
   Indexes camera-body enrolments and image registrations from the
-  certify-the-camera Registry, so an image can be resolved to its record.
+  Genesis Registry, so an image can be resolved to its record.
 schema:
   file: ./schema.graphql
 dataSources:
