@@ -33,25 +33,57 @@ its own work. Editorial calls were surfaced, not taken silently.
 | Here are 41 real CR3 frames | Gate A run on the R10. All 10 held-out frames pass. Numbers and caveats in `docs/gates.md` |
 | Back the constants with a reference | Every constant cited to Fridrich 2009. One of them was wrong — see below |
 | Keep AI-USE current; make the repo public | This file, then the visibility change |
+| Explain the maths behind K | README section: sensor model, estimator, PCE, all cited by equation |
+| The fail rate looks high | It was not — 25/25 non-enrolment frames passed. Measured rather than assumed, then plane summing and saturation masking took the weakest from 143 to 672 |
+| Redo the test; write an e2e checklist | CLI enrol → test verified, 13/13; `docs/e2e-checklist.md` ordered by what blocks what |
+| A 5D Mark III DNG, a camera JPEG | Linear DNGs refused with a reason; delivered JPEGs scored by re-mosaicking onto the photosite lattice |
+| Validate Gate B | Conditional pass: survives 1800px at quality 95, dies at quality 80. Ladder in `docs/gates.md` |
+| Look at mirroring too | Search widened to all eight orientations, four rotations by two reflections |
+| Continue the checklist | `ingest/` — hashing, records, Merkle — then `Registry.sol`, 12 tests |
+| Another R10, from raw.pixls.us | **A different body scores 39.1.** Threshold raised 50 → 100 on that evidence |
+| Do the local anvil run | `contracts/script/local-e2e.sh` — enrol, register, look up, prove inclusion, offline |
+| Commit the corpus; document a sample run | 662 MB of frames published, README walk-through, provenance and the forgery-kit consequence stated |
 
-## A model error worth recording
+## Model errors worth recording
 
-The model wrote `SIGMA = 5.0 / 255.0` with a comment calling it "the
-literature value". It was not. The source specifies 2/255, and the wrong
-value cost an order of magnitude of Gate A margin — the weakest held-out
-frame scored 91 against a null of 38, where the sourced value gives 1,212.
+**A constant taken from memory.** The model wrote `SIGMA = 5.0 / 255.0` with
+a comment calling it "the literature value". It was not. The source specifies
+2/255, and the wrong value cost an order of magnitude of Gate A margin — the
+weakest held-out frame scored 91 against a null of 38, where the sourced
+value gives 1,212. It surfaced only because the human asked for the constants
+to be backed by a reference. Nothing in the code, the tests or the passing
+gate would have caught it: the pipeline ran, the demo passed, and the number
+was wrong.
 
-It surfaced only because the human asked for the constants to be backed by a
-reference. Nothing in the code, the tests or the passing gate would have
-caught it: the pipeline ran, the demo passed, and the number was wrong.
+**The wrong resampling for Gate B.** The first scale search interpolated the
+fingerprint. A resize *averages* neighbouring pixels, so what survives is the
+area average — interpolating keeps detail the resized image no longer has,
+and the two decorrelate. It scored at the null, which read as "Gate B fails"
+until the method was questioned rather than the result.
+
+**A test fixture that indicted the wrong thing.** The perceptual hash was
+declared broken by a test using a 64×48 noise field, where it moved 16 bits
+under a resize. On a real photograph it moves zero bits from 1800px q95 down
+to 400px q60. The hash was fine; the fixture had no low-frequency structure
+for it to hold on to.
+
+**A null that stopped being a null.** Once the search tried all eight
+orientations, the rotated-K negative control was no longer a control — the
+search simply undoes the rotation and matches. The model's own test caught it
+by scoring 1,084 where it expected 40.
+
+Three of the four were found by measuring rather than by reasoning, and the
+first was found only because the human asked for a citation.
 
 ## Not done
 
-`ingest/`, the contracts, the subgraph, the scoring service and the verify
-page are stubs. Gate B has not run and the crop-and-scale search it needs is
-not written. Gate A passed against one body, so the negative control is a
-rotated fingerprint rather than a second camera and the false-positive rate
-is unmeasured.
+The subgraph, the scoring service, the verify page, the MCP server and the
+CRE workflow are stubs. Nothing has touched a testnet; ENS is unstarted.
+
+The false-positive rate is still unmeasured. One same-model negative exists
+and it lands in the null band, which rules out a broken approach but does not
+give a rate — that needs dozens of bodies. No second body has been enrolled,
+so the test has never run both ways.
 
 ## Checks
 
@@ -62,4 +94,13 @@ is unmeasured.
   full-resolution runs are reported, including the frame that fails when
   cropped.
 - The denoiser constants were read out of the cited paper rather than
-  recalled, which is how the error above was found.
+  recalled, which is how the first error above was found.
+- Gate B is a ladder of eight rungs across three frames, and the rungs that
+  fail are reported next to the ones that pass.
+- Merkle proofs generated in Python are pinned as vectors in the Solidity
+  test, so the two implementations cannot drift apart silently.
+- Every file offered as a different camera was checked with
+  `exiftool -SerialNumber` first. Two turned out to be the same body, and
+  scoring them as negatives would have produced a fake result.
+- The whole chain path was run offline against `anvil` before any claim that
+  it works.
