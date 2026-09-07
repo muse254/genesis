@@ -143,8 +143,17 @@ Nothing downstream matters until both have run. See `docs/gates.md`.
 
 ## Status
 
-Nothing is implemented. Every module in this tree is a stub with the
-signatures and the reasoning in place. Fill them in from `BUILD.md`.
+The enrolment math is written and passes on a synthetic sensor: CFA split,
+wavelet Wiener residual, ML estimator, zero-mean plus DFT Wiener
+post-processing, PCE, and the pinned commitment hash. `enroll`, `test` and
+`pair` run against RAW files; `demo` runs without a camera.
+
+Everything else in this tree is still a stub — ingest, contracts, subgraph,
+scoring, verify. The Gate B crop-and-scale search is not written.
+
+No real camera frames have been through it. Neither gate in `docs/gates.md`
+has run, so nothing here is evidence that the fingerprint survives a real raw
+pipeline.
 
 ## Further Work?
 
