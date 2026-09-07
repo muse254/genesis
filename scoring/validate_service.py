@@ -114,3 +114,22 @@ def test_score_rejects_an_unknown_body(client, tmp_path):
             "/score", params={"body": "0xdeadbeef"}, files={"file": ("grey.png", handle, "image/png")}
         )
     assert response.status_code == 404
+
+
+def test_the_browser_can_actually_call_this(client):
+    """CORS, without which the verify page fails for an invisible reason.
+
+    The page runs on another origin, so a preflight that does not come back
+    with the right headers means every request is refused before it reaches
+    the handler, and nothing appears in the service log to say why.
+    """
+    api, _ = client
+    response = api.options(
+        "/lookup",
+        headers={
+            "Origin": "http://localhost:5173",
+            "Access-Control-Request-Method": "POST",
+        },
+    )
+    assert response.status_code == 200
+    assert response.headers["access-control-allow-origin"] in ("*", "http://localhost:5173")

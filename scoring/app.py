@@ -24,6 +24,7 @@ from functools import lru_cache
 from pathlib import Path
 
 from fastapi import FastAPI, File, HTTPException, Query, UploadFile
+from fastapi.middleware.cors import CORSMiddleware
 
 from fingerprint import prnu, stress
 from ingest import hashing, record
@@ -33,6 +34,19 @@ from ingest import hashing, record
 REFERENCES = Path(os.environ.get("GENESIS_REFERENCES", "data/references"))
 
 app = FastAPI(title="Genesis scoring service")
+
+#: The verify page is served from a different origin -- Vite on 5173, or
+#: wherever it ends up hosted -- so without this the browser refuses every
+#: request and the page looks broken for a reason that never reaches the logs.
+#: Wide open because this service holds no secrets and takes no authority: it
+#: reads pixels and returns a number. The thing worth protecting is K, and K
+#: never appears in a response.
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=os.environ.get("GENESIS_ALLOW_ORIGINS", "*").split(","),
+    allow_methods=["GET", "POST"],
+    allow_headers=["*"],
+)
 
 
 @app.get("/health")

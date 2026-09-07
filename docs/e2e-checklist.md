@@ -82,6 +82,9 @@ false-positive rate, and a second enrolment so the test runs both ways.
       contract calls
 - [x] Handlers read the full record back from storage, since the events carry
       only hash, body and score
+- [x] Deployed to a local graph-node against anvil and queried: body, image,
+      session and commit log all indexed, with the record fields read back
+      from storage
 - [ ] Fill the address and `startBlock` in `subgraph.yaml` after the deploy
 - [ ] Deploy to Subgraph Studio and point the verify page at it
 
@@ -90,8 +93,11 @@ false-positive rate, and a second enrolment so the test runs both ways.
 - [x] `uvicorn scoring.app:app` — upload an image, get a PCE and a lookup.
       Picks the aligned or the scale-search path from the pixels
 - [x] Verify page: upload, score, verdict. Vite plus viem, no framework
-- [ ] The exact branch is wired but inert until a registry address exists;
-      set `VITE_REGISTRY_ADDRESS` and `VITE_RPC_URL` to light it up
+- [x] CORS, without which the page cannot call the service from a browser at
+      all — it failed silently before
+- [x] The exact branch verified against anvil: a registered hash returns its
+      record, an unregistered one a zeroed struct
+- [ ] Repoint at Sepolia once §6 lands
 - [ ] The perceptual branch re-scores against every body the service holds,
       which is right for one photographer and does not scale. Needs §7
 
@@ -100,7 +106,34 @@ false-positive rate, and a second enrolment so the test runs both ways.
 - [x] `verify_image`, `lookup_body`, `image_lineage` over the subgraph
 - [x] 6 tests on the wording an agent repeats — no "verified", no "authentic",
       and a missing record reads as "nothing registered" rather than "fake"
+- [x] Run against a local graph-node: all three tools answered from really
+      indexed events
 - [ ] Point `GENESIS_SUBGRAPH_URL` at the deployed subgraph
+
+## The whole stack, offline
+
+Everything except Sepolia and ENS runs locally, and it indexes real events
+rather than mocks:
+
+```bash
+anvil &
+docker compose -f subgraph/docker-compose.yml up -d
+contracts/script/local-e2e.sh data/references/r10.npz frame.CR3 other.CR3
+
+cd subgraph
+npx graph create --node http://localhost:8020 genesis
+npx graph deploy --node http://localhost:8020 --ipfs http://localhost:5001 \
+  genesis subgraph.local.yaml --version-label v0
+
+uvicorn scoring.app:app --port 8000        # the scorer
+cd verify && cp .env.example .env && npm run dev
+```
+
+Verified on 7 September 2026 end to end: the registry deployed to anvil, the
+subgraph indexed the body, the image, the session root and the ERC-7053
+commit, the MCP tools answered from that index, and viem read the record back
+by pixel hash — returning a zeroed struct for a hash nobody registered, which
+is what the page reads as "no record".
 
 ## The offline run, which works today
 
