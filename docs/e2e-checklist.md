@@ -10,6 +10,8 @@ run start to finish. Ticked items were verified on 7 September 2026.
 - [x] Flow A on real CR3: 16 frames enrolled, `.npz` written, commitment printed
 - [x] Flow C upper branch, offline: 13/13 held-out frames MATCH via the CLI,
       PCE 1,895 to 56,255, exit 0
+- [x] Delivered JPEG at native resolution: `game.jpg` matches at 1,147.8
+- [x] Linear DNGs are refused with a clear message rather than crashing
 
 ```bash
 python3 fingerprint/fingerprint.py enroll --out data/references/r10.npz <16 frames>
@@ -28,10 +30,11 @@ that can actually break the claim.
 - [ ] Score body A's frames against K_B and vice versa
 - [ ] Set `PCE_THRESHOLD` from the measured separation, not from 50
 
-**2. An image from a non-Canon camera.** Demo step 3 needs a frame that
-should *not* match. Any other camera's RAW will do.
+**2. A frame that should not match.** Demo step 3 needs one.
 
-- [ ] Score it against `r10.npz`, confirm it lands in the null band
+- [x] Cross-model: Canon 5D Mark III DNG scores 26.6 against the R10
+      fingerprint, inside the null band
+- [ ] Same model, different body — the one that actually sets the threshold
 
 **3. Gate B — `prnu.crop_and_scale_search`.** Not written. Until it is,
 `test --crop-scale` exits 2 and demo step 4 does not exist.

@@ -119,6 +119,13 @@ def load_raw_planes(path, crop: int | None = None):
     import rawpy  # imported lazily: the rest of this module needs no LibRaw
 
     with rawpy.imread(str(path)) as raw:
+        if raw.raw_type != rawpy.RawType.Flat:
+            raise ValueError(
+                f"{path}: {raw.raw_type.name} raw, not a CFA mosaic. Linear DNGs "
+                "(Adobe's lossy-JPEG conversion among them) are already "
+                "demosaiced, so there are no photosite planes to split. Use "
+                "load_delivered_planes() if it is at native sensor resolution."
+            )
         image = raw.raw_image_visible.astype(np.float32)
         colors = raw.raw_colors_visible
         black = np.asarray(raw.black_level_per_channel, dtype=np.float32)
@@ -161,6 +168,63 @@ def split_cfa(image, colors, black, white: float, source="<array>"):
             raise ValueError(f"{source}: white level {white} is not above black level {level}")
         planes[int(c)] = np.clip((plane - level) / span, 0.0, 1.0).astype(np.float32)
 
+    return planes
+
+
+def cfa_pattern(path) -> list:
+    """The 2x2 CFA colour indices of a RAW file, as ``[[c, c], [c, c]]``.
+
+    Recorded at enrolment so a delivered JPEG can later be sampled back onto
+    the same photosite lattice the fingerprint was built on.
+    """
+    import rawpy
+
+    with rawpy.imread(str(path)) as raw:
+        if raw.raw_pattern is None:
+            raise ValueError(f"{path}: no CFA pattern (not a mosaic raw)")
+        return raw.raw_pattern.tolist()
+
+
+def load_delivered_planes(path, pattern, channels=None):
+    """Sample a delivered RGB image back onto the CFA photosite lattice.
+
+    A JPEG out of the camera is demosaiced, tone-curved and re-encoded, but
+    every output pixel still sits over one physical photosite. Taking each
+    pixel from the colour channel that photosite actually measured recovers
+    planes that align with an enrolled fingerprint, one for one.
+
+    Only valid at **native sensor resolution**. A resized image no longer has
+    a pixel-to-photosite correspondence, which is the crop-and-scale search
+    that Gate B needs and this function does not do.
+
+    Parameters
+    ----------
+    path : str | Path
+        Any image PIL can open.
+    pattern : list
+        The 2x2 CFA layout from :func:`cfa_pattern`.
+    channels : dict[int, int], optional
+        CFA colour index -> RGB channel. Defaults to the RGBG convention
+        LibRaw reports: 0 red, 1 and 3 green, 2 blue.
+
+    Returns
+    -------
+    dict[int, np.ndarray]
+        CFA colour index -> 2-D float32 plane in [0, 1].
+    """
+    from PIL import Image
+
+    Image.MAX_IMAGE_PIXELS = None
+    channels = channels or {0: 0, 1: 1, 2: 2, 3: 1}
+
+    with Image.open(path) as im:
+        rgb = np.asarray(im.convert("RGB"), dtype=np.float32) / 255.0
+
+    pattern = np.asarray(pattern)
+    planes = {}
+    for c in np.unique(pattern):
+        i, j = np.argwhere(pattern == c)[0]
+        planes[int(c)] = np.ascontiguousarray(rgb[i::2, j::2, channels[int(c)]])
     return planes
 
 

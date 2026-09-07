@@ -41,11 +41,17 @@ afternoon spent.
 | Separation | 32x at worst (IMG_0230), 600x at best (IMG_0217) |
 | Verdict | **PASS**, with the caveats below |
 
-**The null is not a second body.** All 41 frames come from one R10, so the
-negative control is K rotated 180 degrees: alignment destroyed, statistics
-preserved. It bounds the false-positive rate the way a different body would,
-but it is not the same evidence. **Gate A is not discharged until a second
-body has been tested**, and the threshold cannot be set honestly until then.
+**The null is mostly not a second body.** The 41 R10 frames come from one
+camera, so the standing negative control is K rotated 180 degrees: alignment
+destroyed, statistics preserved.
+
+One real other-body probe now exists. A Canon EOS 5D Mark III linear DNG,
+centre-cropped to a common size and scored against the R10 fingerprint,
+returned **26.6** — inside the null band, against 1,895 to 56,255 for true
+matches. That is a different *model*, though, and models differ in sensor,
+readout and raw pipeline. **The case that decides the threshold is two bodies
+of the same model**, which share every model-level artefact and differ only in
+the fingerprint. Until that runs, 50 stays provisional.
 
 Four findings.
 
@@ -121,7 +127,32 @@ strong product.
 real product — an archive claim tool — but step 4 comes out and the pitch
 changes.
 
-### Result
+### Partial result — full resolution, no resize
+
+A camera JPEG of 7 September 2026: `game.jpg`, Canon EOS R10, 6000x4000,
+processed through ACDSee Photo Studio, same body as the enrolled fingerprint.
+Sampling each output pixel from the channel its photosite actually measured
+puts a delivered image back on the enrolment lattice.
+
+| | |
+| --- | --- |
+| Probe | delivered JPEG, native sensor resolution, no resize |
+| PCE against its own body | **1,147.8** |
+| Same image against K rotated 180 degrees | -27.2 |
+| Same image against a shuffled K | -27.5 |
+| Verdict | the fingerprint survives demosaic, tone curve and JPEG encoding |
+
+So the pipeline that destroys metadata does not destroy the fingerprint. What
+this does **not** yet show is Gate B: a web JPEG has also been *resized*, and
+a resized image no longer has a pixel-to-photosite correspondence at all.
+That is what `crop_and_scale_search` is for, and it is not written.
+
+Linearising the JPEG through an inverse sRGB curve made it worse (309 against
+1,148 gamma-encoded), which is worth knowing before anyone assumes the tone
+curve must be undone. The camera's curve is not sRGB, so inverting the wrong
+curve costs more than leaving it alone.
+
+### Result — the web round trip
 
 | | |
 | --- | --- |

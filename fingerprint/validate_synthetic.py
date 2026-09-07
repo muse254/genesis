@@ -206,3 +206,31 @@ def test_saturation_mask_recovers_clipped_frames():
     masked = prnu.score(clipped, k, mask_saturated=True)
     unmasked = prnu.score(clipped, k, mask_saturated=False)
     assert masked > unmasked, f"masked {masked:.0f} vs unmasked {unmasked:.0f}"
+
+
+def test_delivered_image_maps_back_to_the_photosite_lattice():
+    """A delivered RGB frame is sampled onto the same lattice as the raw.
+
+    Builds a mosaic from four known plane values, renders it as the RGB image
+    a demosaic would produce, and checks each plane comes back off the right
+    photosites and the right channel.
+    """
+    import tempfile
+
+    from PIL import Image
+
+    pattern = [[0, 1], [3, 2]]  # RGGB, as LibRaw reports for the R10
+    values = {0: 0.8, 1: 0.6, 2: 0.4, 3: 0.2}
+
+    rgb = np.zeros((8, 8, 3), dtype=np.float32)
+    for c, (i, j) in {0: (0, 0), 1: (0, 1), 2: (1, 1), 3: (1, 0)}.items():
+        rgb[i::2, j::2, {0: 0, 1: 1, 2: 2, 3: 1}[c]] = values[c]
+
+    with tempfile.NamedTemporaryFile(suffix=".png") as f:
+        Image.fromarray((rgb * 255).astype(np.uint8)).save(f.name)
+        planes = prnu.load_delivered_planes(f.name, pattern)
+
+    assert sorted(planes) == [0, 1, 2, 3]
+    for c, plane in planes.items():
+        assert plane.shape == (4, 4)
+        assert np.allclose(plane, values[c], atol=1 / 255), f"plane {c} sampled wrong"

@@ -47,6 +47,7 @@ def cmd_enroll(args) -> int:
     meta = {
         "frames": len(paths),
         "crop": args.crop,
+        "cfa_pattern": prnu.cfa_pattern(paths[0]),
         "enrolled_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "wavelet": prnu.WAVELET,
         "wavelet_levels": prnu.WAVELET_LEVELS,
@@ -81,9 +82,9 @@ def cmd_test(args) -> int:
     print(f"{args.fingerprint}: {meta.get('frames', '?')} enrolment frames\n")
 
     failures = 0
-    for path in _expand(args.images):
-        planes = prnu.load_raw_planes(path, crop=meta.get("crop"))
+    for path in _expand(args.images, delivered=True):
         try:
+            planes = _load_probe(path, meta)
             pce = prnu.score(planes, reference)
         except ValueError as exc:
             print(f"{Path(path).name}: {exc}")
@@ -169,14 +170,36 @@ def cmd_demo(args) -> int:
     return 0 if passed else 1
 
 
-def _expand(images):
-    """Accept files and directories; a directory contributes its RAW files."""
-    raw_suffixes = {".cr3", ".cr2", ".crw", ".nef", ".arw", ".dng", ".raf", ".rw2"}
+RAW_SUFFIXES = {".cr3", ".cr2", ".crw", ".nef", ".arw", ".dng", ".raf", ".rw2"}
+DELIVERED_SUFFIXES = {".jpg", ".jpeg", ".png", ".tif", ".tiff", ".webp"}
+
+
+def _load_probe(path, meta):
+    """Read an image to score, RAW or delivered.
+
+    A delivered file is sampled back onto the photosite lattice the
+    fingerprint was enrolled on, which needs the CFA pattern recorded at
+    enrolment and only works at native sensor resolution.
+    """
+    if Path(path).suffix.lower() in DELIVERED_SUFFIXES:
+        pattern = meta.get("cfa_pattern")
+        if pattern is None:
+            raise ValueError(
+                "this fingerprint predates CFA-pattern recording, so a delivered "
+                "image cannot be mapped back onto its photosite lattice -- re-enrol"
+            )
+        return prnu.load_delivered_planes(path, pattern)
+    return prnu.load_raw_planes(path, crop=meta.get("crop"))
+
+
+def _expand(images, delivered: bool = False):
+    """Accept files and directories; a directory contributes its image files."""
+    wanted = RAW_SUFFIXES | DELIVERED_SUFFIXES if delivered else RAW_SUFFIXES
     paths = []
     for item in images:
         p = Path(item)
         if p.is_dir():
-            paths.extend(sorted(f for f in p.iterdir() if f.suffix.lower() in raw_suffixes))
+            paths.extend(sorted(f for f in p.iterdir() if f.suffix.lower() in wanted))
         else:
             paths.append(p)
     if not paths:
