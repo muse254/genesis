@@ -35,6 +35,7 @@ afternoon spent.
 | Body | Canon EOS R10, 6000x4000, RGGB, 14-bit |
 | Frames | 41 available. 26 passed a clipping cut (99.5th percentile below 12000 of 16383); 16 enrolled, 10 held out |
 | Frame type | **ordinary photographs, not defocused flats** |
+| Enrolment conditions | **four of the five above were violated** — see the audit |
 | Enrolment | full resolution, no crop; 2000x3000 per CFA plane |
 | Own-body PCE (held out) | 1,212 to 18,929 on the strongest plane. Every CFA plane of every held-out frame scored above 221 |
 | Null | 24 to 38, absolute, across all 40 measurements |
@@ -53,7 +54,38 @@ readout and raw pipeline. **The case that decides the threshold is two bodies
 of the same model**, which share every model-level artefact and differ only in
 the fingerprint. Until that runs, 50 stays provisional.
 
-Four findings.
+### The enrolment conditions were not met
+
+Audited with `exiftool` across all 41 frames on 7 September 2026:
+
+| Condition asked for | What the frames actually are |
+| --- | --- |
+| 40-50 defocused flats | ordinary photographs, 16 used |
+| **CR3, not C-RAW** | **all 41 are `Quality: CRAW`** — Canon's lossy compressed raw |
+| Long Exposure NR off | Off on all 41 — the one condition met |
+| High ISO NR off | `Standard` on all 41 |
+| Base ISO | ISO 100 on 3, 250 on 23, 2000-3200 on 15 |
+| Evenly exposed, nothing clipping | exposures from 1/320s to 30s, 15 frames clipping |
+
+It passed anyway, at 32x margin over the null. Two readings, and both matter.
+
+For the product this is the better news in this document: **the fingerprint
+survives Canon's lossy raw compression**, at high ISO, on handheld pictures of
+real scenes. C-RAW is what a great many photographers actually shoot, and an
+enrolment procedure that demanded a wall and a tripod would exclude most
+archives that already exist.
+
+For the evidence, it means the procedure as written has still never been
+tested. Flats at base ISO in lossless CR3 should do better than this, not
+worse, so the numbers here are a floor rather than a ceiling — but that is an
+inference, not a measurement.
+
+One caveat on High ISO NR: on Canon bodies this setting governs in-camera
+JPEG rendering rather than the raw, so `Standard` does not necessarily mean
+these raws were denoised. Long Exposure NR is the one that does write into
+the raw, and it was off throughout.
+
+Four further findings.
 
 **The denoiser's sigma decided the margin.** Running with an unsourced
 sigma0 = 5/255 put the weakest held-out frame at 91 against a null of 38 --

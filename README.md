@@ -85,8 +85,13 @@ eq. (6), variance bound eq. (7), PCE eq. (14), denoiser in Appendix A.
 One body has been tested: a Canon EOS R10, 41 CR3 frames, 16 enrolled. Every
 one of the 25 frames that did not build the fingerprint scores as a match —
 672 at worst, 56,255 at best, against a null of 29 to 43. That includes
-frames up to 17.7% blown out. It worked on ordinary photographs rather than
-the defocused flats the enrolment procedure asks for.
+frames up to 17.7% blown out.
+
+It worked on frames that break four of the five enrolment conditions: ordinary
+photographs rather than defocused flats, **C-RAW rather than lossless CR3**,
+High ISO NR on, and mostly not base ISO. Surviving Canon's lossy raw
+compression matters more than the rest, because C-RAW is what a great many
+photographers actually shoot.
 
 What that does not yet establish: **the false-positive rate.** With one body
 available the negative control is K rotated 180°, which destroys alignment
