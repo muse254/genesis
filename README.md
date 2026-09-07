@@ -24,14 +24,77 @@ validates the NUC hash — and its own roadmap concedes that adoption needs
 manufacturer firmware integration. We enrol from the photographer's own files
 instead: 40+ RAW frames from an archive that already exists, with no
 manufacturer and no platform involved. The camera's own data is the whole
-input — K is estimated from the frames the body produced, so nothing outside
-them is needed to enrol a body or to score an image against it.
+input — K is estimated by maximum likelihood from the frames the body itself
+produced, so nothing outside them is needed to enrol a body or to score an
+image against it.
 
 We certify: exposed on camera body X · camera body registered to identity Y · first
 registered at time T · these derivatives descend from that original.
 
 `BUILD.md` is the source of truth. Where it and this README disagree,
 `BUILD.md` wins.
+
+## The maths behind K
+
+A sensor's photosites differ slightly in how much charge each returns for the
+same light. That gain error is fixed at manufacture, unique to the die, and
+it multiplies the signal rather than adding to it:
+
+```
+I = I⁰ + I⁰·K + Θ
+```
+
+`I` is what the sensor read, `I⁰` the light that fell on it, `K` the
+per-pixel gain field — the fingerprint — and `Θ` everything else, shot noise
+and dark current. Because K multiplies I⁰, a bright pixel carries more
+evidence of K than a dark one, and a saturated pixel carries none.
+
+Enrolment recovers K from frames alone. Each frame is denoised and the
+denoised copy subtracted from the original, leaving a residual
+`W = I − denoise(I)` that holds the fingerprint plus noise. Maximum likelihood over `d` frames then gives:
+
+```
+K̂ = Σ(Wₖ · Iₖ) / Σ(Iₖ²)
+```
+
+Each frame is weighted by its own intensity, which is exactly the weighting
+the multiplicative model calls for. The model is linear, so this estimator is
+minimum-variance unbiased and its variance falls as 1/d — more frames, a
+sharper K, with no ceiling other than patience.
+
+Verification asks whether a candidate image's residual contains that body's
+fingerprint, scaled by the candidate's own intensity. The statistic is Peak
+to Correlation Energy: correlate `W` against `I·K̂`, take the peak over all
+shifts, divide its square by the energy in every other shift. PCE is used
+rather than plain correlation because it is alignment-independent and its
+null distribution is stable enough to set one threshold across bodies.
+
+Two properties are what make this work retroactively. K is a property of the
+silicon, not of the file, so stripping metadata removes nothing. And K is
+never published — only a hash of it goes on chain, because a published
+fingerprint is a forgery kit.
+
+The full derivation is Fridrich, *Digital Image Forensics Using Sensor Noise*,
+IEEE Signal Processing Magazine 26(2), 2009: sensor model eq. (3), estimator
+eq. (6), variance bound eq. (7), PCE eq. (14), denoiser in Appendix A.
+
+## Where this stands on real cameras
+
+One body has been tested: a Canon EOS R10, 41 CR3 frames, 16 enrolled and 10
+held out. Every held-out frame scored between 1,212 and 18,929 against a null
+of 24 to 38 — a margin of 32x at worst. It worked on ordinary photographs
+rather than the defocused flats the enrolment procedure asks for.
+
+What that does not yet establish: **the false-positive rate.** With one body
+available the negative control is K rotated 180°, which destroys alignment
+while preserving the statistics. That bounds the error the way a second
+camera would, but it is not the same evidence. The case that matters most is
+two bodies *of the same model*, which share every model-level artefact and
+differ only in the fingerprint itself. Until that runs, the PCE threshold of
+50 is provisional and no claim about how often a wrong body matches can be
+made from this repo.
+
+Method, numbers and the rest of the findings are in `docs/gates.md`.
 
 ## Layout
 
@@ -151,14 +214,8 @@ post-processing, PCE, and the pinned commitment hash. `enroll`, `test` and
 Everything else in this tree is still a stub — ingest, contracts, subgraph,
 scoring, verify. The Gate B crop-and-scale search is not written.
 
-**Gate A passed on a real Canon R10** — 41 CR3 frames, 16 enrolled, 10 held
-out, every one scoring 1,212 to 18,929 against a null of 24 to 38. On ordinary
-photographs, not the defocused flats the procedure asks for. The caveat that
-matters: with one body available, the negative control is a rotated K rather
-than a second camera, so the false-positive rate is still unmeasured. Numbers
-and findings in `docs/gates.md`.
-
-Gate B has not run. The crop-and-scale search it needs is not written.
+Gate A has run on a real body and passed; Gate B has not run. See **Where
+this stands on real cameras** above and `docs/gates.md`.
 
 ## Further Work?
 
