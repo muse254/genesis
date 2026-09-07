@@ -68,13 +68,22 @@ WIENER_WINDOWS = (3, 5, 7, 9)
 #: gamma-encoded 8-bit, so this is a starting point to be re-measured per
 #: body, not a constant of nature.
 SIGMA = 2.0 / 255.0
-#: PCE decision threshold. Provisional. It has to clear the null, and the null
-#: is not zero: peaking over all shifts puts it near 2*ln(N), measured at 25
-#: to 40 on full-resolution R10 planes (docs/gates.md). 50 sits above that and
-#: below the weakest true match measured so far, 91. Replace it with a
-#: measured value the moment a second body exists -- one body cannot tell you
-#: where the false-positive rate lands.
-PCE_THRESHOLD = 50.0
+#: PCE decision threshold. Measured, not guessed -- but on thin evidence.
+#:
+#: The null is not zero: peaking over every shift puts it near 2*ln(N), and
+#: searching orientations too raises it further, since the null is then the
+#: largest of eight tries. Observed on R10 planes: 24 to 43 against rotated
+#: and shuffled fingerprints, 39.1 for a genuinely different R10 body, -44.0
+#: for that same body through the orientation search (docs/gates.md).
+#:
+#: 100 sits at roughly twice the worst null seen and well under the weakest
+#: true match, 629 for a delivered JPEG. It was 50, which left only 1.1x over
+#: a null of 44 -- too tight to defend once a real negative existed.
+#:
+#: This still rests on ONE other body. A defensible false-positive rate needs
+#: dozens, and until then this number is a floor with a margin, not a
+#: calibrated operating point.
+PCE_THRESHOLD = 100.0
 #: Fraction of full scale at which a photosite counts as saturated. A clipped
 #: pixel is clamped rather than modulated, so it carries no PRNU at all and
 #: contributes only noise to the denominator of the estimator.

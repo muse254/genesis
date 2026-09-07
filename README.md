@@ -93,14 +93,18 @@ High ISO NR on, and mostly not base ISO. Surviving Canon's lossy raw
 compression matters more than the rest, because C-RAW is what a great many
 photographers actually shoot.
 
-What that does not yet establish: **the false-positive rate.** With one body
-available the negative control is K rotated 180°, which destroys alignment
-while preserving the statistics. That bounds the error the way a second
-camera would, but it is not the same evidence. The case that matters most is
-two bodies *of the same model*, which share every model-level artefact and
-differ only in the fingerprint itself. Until that runs, the PCE threshold of
-50 is provisional and no claim about how often a wrong body matches can be
-made from this repo.
+**A second R10 does not match.** The case that matters is two bodies of the
+same model, sharing every model-level artefact and differing only in the
+fingerprint. A different R10 (serial `022031004996` against our
+`473034005088`, from `raw.pixls.us`) scores **39.1** against our fingerprint,
+and −44.0 through the orientation search — the null band, where our own body
+scores 629 to 56,255.
+
+That is one negative sample, not a false-positive rate. It rules out the
+approach being broken; it does not say how often a wrong body matches, which
+needs dozens of bodies. The threshold sits at 100 — about twice the worst null
+observed, well under the weakest true match — and is a floor with a margin
+rather than a calibrated operating point.
 
 Method, numbers and the rest of the findings are in `docs/gates.md`.
 

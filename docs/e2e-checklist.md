@@ -20,21 +20,25 @@ python3 fingerprint/fingerprint.py test --fingerprint data/references/r10.npz <h
 
 ## Blocking, in the order they block
 
-**1. A second camera body.** Everything about false positives is unmeasured
-without one. The current null is K rotated 180°, which is a bound, not
-evidence. A second R10 is worth more than any other single input to this
-project — same model means shared model-level artefacts, which is the case
-that can actually break the claim.
+**1. More camera bodies.** One same-model negative now exists and it lands in
+the null band. What is still missing is enough negatives to state a
+false-positive rate, and a second enrolment so the test runs both ways.
 
-- [ ] Enrol body B from its own frames
-- [ ] Score body A's frames against K_B and vice versa
-- [ ] Set `PCE_THRESHOLD` from the measured separation, not from 50
+- [x] Score a different R10 against K_A: **39.1**, and −44.0 through the
+      orientation search. Null band either way
+- [x] `PCE_THRESHOLD` raised 50 → 100 on that evidence
+- [ ] More negatives. One body rules out a broken approach; a false-positive
+      rate needs dozens
+- [ ] Enrol body B from its own frames and score A against K_B, for the
+      symmetric result
 
 **2. A frame that should not match.** Demo step 3 needs one.
 
-- [x] Cross-model: Canon 5D Mark III DNG scores 26.6 against the R10
-      fingerprint, inside the null band
-- [ ] Same model, different body — the one that actually sets the threshold
+- [x] Cross-model: Canon 5D Mark III DNG scores 26.6, inside the null band
+- [x] Same model, different body: a second R10 scores 39.1. **This is the
+      one that mattered**
+- [x] Check `exiftool -SerialNumber` before trusting any file as a negative —
+      two candidates turned out to be our own camera
 
 **3. Gate B — `prnu.crop_and_scale_search`.** Not written; `test --crop-scale`
 exits 2. `fingerprint/stress.py` is also empty — both `ladder` and

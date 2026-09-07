@@ -40,19 +40,45 @@ afternoon spent.
 | Own-body PCE (held out) | 1,212 to 18,929 on the strongest plane. Every CFA plane of every held-out frame scored above 221 |
 | Null | 24 to 38, absolute, across all 40 measurements |
 | Separation | 32x at worst (IMG_0230), 600x at best (IMG_0217) |
-| Verdict | **PASS**, with the caveats below |
+| Verdict | **PASS** — and the same-model negative below now supports it |
 
-**The null is mostly not a second body.** The 41 R10 frames come from one
-camera, so the standing negative control is K rotated 180 degrees: alignment
-destroyed, statistics preserved.
+### The same-model negative, measured
 
-One real other-body probe now exists. A Canon EOS 5D Mark III linear DNG,
-centre-cropped to a common size and scored against the R10 fingerprint,
-returned **26.6** — inside the null band, against 1,895 to 56,255 for true
-matches. That is a different *model*, though, and models differ in sensor,
-readout and raw pipeline. **The case that decides the threshold is two bodies
-of the same model**, which share every model-level artefact and differ only in
-the fingerprint. Until that runs, 50 stays provisional.
+The case that decides the threshold: **two bodies of the same model**, which
+share every model-level artefact and differ only in the fingerprint itself.
+
+A second Canon EOS R10 from `raw.pixls.us`, serial `022031004996` against our
+`473034005088`, lossless RAW, ISO 1600, scored against our fingerprint:
+
+| Probe | Body | Path | PCE |
+| --- | --- | --- | --- |
+| `Canon - EOS R10 - 3_2.CR3` | **different R10** | plane-wise | **39.1** |
+| `Canon - EOS R10 - 3_2.CR3` | **different R10** | orientation search | **-44.0** |
+| IMG_0217.CR3 | ours | orientation search | 8,694.6 |
+| `a-piece-of-quiet.jpg` | ours | orientation search | 629.2 |
+| Canon 5D Mark III DNG | different model | cropped, plane-wise | 26.6 |
+
+A different body of the same model lands in the null band. That is the result
+the whole approach depends on, and it now exists rather than being assumed.
+
+**The threshold moved from 50 to 100 because of this.** 50 was set against a
+null of 24 to 43 from rotated fingerprints; a real negative reaching 44 left
+1.1x of headroom, which is not a margin. 100 is about twice the worst null and
+well below the weakest true match, 629.
+
+**Searching orientations raises the null.** The different-body probe reached
+44 through the eight-orientation search against 39 fixed — the null is the
+largest of eight tries, so it grows with the search space. Any future search
+over more transforms has to re-measure it rather than inherit this number.
+
+**One body is not a false-positive rate.** This is a single negative sample.
+It rules out the approach being broken; it does not tell anyone how often a
+wrong body matches. That needs dozens of bodies, and until then the number
+above is a floor with a margin rather than a calibrated operating point.
+
+**Serials, not filenames.** Two files offered as other-body samples turned out
+to carry serial `473034005088` — our own camera. `exiftool -SerialNumber` is
+the first check on any negative, before it is scored.
 
 ### The enrolment conditions were not met
 
