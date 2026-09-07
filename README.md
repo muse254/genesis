@@ -187,6 +187,19 @@ The lower branch of Verify is the one that matters. An exact pixel hash dies
 the moment a platform re-encodes or resizes, and everything that has been out
 in the world has been re-encoded.
 
+## The offline run
+
+Everything below the imaging core, without a testnet:
+
+```bash
+anvil &
+contracts/script/local-e2e.sh data/references/r10.npz frame.CR3
+```
+
+Scores the frame, deploys the registry, registers the body and the
+photograph, commits a session root, reads it back and proves inclusion. A
+frame from another body is refused before it reaches the chain.
+
 ## Getting started
 
 Python 3.11+ (`numpy` 2.x removed `ndarray.ptp()` — use `np.ptp()`).
