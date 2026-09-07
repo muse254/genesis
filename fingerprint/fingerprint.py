@@ -83,23 +83,17 @@ def cmd_test(args) -> int:
     failures = 0
     for path in _expand(args.images):
         planes = prnu.load_raw_planes(path, crop=meta.get("crop"))
-        scores = {}
-        for c, k in reference.items():
-            if c not in planes or planes[c].shape != k.shape:
-                continue
-            residual = prnu.noise_residual(planes[c])
-            scores[c] = prnu.pce(residual, planes[c] * k)
-
-        if not scores:
-            print(f"{Path(path).name}: no comparable CFA plane -- different body or crop")
+        try:
+            pce = prnu.score(planes, reference)
+        except ValueError as exc:
+            print(f"{Path(path).name}: {exc}")
             failures += 1
             continue
 
-        best = max(scores.values())
-        verdict = "MATCH" if best >= prnu.PCE_THRESHOLD else "no match"
-        detail = "  ".join(f"p{c}={v:.1f}" for c, v in sorted(scores.items()))
-        print(f"{Path(path).name}: {verdict}  PCE {best:.1f}   [{detail}]")
-        failures += best < prnu.PCE_THRESHOLD
+        saturated = max(float((p >= prnu.SATURATION_LEVEL).mean()) for p in planes.values())
+        verdict = "MATCH" if pce >= prnu.PCE_THRESHOLD else "no match"
+        print(f"{Path(path).name}: {verdict}  PCE {pce:.1f}   {saturated:.1%} saturated")
+        failures += pce < prnu.PCE_THRESHOLD
 
     return 1 if failures else 0
 

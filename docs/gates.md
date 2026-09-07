@@ -17,7 +17,7 @@ Shoot 40–50 frames of a defocused white wall.
 ```bash
 python3 fingerprint/fingerprint.py demo
 python3 fingerprint/fingerprint.py pair --crop 1024 ~/flats/*.CR3
-python3 fingerprint/fingerprint.py enroll --out r10.npz ~/flats/*.CR3
+python3 fingerprint/fingerprint.py enroll --out r10.npz ~/flats/*.CR3       
 python3 fingerprint/fingerprint.py test --fingerprint r10.npz ~/shoot/*.CR3
 ```
 
@@ -72,6 +72,37 @@ a saturated photosite is clamped, not modulated, so it carries no PRNU.
 **Green planes carry the result.** Plane 3 scored highest on all ten frames
 and red lowest, typically by 4-5x. Twice the photosites, and more signal on
 these frames.
+
+### Verification pass rate, and what raised it
+
+The table above scores one CFA plane at a time. Scoring every non-enrolment
+frame -- all 25, clipped ones included, not just the 10 clean held-out --
+gives the rate that matters:
+
+| Statistic | Weakest of 25 | Pass at PCE 50 |
+| --- | --- | --- |
+| Best single plane | 143 | 25/25 |
+| Summed correlation surfaces, 4 planes | 257 | 25/25 |
+| Summed surfaces + saturated pixels excluded | **672** | 25/25 |
+
+Nothing fails on this body. What changed is the margin: the weakest frame
+went from 2.9x the threshold to 13x, and `prnu.score()` now does both by
+default.
+
+**Summing the four CFA planes.** Each plane is an independent measurement of
+the same body, and a true match peaks at the same shift in all four, so the
+surfaces add coherently while their noise does not. Worth roughly 2x on the
+weakest frame.
+
+**Excluding saturated pixels.** A clipped photosite is clamped, not
+modulated: it carries no fingerprint but still contributes to the energy the
+peak is measured against. Dropping those pixels from both sides is worth
+another 3-9x on frames with 10-18% clipping -- IMG_0236 goes from 2,659 to
+24,186.
+
+The clipping cut of the enrolment set is a separate thing and still applies:
+a saturated pixel is useless for *building* K. It is not a filter on what can
+be verified. Frames up to 17.7% clipped score in the tens of thousands.
 
 Untested: defocused flats as the enrolment set (the procedure above asks for
 them; ordinary photographs worked anyway), a second body, and a second body

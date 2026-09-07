@@ -158,3 +158,51 @@ def test_cfa_split_is_per_photosite():
         assert plane.shape == (4, 4)
         expected = (values[c] - black[c]) / (white - black[c])
         assert np.allclose(plane, expected), f"plane {c} is not one photosite type"
+
+
+def _four_plane_body(seed: int):
+    """A simulated body as four independent CFA planes."""
+    return {c: simulate_sensor(seed=seed + c) for c in range(4)}
+
+
+def _four_plane_exposure(body, seed: int):
+    return {c: simulate_exposure(k, seed=seed + c) for c, k in body.items()}
+
+
+def test_score_beats_the_best_single_plane():
+    """Summing correlation surfaces across CFA planes adds signal coherently.
+
+    A true match peaks at the same shift in every plane while the noise does
+    not, so the combined statistic must exceed the best plane taken alone.
+    """
+    body = _four_plane_body(seed=10)
+    frames = [_four_plane_exposure(body, seed=200 + 10 * n) for n in range(FRAMES)]
+    k = prnu.postprocess(prnu.estimate_fingerprint(frames))
+
+    held_out = _four_plane_exposure(body, seed=9000)
+    combined = prnu.score(held_out, k)
+    best_single = max(
+        prnu.pce(prnu.noise_residual(held_out[c]), held_out[c] * k[c]) for c in k
+    )
+
+    assert combined > best_single, f"combined {combined:.0f} vs best plane {best_single:.0f}"
+    assert combined >= MIN_MATCH_PCE
+
+
+def test_saturation_mask_recovers_clipped_frames():
+    """Clipped pixels carry no fingerprint; excluding them lifts the score.
+
+    They are clamped rather than modulated, so they contribute nothing to the
+    correlation peak while still inflating the energy it is measured against.
+    """
+    body = _four_plane_body(seed=10)
+    frames = [_four_plane_exposure(body, seed=200 + 10 * n) for n in range(FRAMES)]
+    k = prnu.postprocess(prnu.estimate_fingerprint(frames))
+
+    clipped = _four_plane_exposure(body, seed=9000)
+    for plane in clipped.values():  # blow out a fifth of the frame
+        plane[: plane.shape[0] // 5, :] = 1.0
+
+    masked = prnu.score(clipped, k, mask_saturated=True)
+    unmasked = prnu.score(clipped, k, mask_saturated=False)
+    assert masked > unmasked, f"masked {masked:.0f} vs unmasked {unmasked:.0f}"
