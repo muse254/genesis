@@ -225,14 +225,14 @@ Nothing downstream matters until both have run. See `docs/gates.md`.
 | ███████░░░ | Gate B — does K survive the web | **conditional pass** |
 | ██████████ | `fingerprint/stress.py` — degradation ladder | done |
 | ██████████ | `ingest/` — hashing, record, Merkle | done, 17 tests |
-| ░░░░░░░░░░ | `contracts/` — ERC-7053 registry | 6 functions revert |
+| ██████████ | `contracts/` — ERC-7053 registry | done, 12 tests |
 | ░░░░░░░░░░ | `identity/` — ENSv2 subnames | not started |
 | ░░░░░░░░░░ | `subgraph/` — image → record | not started |
 | ░░░░░░░░░░ | `scoring/` — FastAPI wrapper | 2 stubs |
 | ░░░░░░░░░░ | `verify/` — the page | not started |
 | ░░░░░░░░░░ | `mcp/` — Subgraph MCP server | not started |
 
-Four of eleven done. The imaging core works on real files: `enroll`, `test`
+Five of eleven done. The imaging core works on real files: `enroll`, `test`
 and `pair` run against RAW and delivered JPEGs, `demo` runs without a camera.
 Everything downstream of it is scaffolding.
 
