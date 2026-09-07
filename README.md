@@ -151,9 +151,14 @@ post-processing, PCE, and the pinned commitment hash. `enroll`, `test` and
 Everything else in this tree is still a stub — ingest, contracts, subgraph,
 scoring, verify. The Gate B crop-and-scale search is not written.
 
-No real camera frames have been through it. Neither gate in `docs/gates.md`
-has run, so nothing here is evidence that the fingerprint survives a real raw
-pipeline.
+**Gate A passed on a real Canon R10** — 41 CR3 frames, 16 enrolled, 10 held
+out, every one scoring 1,212 to 18,929 against a null of 24 to 38. On ordinary
+photographs, not the defocused flats the procedure asks for. The caveat that
+matters: with one body available, the negative control is a rotated K rather
+than a second camera, so the false-positive rate is still unmeasured. Numbers
+and findings in `docs/gates.md`.
+
+Gate B has not run. The crop-and-scale search it needs is not written.
 
 ## Further Work?
 

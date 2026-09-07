@@ -18,7 +18,14 @@ from fingerprint import prnu
 
 # --- simulation parameters -------------------------------------------------
 
-#: Multiplicative PRNU strength. Real sensors sit around 1-3%.
+#: Multiplicative PRNU strength -- the K of the sensor model
+#: ``I = I0 + I0*K + Theta`` (Fridrich 2009, eq. 3; see fingerprint/prnu.py
+#: for the full citation). Published RMS figures are lower than this: CMOS
+#: parts are commonly specified under 1%, and a measured large-format
+#: scientific CMOS came in at 1.1% raw. 2% is therefore a deliberately
+#: generous simulation, not a claim about any real body -- what it tests is
+#: that the estimator recovers whatever K it is handed. The number that
+#: matters for this project is measured, not simulated (docs/gates.md).
 PRNU_STRENGTH = 0.02
 #: Read/shot noise standard deviation, in the same [0, 1] scale as a plane.
 NOISE_SIGMA = 0.01

@@ -557,6 +557,8 @@ If something breaks on day 1, look there first.
 5. Camera Fingerprinting Authentication Revisited, USENIX RAID 2020 — https://www.usenix.org/system/files/raid20-maier.pdf
 6. PP-PRNU, privacy-preserving source camera attribution — https://dl.acm.org/doi/10.1007/s00607-024-01330-w
 7. Binghamton DDE Lab camera fingerprint reference implementation — https://dde.binghamton.edu/download/camera_fingerprint/
+7a. J. Fridrich, "Digital Image Forensics Using Sensor Noise", IEEE Signal Processing Magazine 26(2), 2009, pp. 26-37 — http://ws2.binghamton.edu/fridrich/Research/full_paper_02.pdf. **The mathematics this repo implements**: sensor model eq. (3), ML estimator eq. (6), CRLB eq. (7), PCE eq. (14), denoising filter in Appendix A.
+7b. M. K. Mihcak, I. Kozintsev, K. Ramchandran, "Spatially Adaptive Statistical Modeling of Wavelet Image Coefficients and its Application to Denoising", IEEE ICASSP 1999 — the denoiser of Appendix A above.
 8. polimi-ispl/prnu-python — https://github.com/polimi-ispl/prnu-python
 9. 78 Days, Starling Lab and Reuters — https://www.starlinglab.org/78days/
 10. rawpy / LibRaw (CR3 decoding) — https://letmaik.github.io/rawpy/api/rawpy.RawPy.html

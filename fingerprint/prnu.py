@@ -10,12 +10,26 @@ image. That is the point of difference from polimi-ispl/prnu-python, which
 assumes delivered RGB and must be adapted rather than imported.
 
 Canonical behaviour reference: Binghamton DDE Lab MATLAB implementation.
+
+References
+----------
+[F09] J. Fridrich, "Digital Image Forensics Using Sensor Noise", IEEE Signal
+      Processing Magazine 26(2), March 2009, pp. 26-37.
+      http://ws2.binghamton.edu/fridrich/Research/full_paper_02.pdf
+      Sensor model eq. (3), ML fingerprint estimator eq. (6), CRLB eq. (7),
+      PCE eq. (14), denoising filter in Appendix A.
+[M99] M. K. Mihcak, I. Kozintsev, K. Ramchandran, "Spatially Adaptive
+      Statistical Modeling of Wavelet Image Coefficients and its Application
+      to Denoising", IEEE ICASSP 1999. The denoiser [F09] Appendix A uses.
+[DDE] Binghamton DDE Lab reference implementation.
+      https://dde.binghamton.edu/download/camera_fingerprint/
 """
 
 from __future__ import annotations
 
 import hashlib
 import json
+import warnings
 from pathlib import Path
 
 import numpy as np
@@ -24,18 +38,54 @@ from scipy.ndimage import uniform_filter
 
 # --- constants -------------------------------------------------------------
 
+#: Wavelet basis for the denoiser. [F09] Appendix A Step 1 specifies the
+#: 8-tap Daubechies QMF, which is ``db8`` in PyWavelets. The choice is not
+#: free: the fingerprint lives in the high-frequency detail bands, and a
+#: shorter filter leaks more scene edge into them, which is exactly the
+#: content the estimator must not mistake for sensor noise.
 WAVELET = "db8"
+#: Decomposition depth, [F09] Appendix A Step 1. Four levels is what reaches
+#: far enough down the frequency scale to catch the low-frequency part of the
+#: residual while still separating it from scene structure. Fewer levels
+#: leaves fingerprint energy in the approximation band, which this pipeline
+#: discards; more levels starts folding scene content back in.
 WAVELET_LEVELS = 4
-#: local-variance window sizes for the Mihcak Wiener filter
+#: Local-variance neighbourhoods for the Mihcak estimator, [F09] Appendix A
+#: Step 2. The estimate is the *minimum* over these four sizes, and the
+#: minimum is the point: a small window tracks detail, a large one is stable,
+#: and taking the smallest variance biases the filter towards calling a
+#: coefficient noise rather than signal. That bias is deliberate -- a
+#: fingerprint wrongly classified as scene content is gone for good.
 WIENER_WINDOWS = (3, 5, 7, 9)
-#: PCE decision threshold; provisional, replace with a measured value once
-#: Gate A has run against real CR3 frames (BUILD.md sec.9).
+#: Assumed sensor noise sigma for the Wiener shrinkage, in the [0, 1] scale
+#: these planes use. [F09] Appendix A: "In all experiments, we used sigma0 = 2
+#: (for dynamic range of images 0, ..., 255) to be conservative and to make
+#: sure that the filter extracts a substantial part of the PRNU noise even for
+#: cameras with a large noise component." Deliberately over-estimating the
+#: noise costs some scene leakage and buys fingerprint that would otherwise be
+#: filtered away. Raw CFA planes are linear where that figure was set on
+#: gamma-encoded 8-bit, so this is a starting point to be re-measured per
+#: body, not a constant of nature.
+SIGMA = 2.0 / 255.0
+#: PCE decision threshold. Provisional. It has to clear the null, and the null
+#: is not zero: peaking over all shifts puts it near 2*ln(N), measured at 25
+#: to 40 on full-resolution R10 planes (docs/gates.md). 50 sits above that and
+#: below the weakest true match measured so far, 91. Replace it with a
+#: measured value the moment a second body exists -- one body cannot tell you
+#: where the false-positive rate lands.
 PCE_THRESHOLD = 50.0
-#: Assumed sensor noise sigma for the Wiener shrinkage. The literature value
-#: is 5 on an 8-bit scale; planes here are normalised to [0, 1].
-SIGMA = 5.0 / 255.0
+#: Fraction of full scale at which a photosite counts as saturated. A clipped
+#: pixel is clamped rather than modulated, so it carries no PRNU at all and
+#: contributes only noise to the denominator of the estimator.
+SATURATION_LEVEL = 0.99
+#: Warn when more than this fraction of an enrolment frame is saturated. Gate
+#: A found bright unsaturated frames scoring an order of magnitude above dim
+#: ones, which is what the CRLB in [F09] eq. (7) predicts.
+SATURATION_WARN = 0.01
 #: Byte-serialisation version for :func:`commitment`. Changing anything about
-#: how K is serialised MUST change this string -- see the docstring there.
+#: how K is serialised MUST change this string -- see the docstring there. A
+#: body registered on chain under one serialisation can never be verified
+#: under another, so this is a one-way door per registration.
 COMMITMENT_VERSION = b"genesis-prnu-k-v1"
 
 
@@ -144,7 +194,8 @@ def _variance_estimate(coef, sigma2: float, windows=WIENER_WINDOWS):
 def noise_residual(plane: "np.ndarray", sigma: float = SIGMA) -> "np.ndarray":
     """Extract the noise residual W from one CFA plane.
 
-    Mihcak wavelet-domain Wiener denoiser: ``db8`` decomposition to
+    The Mihcak wavelet-domain Wiener denoiser [M99], as specified in [F09]
+    Appendix A: ``db8`` decomposition to
     ``WAVELET_LEVELS``, per-coefficient local variance estimated over
     ``WIENER_WINDOWS`` (minimum across scales), shrinkage, reconstruct,
     then W = plane - denoised.
@@ -177,9 +228,18 @@ def noise_residual(plane: "np.ndarray", sigma: float = SIGMA) -> "np.ndarray":
 def estimate_fingerprint(images, planes=None, *, crop: int | None = None, progress=None):
     """Maximum-likelihood fingerprint estimator K = sum(W*I) / sum(I^2).
 
-    The ML form rather than a plain average of residuals: PRNU is
-    multiplicative, so a residual from a bright frame carries more evidence
-    than one from a dark frame and the estimator weights it accordingly.
+    This is [F09] eq. (6), the ML estimate under the sensor model
+    ``I = I0 + I0*K + Theta`` of eq. (3). The ML form rather than a plain
+    average of residuals: PRNU is multiplicative, so a residual from a bright
+    frame carries more evidence than one from a dark frame and the estimator
+    weights it accordingly. The model is linear, so by the CRLB in eq. (7)
+    the estimator is minimum-variance unbiased with variance ~ 1/frames.
+
+    That same bound says which frames are worth enrolling: [F09] concludes
+    "the best images for estimation of K are those with high luminance (but
+    not saturated) and small sigma^2 (which means smooth content)". A dim or
+    busy frame contributes far less than its place in the count suggests, and
+    a saturated pixel contributes nothing at all.
 
     Needs 40+ enrolment frames to be stable (BUILD.md sec.9, Gate A):
     defocused flat field, CR3 not C-RAW, Long Exposure NR off, high-ISO NR
@@ -219,6 +279,14 @@ def estimate_fingerprint(images, planes=None, *, crop: int | None = None, progre
             frame, flat = {0: frame}, True
         elif planes is not None:
             frame = {c: p for c, p in frame.items() if c in planes}
+
+        saturated = max(float((p >= SATURATION_LEVEL).mean()) for p in frame.values())
+        if saturated > SATURATION_WARN:
+            warnings.warn(
+                f"{item}: {saturated:.1%} of the frame is saturated and contributes "
+                "nothing to K (see the CRLB discussion in [F09])",
+                stacklevel=2,
+            )
 
         for c, plane in frame.items():
             w = noise_residual(plane)
@@ -305,7 +373,8 @@ def _wiener_dft(k):
 def pce(residual: "np.ndarray", reference: "np.ndarray", squared_size: int = 11) -> float:
     """Peak-to-Correlation-Energy between a test residual and a reference.
 
-    PCE rather than raw normalised correlation: it is shift-invariant and
+    [F09] eq. (14). PCE rather than raw normalised correlation: it is
+    shift-invariant and
     its null distribution is stable enough to set one threshold across
     bodies. ``squared_size`` is the neighbourhood excluded around the peak
     when estimating the correlation energy.
