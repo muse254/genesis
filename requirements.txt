@@ -1,0 +1,18 @@
+# Imaging core. Python 3.11+.
+rawpy>=0.27          # LibRaw bindings — the only realistic CR3 path
+numpy>=2.0           # note: ndarray.ptp() removed in numpy 2, use np.ptp()
+scipy>=1.11          # ndimage.uniform_filter (Wiener), ndimage.zoom (Gate B)
+PyWavelets>=1.8      # db8, 4-level, noise extraction
+Pillow>=10.0         # JPEG export/re-ingest for Gate B; feeds the pHash
+
+# Scoring service
+fastapi>=0.110
+uvicorn[standard]>=0.29
+python-multipart>=0.0.9
+
+# Record construction
+eth-hash[pycryptodome]>=0.7
+eth-keys>=0.5
+
+# Dev
+pytest>=8.0

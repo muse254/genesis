@@ -1,0 +1,46 @@
+# Python
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+
+# Fingerprints and enrolment data — a published reference is a published
+# forgery kit. These never leave the machine.
+*.npz
+data/references/
+data/flats/
+data/shoots/
+*.CR3
+*.CR2
+*.NEF
+*.ARW
+*.dng
+
+# Secrets
+.env
+.env.local
+*.key
+keystore/
+
+# Foundry
+contracts/out/
+contracts/cache/
+contracts/broadcast/
+contracts/lib/
+
+# JS / TS
+node_modules/
+dist/
+.vite/
+
+# The Graph
+subgraph/build/
+subgraph/generated/
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/

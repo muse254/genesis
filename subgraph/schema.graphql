@@ -1,0 +1,33 @@
+type Body @entity {
+  id: Bytes!
+  owner: Bytes!
+  ensNode: Bytes!
+  fingerprintCommitment: Bytes!
+  revoked: Boolean!
+  registeredAt: BigInt!
+  images: [Image!]! @derivedFrom(field: "body")
+}
+
+type Image @entity {
+  id: Bytes!
+  "SHA-256 of pixel data -- exact identity"
+  imageHash: Bytes!
+  "Survives re-encode -- the branch that finds images already in the world"
+  perceptualHash: Bytes!
+  body: Body!
+  modificationLevel: Int!
+  "Null for originals; otherwise the edit graph"
+  parent: Image
+  derivatives: [Image!]! @derivedFrom(field: "parent")
+  metadataHmac: Bytes!
+  pceScore: BigInt!
+  registeredAt: BigInt!
+  session: Session
+}
+
+type Session @entity {
+  id: Bytes!
+  merkleRoot: Bytes!
+  frameCount: Int!
+  committedAt: BigInt!
+}

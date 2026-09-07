@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Certify the Camera — verify</title>
+  </head>
+  <body>
+    <!--
+      One page. An upload control and a result. No framework.
+      viem for chain reads, fetch to the scoring service.
+
+      This page and the fingerprint are the two things that are never cut.
+    -->
+    <main>
+      <h1>Verify an image</h1>
+      <p>Drop a photograph. We tell you which camera body exposed it — or that we don't know.</p>
+      <input id="file" type="file" accept="image/*" />
+      <section id="result" hidden></section>
+      <footer>
+        <p>
+          We certify origin, not truth: exposed on body X, registered to
+          identity Y, first seen at time T. We do not say “authentic”,
+          “AI-free”, or “verified real”, and the absence of a record means
+          nothing.
+        </p>
+      </footer>
+    </main>
+    <script type="module" src="./src/main.ts"></script>
+  </body>
+</html>

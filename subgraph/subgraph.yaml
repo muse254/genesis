@@ -1,0 +1,38 @@
+specVersion: 0.0.5
+description: >-
+  Indexes camera-body enrolments and image registrations from the
+  certify-the-camera Registry, so an image can be resolved to its record.
+schema:
+  file: ./schema.graphql
+dataSources:
+  - kind: ethereum
+    name: Registry
+    network: sepolia
+    source:
+      # Fill in after the day-4 deploy, then freeze.
+      address: "0x0000000000000000000000000000000000000000"
+      abi: Registry
+      startBlock: 0
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      file: ./src/registry.ts
+      entities:
+        - Body
+        - Image
+        - Session
+      abis:
+        - name: Registry
+          file: ./abis/Registry.json
+      eventHandlers:
+        - event: BodyRegistered(indexed bytes32,indexed address,bytes32)
+          handler: handleBodyRegistered
+        - event: BodyRevoked(indexed bytes32)
+          handler: handleBodyRevoked
+        - event: ImageRegistered(indexed bytes32,indexed bytes32,uint32)
+          handler: handleImageRegistered
+        - event: SessionCommitted(indexed bytes32,bytes32,uint32)
+          handler: handleSessionCommitted
+        - event: Commit(indexed address,string,string)
+          handler: handleCommit

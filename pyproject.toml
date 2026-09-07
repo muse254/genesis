@@ -1,0 +1,13 @@
+[project]
+name = "certify-the-camera"
+version = "0.1.0"
+description = "Origin registry for photographers — PRNU sensor fingerprints on ERC-7053"
+requires-python = ">=3.11"
+
+[tool.pytest.ini_options]
+testpaths = ["fingerprint", "ingest"]
+python_files = ["validate_*.py", "test_*.py"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
