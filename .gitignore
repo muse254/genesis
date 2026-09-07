@@ -44,3 +44,10 @@ subgraph/generated/
 .DS_Store
 .idea/
 .vscode/
+
+# Test frames stay local. Publishing enrolment frames publishes the means to
+# reconstruct K for that body -- the fingerprint-copy attack needs nothing
+# else -- so committing them would hand anyone the ability to forge images
+# that this project would then attribute to that camera.
+fingerprint/raw-test-files/
+_to_delete/

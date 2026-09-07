@@ -108,6 +108,40 @@ rather than a calibrated operating point.
 
 Method, numbers and the rest of the findings are in `docs/gates.md`.
 
+## Validate the mathematics yourself
+
+**The test frames are not in this repository.** Publishing 16 enrolment
+frames publishes everything needed to reconstruct K for that body, and the
+[fingerprint-copy attack](https://dlnext.acm.org/doi/10.1109/TIFS.2010.2099220)
+needs nothing more than that to forge images this project would attribute to
+that camera. So the numbers in `docs/gates.md` are reported rather than
+handed over, and here is what you can check for yourself instead.
+
+**No files needed.** The synthetic sensor has a known ground-truth
+fingerprint, so this proves the estimator recovers what it is given:
+
+```bash
+python3 fingerprint/fingerprint.py demo
+pytest fingerprint ingest        # 26 tests
+```
+
+**With your own camera.** 40+ RAW frames from an archive you already have:
+
+```bash
+python3 fingerprint/fingerprint.py enroll --out data/references/mine.npz ~/photos/*.CR3
+python3 fingerprint/fingerprint.py test --fingerprint data/references/mine.npz ~/other/*.CR3
+```
+
+**The different-body test, from public data.** [raw.pixls.us](https://raw.pixls.us/)
+is a public archive of camera raw samples. Take any body of the same model as
+your own and score it against your fingerprint; it should land in the null
+band, in the tens, against thousands for your own frames. That is the
+experiment that decides whether any of this means anything, and it needs no
+files from us.
+
+Check `exiftool -SerialNumber` before trusting a file as a different body.
+Two candidates for that role here turned out to be the same camera.
+
 ## Layout
 
 ```
