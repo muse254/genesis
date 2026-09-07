@@ -42,7 +42,8 @@ its own work. Editorial calls were surfaced, not taken silently.
 | Continue the checklist | `ingest/` — hashing, records, Merkle — then `Registry.sol`, 12 tests |
 | Another R10, from raw.pixls.us | **A different body scores 39.1.** Threshold raised 50 → 100 on that evidence |
 | Do the local anvil run | `contracts/script/local-e2e.sh` — enrol, register, look up, prove inclusion, offline |
-| Commit the corpus; document a sample run | 662 MB of frames published, README walk-through, provenance and the forgery-kit consequence stated |
+| Commit the corpus; document a sample run | 662 MB of frames published, with the forgery-kit consequence stated |
+| Then: scrub it and keep the files private | History rewritten and force-pushed. The rewrite also deleted the local copies — see below |
 
 ## Model errors worth recording
 
@@ -72,8 +73,15 @@ orientations, the rotated-K negative control was no longer a control — the
 search simply undoes the rotation and matches. The model's own test caught it
 by scoring 1,084 where it expected 40.
 
-Three of the four were found by measuring rather than by reasoning, and the
-first was found only because the human asked for a citation.
+**A history rewrite that deleted the originals.** `git filter-branch` removed
+the test corpus from history and the checkout removed it from the working
+tree too, leaving GitHub as the only copy of 662 MB of the human's own
+photographs. Caught before the force-push that would have destroyed both.
+Restoring from `origin` first, then scrubbing, was the order that should have
+been planned rather than recovered into.
+
+Four of the five were found by measuring or by the tooling failing loudly.
+The first was found only because the human asked for a citation.
 
 ## Not done
 
