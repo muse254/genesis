@@ -95,6 +95,13 @@ false-positive rate, and a second enrolment so the test runs both ways.
 - [ ] The perceptual branch re-scores against every body the service holds,
       which is right for one photographer and does not scale. Needs §7
 
+**9. Subgraph MCP server.** Written and tested; needs §7 deployed.
+
+- [x] `verify_image`, `lookup_body`, `image_lineage` over the subgraph
+- [x] 6 tests on the wording an agent repeats — no "verified", no "authentic",
+      and a missing record reads as "nothing registered" rather than "fake"
+- [ ] Point `GENESIS_SUBGRAPH_URL` at the deployed subgraph
+
 ## The offline run, which works today
 
 ```bash

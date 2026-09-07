@@ -55,3 +55,4 @@ _to_delete/
 subgraph/tests/.bin/
 subgraph/matchstick.yaml
 subgraph/tests/.latest.json
+mcp/dist/
