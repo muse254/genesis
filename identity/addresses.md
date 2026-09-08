@@ -110,4 +110,8 @@ free from the faucet. There is no mainnet charge on that app to be confused
 about.
 
 What it does mean: the deployer address needs faucet ETH before the app will
-let the transaction through, and right now it has none.
+let the transaction through. As of 8 September 2026 it has 0.0484 Sepolia ETH,
+which is enough — `0x91C968D9aBCF4324db9210DCBC4C732b912aFfBe`, the same
+address that owns the registered body on chain. Connect *that* account to
+<https://app.ens.dev/>, not a personal wallet: the demo signs the subname
+registration live, so the key on camera has to own the parent already.
