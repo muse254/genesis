@@ -17,6 +17,14 @@ dismantled by anyone who understands the analog hole.
 - "verified real"
 - that the absence of a record means anything
 
+## Scope
+
+Phone photographs are out of scope, and `docs/phones.md` is why: binned
+output, multi-frame fusion, and no photosite lattice to sample onto. Say
+"outside its scope", not "not supported yet" and not "PRNU does not work on
+phones" — the first promises a roadmap that does not exist, the second is
+false.
+
 ## Say it before someone else does
 
 A camera pointed at a high-quality screen produces a genuine exposure of a
