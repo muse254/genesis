@@ -20,7 +20,22 @@
 import { createPublicClient, http, type Address } from "viem";
 import { anvil, sepolia } from "viem/chains";
 
-export type Verdict = "exact" | "perceptual" | "no-match";
+/**
+ * Four outcomes, and the gap between the middle two is the product.
+ *
+ * - `registered`        exact pixel hash, confirmed on chain. This *is* the
+ *                       registered file.
+ * - `derived`           a perceptual hash found the original and the chain
+ *                       confirmed its registration. Descends from a
+ *                       registered photograph rather than being one -- a
+ *                       pHash is collidable and cheap to forge, so it earns
+ *                       the weaker word even though the link is usually right.
+ * - `fingerprint-only`  the pixels carry a body's fingerprint and nothing is
+ *                       registered. **Not a pass.** A forgery lands here at
+ *                       any score the attacker likes.
+ * - `no-record`         neither. Absence means nothing about the image.
+ */
+export type Verdict = "registered" | "derived" | "fingerprint-only" | "no-record";
 
 export interface VerifyResult {
   verdict: Verdict;
@@ -41,12 +56,24 @@ export interface VerifyResult {
   /** Present when the image had to be turned to line up with the sensor. */
   orientation?: string;
   threshold?: number;
+  /** Set on `derived`: which registered image this was matched to, and how far. */
+  derivedFrom?: { imageHash: `0x${string}`; hammingDistance: number };
 }
 
 const SCORING = import.meta.env.VITE_SCORING_URL ?? "http://127.0.0.1:8000";
 const REGISTRY = import.meta.env.VITE_REGISTRY_ADDRESS as Address | undefined;
 const RPC = import.meta.env.VITE_RPC_URL ?? "http://127.0.0.1:8545";
 const CHAIN = import.meta.env.VITE_CHAIN === "sepolia" ? sepolia : anvil;
+const SUBGRAPH = import.meta.env.VITE_SUBGRAPH_URL as string | undefined;
+
+/**
+ * Bits of the 64-bit pHash allowed to differ. Measured: on a real photograph
+ * the hash moves zero bits from 1800px q95 down to 400px q60 (`AI-USE.md`),
+ * so this is slack rather than a tuned figure. Widening it starts attaching
+ * registrations to unrelated photographs, which is a worse failure than
+ * missing a match.
+ */
+const MAX_HAMMING = 10;
 
 /** Only the two reads this page makes. */
 const REGISTRY_ABI = [
@@ -118,7 +145,7 @@ export async function verifyImage(file: File): Promise<VerifyResult> {
 
   if (exact) {
     return {
-      verdict: "exact",
+      verdict: "registered",
       registered: true,
       bodyName: best?.body,
       pceScore: exact.pceScore,
@@ -129,11 +156,33 @@ export async function verifyImage(file: File): Promise<VerifyResult> {
     };
   }
 
-  // Lower branch: the pixels decide, not the file. This is what survives a
-  // platform that re-encoded and stripped everything.
+  // The Graph, and the branch demo step 4 rides on. A degraded copy has a
+  // different pixel hash so the exact read above missed; the perceptual hash
+  // finds the original and the chain confirms its registration. The
+  // confirmation is what matters -- an index hit is a lookup, never a verdict.
+  const near = await lookupByPerceptualHash(lookup.perceptualHash);
+  if (near) {
+    const parent = await lookupByPixelHash(near.imageHash);
+    if (parent) {
+      return {
+        verdict: "derived",
+        registered: true,
+        bodyName: best?.body,
+        pceScore: best?.pce,
+        method: best?.path,
+        orientation: best?.orientation,
+        registeredAt: parent.registeredAt,
+        modificationLevel: parent.modificationLevel,
+        threshold: lookup.threshold,
+        derivedFrom: near,
+      };
+    }
+  }
+
+  // Pixels only: a fingerprint matched and nothing is registered.
   if (lookup.verdict === "match" && best) {
     return {
-      verdict: "perceptual",
+      verdict: "fingerprint-only",
       registered: false,
       bodyName: best.body,
       pceScore: best.pce,
@@ -144,7 +193,7 @@ export async function verifyImage(file: File): Promise<VerifyResult> {
   }
 
   return {
-    verdict: "no-match",
+    verdict: "no-record",
     registered: false,
     pceScore: best?.pce,
     threshold: lookup.threshold,
@@ -172,13 +221,57 @@ async function lookupByPixelHash(hash: `0x${string}`) {
   };
 }
 
-/** Perceptual branch: pHash candidates, then re-score against each body. */
-async function lookupByPerceptualHash(_hash: string) {
-  // Awaits the subgraph. Until it indexes ImageRegistered there is no way to
-  // go from a perceptual hash to candidate records without scanning the chain,
-  // so the scoring service re-scores against every body it holds instead.
-  // That is correct for one photographer and does not scale to a registry.
-  throw new Error("needs the subgraph");
+/**
+ * Perceptual branch, over The Graph.
+ *
+ * The registry has no index on `perceptualHash` -- `images` is keyed by pixel
+ * hash -- so going from a degraded copy back to the original it descends from
+ * needs an index, and the subgraph is it. Without one the scoring service had
+ * to re-score against every body it holds, which is fine for one photographer
+ * and does not scale to a registry.
+ *
+ * Returns a candidate only. The caller reads that hash off the chain before
+ * saying anything, because an index is not an authority: a subgraph that is
+ * stale, wrong, or hostile must not be able to manufacture a registration.
+ */
+async function lookupByPerceptualHash(
+  hash: string,
+): Promise<{ imageHash: `0x${string}`; hammingDistance: number } | undefined> {
+  if (!SUBGRAPH) return undefined;
+
+  let images: { imageHash: `0x${string}`; perceptualHash: string }[];
+  try {
+    const response = await fetch(SUBGRAPH, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ query: "{ images(first: 1000) { imageHash perceptualHash } }" }),
+    });
+    if (!response.ok) return undefined;
+    const body = (await response.json()) as { data?: { images?: typeof images } };
+    images = body.data?.images ?? [];
+  } catch {
+    // Index unreachable. Fall through to the pixel answer rather than failing
+    // the whole verification -- the chain read above already happened, and a
+    // missing index costs a link, not a verdict.
+    return undefined;
+  }
+
+  const target = BigInt(hash);
+  let best: { imageHash: `0x${string}`; hammingDistance: number } | undefined;
+
+  for (const image of images) {
+    let bits = target ^ BigInt(image.perceptualHash);
+    let distance = 0;
+    while (bits) {
+      distance += Number(bits & 1n);
+      bits >>= 1n;
+    }
+    if (!best || distance < best.hammingDistance) {
+      best = { imageHash: image.imageHash, hammingDistance: distance };
+    }
+  }
+
+  return best && best.hammingDistance <= MAX_HAMMING ? best : undefined;
 }
 
 function render(result: VerifyResult): void {
@@ -189,7 +282,7 @@ function render(result: VerifyResult): void {
   const say = (label: string, value: string) =>
     rows.push(`<div class="row"><dt>${label}</dt><dd>${value}</dd></div>`);
 
-  if (result.verdict === "no-match") {
+  if (result.verdict === "no-record") {
     // Neutral, deliberately. An absent record is not a finding about the
     // image, and `docs/claims.md` is explicit that it means nothing.
     section.className = "no-record";
@@ -225,6 +318,38 @@ function render(result: VerifyResult): void {
         "can see. Only a registration signed by the body’s owner means anything " +
         "here.</p>",
     );
+  } else if (result.verdict === "derived") {
+    // Real, and weaker than an exact match on purpose. The link is a
+    // perceptual hash: collidable, and cheap to forge. The PCE is shown even
+    // when it is below threshold, because that is the honest state of a copy
+    // that has been through a platform -- the pHash and the chain carry this
+    // one, not the pixels.
+    section.className = "derived";
+    rows.push("<h2>Descends from a registered photograph</h2>");
+    if (result.bodyName) say("Body", result.bodyName);
+    if (result.derivedFrom) {
+      say("Matched to", `${result.derivedFrom.imageHash.slice(0, 18)}…`);
+      say(
+        "Perceptual distance",
+        `${result.derivedFrom.hammingDistance} of 64 bits` +
+          (result.derivedFrom.hammingDistance === 0 ? " — identical" : ""),
+      );
+    }
+    if (result.pceScore !== undefined) {
+      const clears = result.threshold !== undefined && result.pceScore >= result.threshold;
+      say(
+        "PCE",
+        `${result.pceScore.toFixed(1)} (threshold ${result.threshold})` +
+          (clears ? "" : " — below threshold; the pixels do not carry this claim"),
+      );
+    }
+    if (result.registeredAt) say("Original registered", result.registeredAt);
+    rows.push(
+      "<p class=\"caveat\">The original was registered by its owner at the time " +
+        "shown, and this image matches it perceptually. That is a weaker link " +
+        "than an exact match: a perceptual hash can collide and can be forged. " +
+        "Origin, not truth.</p>",
+    );
   } else {
     section.className = "registered";
     rows.push("<h2>Registered by the body’s owner</h2>");
@@ -232,7 +357,7 @@ function render(result: VerifyResult): void {
     if (result.pceScore !== undefined) {
       say("PCE", `${result.pceScore.toFixed(1)} (threshold ${result.threshold})`);
     }
-    say("Matched by", result.verdict === "exact" ? "exact pixel hash" : result.method ?? "PRNU");
+    say("Matched by", result.verdict === "registered" ? "exact pixel hash" : result.method ?? "PRNU");
     if (result.orientation && result.orientation !== "0 deg") {
       say("Orientation", `${result.orientation} — the image had been turned`);
     }

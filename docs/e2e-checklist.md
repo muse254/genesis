@@ -145,12 +145,14 @@ false-positive rate, and a second enrolment so the test runs both ways.
       the registered pixel hash returns its record with score 1,895, an
       unregistered one a zeroed struct. The same assertion as anvil, on the
       chain the demo actually uses
-- [ ] The perceptual branch re-scores against every body the service holds,
-      which is right for one photographer and does not scale. §7 is now
-      deployed, so this is unblocked: `lookupByPerceptualHash` in
-      `verify/src/main.ts` still throws `needs the subgraph` and can now be
-      written. It is also what would let demo step 4 return `registered`
-      instead of `fingerprint-only`
+- [x] The perceptual branch is written, over The Graph.
+      `lookupByPerceptualHash` queries the deployed subgraph, matches within
+      10 of 64 bits, and then **reads the candidate off the chain** before
+      claiming anything — an index is not an authority, and a stale or hostile
+      one must not be able to manufacture a registration
+- [x] Four verdicts on the page, matching the console exactly, because a
+      public page and a demo console that disagreed about the same image
+      would be worse than either being wrong alone
 
 **9. Subgraph MCP server.** Written and tested; needs §7 deployed.
 
