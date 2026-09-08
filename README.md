@@ -18,6 +18,7 @@ AI-generated. It can't be done. We verify the positive instead: every image
 sensor carries a permanent, per-body physical fingerprint (PRNU) that imprints
 on every exposure and cannot exist in an image that never passed through it.
 We register it and certify **origin, not truth**.
+`docs/camera-sensors.md` is why that fingerprint exists and how K is recovered.
 
 The record model follows the Birthmark Standard (arXiv 2602.04933,
 `github.com/Birthmark-Standard/Birthmark`), which authenticates camera origin
@@ -188,7 +189,7 @@ subgraph/      The Graph — index registrations, resolve image → record
 scoring/       FastAPI — HTTP wrapper around the scorer
 verify/        web page — upload, score, look up, verdict
 mcp/           Subgraph MCP server
-docs/          claims discipline, gate results, demo script
+docs/          the sensor physics, claims discipline, gate results, demo script
 data/          local scratch: enrolment frames, references (gitignored)
 ```
 
