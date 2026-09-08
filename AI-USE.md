@@ -58,6 +58,19 @@ its own work. Editorial calls were surfaced, not taken silently.
 | Link the references for each claim | Four papers added and verified by lookup rather than recalled; paper claims and repo measurements marked as different kinds of source |
 | Make it shorter | 228 lines to 170, tables in place of prose |
 
+Continued, same day — the adversarial turn.
+
+| Asked | Produced |
+| --- | --- |
+| Attack it: K has leaked and they have the raw files | A leaked K forges invisibly, and the leak is not needed — one RAW file off the body reaches PCE 280 at 58 dB. A synthetic pattern that was never a photograph scores 82,190 through the shipped CLI |
+| Can a forgery be a RAW file? | A Bayer DNG the pipeline reads as `Flat`, matching at 88.9 dB. `UniqueCameraModel` says what I typed |
+| Can Fourier maths salt K? | No. Measured: a secret phase mask leaves the weakest genuine frame at 26 and a forgery at 375. The forgery *is* the signal the detector looks for, scaled |
+| Explore detection | Two partial checks built, one published defence not reproduced, and the honest numbers: AUC 0.725–0.900, every range overlapping |
+| What is the success rate? | None quotable, and the doc says so with the reason |
+| Prior art, other industries | Biometrics settled this: the trait is an identifier, not a secret. C2PA keys at capture instead |
+| Deploy key provided | Subgraph live on Studio, MCP and the verify page both answering from it |
+| Bind the camera serial | Keyed commitment in an ENS resolver record, plus an optional evidence digest and the dispute workflow |
+
 ## Model errors worth recording
 
 **A constant taken from memory.** The model wrote `SIGMA = 5.0 / 255.0` with
@@ -126,20 +139,58 @@ until the control — planting the leaked K, which had to work — was run and d
 A negative result against your own tooling needs a positive control before it
 means anything.
 
-Seven of the nine were found by measuring or by the tooling failing loudly.
+**Bands quoted from a sample of two.** The docstrings in
+`fingerprint/consistency.py` carried a genuine `effective_strength` band of
+0.0109–0.0218 on the delivered path, measured on **two** images, and 0.97–3.64
+on raw from eight. Re-run on ten per path they are 0.0011–0.6674 and
+0.0326–3.6250 — the first three hundred times wider — and forgeries land
+inside both without aiming. The `resampling_peak` figures were worse: two
+genuine files read 16.0 and 25.8 against forgeries at 32–33 and looked like a
+detector; ten reach 96.8 and it is chance, AUC 0.517. Each was a description
+of a sample presented as a property of a method, and each was corrected only
+because the human asked for a success rate.
+
+**A verdict that outran its evidence.** Wiring the perceptual branch, the
+first version returned `registered` for a degraded copy whose PCE was 37.3,
+below the threshold — the same word an exact pixel-hash match at 1,895 gets.
+Caught by reading the number in the response rather than the verdict beside
+it. It is now `derived`, and it prints the sub-threshold PCE with the words
+"the pixels do not carry this claim".
+
+**A quote that was never said.** "C2PA makes only two security claims" is
+widely repeated and does not appear in their Security Considerations at all;
+it is a critique paper's characterisation. Caught by fetching the source
+before quoting it, which is the rule the sigma error above bought.
+
+Ten of the twelve were found by measuring or by the tooling failing loudly.
 The other two — the constant taken from memory, and the roadmap misread —
-were found only by going back to the source and reading it.
+were found only by going back to the source and reading it. The pattern is
+consistent enough to be a rule: **every error that survived a passing test
+suite was a number quoted from too small a sample, or a sentence quoted from
+memory.**
 
 ## Not done
 
-The CRE workflow is still a stub. The subgraph, the scoring service, the
-verify page and the MCP server are written and tested, and the subgraph is
-not deployed — that waits on a Graph Studio key.
+Chainlink CRE has no code at all — not a stub, three comments and an empty
+env var. It is the one sponsor track with nothing behind it, and
+`docs/e2e-checklist.md` §10 now tracks that rather than leaving it implied.
+Deploying needs enrolment through a Chainlink account team, so it is an
+approval with unknown turnaround rather than a key anyone can fetch.
 
-`Registry` is live on Sepolia, verified on both Blockscout and Etherscan,
-with a body, an image and a session registered and reading back. ENS is
-implemented but not registered: the parent name is deliberately left until
-close to the recording, because ENSv2 Sepolia resets names on redeployment.
+Everything else is built. `Registry` is live on Sepolia and verified on both
+Blockscout and Etherscan. The subgraph is deployed to Studio and indexing real
+events, and the MCP server and the verify page's perceptual branch both answer
+from it. The demo console has all five steps wired, though its signing paths
+have only been tested against stubs.
+
+ENS is implemented and tested but not registered: the parent name is
+deliberately left until close to the recording, because ENSv2 Sepolia resets
+names on redeployment.
+
+**There is no forgery-detection rate, and none should be quoted.** Measured
+separations are AUC 0.725 to 0.900 with every range overlapping, so no
+operating point buys useful detection at a tolerable false-positive cost —
+and a false positive means calling a real photograph a fake.
 
 The false-positive rate is still unmeasured. One same-model negative exists
 and it lands in the null band, which rules out a broken approach but does not

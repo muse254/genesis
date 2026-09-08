@@ -319,15 +319,24 @@ Nothing downstream matters until both have run. See `docs/gates.md`.
 | ██████████ | `fingerprint/stress.py` — degradation ladder | done |
 | ██████████ | `ingest/` — hashing, record, Merkle | done, 17 tests |
 | ██████████ | `contracts/` — ERC-7053 registry | **live on Sepolia**, verified |
-| ██░░░░░░░░ | `identity/` — ENSv2 subnames | addresses pinned; registration outstanding |
-| █████████░ | `subgraph/` — image → record | indexes a local chain; needs the testnet deploy |
+| ████████░░ | `identity/` — ENSv2 subnames | implemented, 8 tests; registration deliberately left until near the recording |
+| ██████████ | `subgraph/` — image → record | **deployed to Studio**, indexing live Sepolia events |
 | ██████████ | `scoring/` — FastAPI wrapper | done, 5 tests |
-| █████████░ | `verify/` — the page | both branches verified against anvil |
-| █████████░ | `mcp/` — Subgraph MCP server | answers from a real index |
+| ██████████ | `verify/` — the page | four verdicts, both branches live against Sepolia and The Graph |
+| ██████████ | `mcp/` — Subgraph MCP server | answers from the deployed subgraph |
+| ████████░░ | `console/` — demo orchestration API | five steps wired; signing paths untested live |
+| ░░░░░░░░░░ | Chainlink CRE | not started — private beta, needs enrolment |
 
-Nine of eleven done. The imaging core works on real files: `enroll`, `test`
-and `pair` run against RAW and delivered JPEGs, `demo` runs without a camera.
-Everything downstream of it is scaffolding.
+The imaging core works on real files: `enroll`, `test` and `pair` run against
+RAW and delivered JPEGs, `demo` runs without a camera.
+
+What the day of adversarial work changed is what the system is allowed to
+say. The fingerprint can be planted by anyone holding **one RAW file** off a
+body, invisibly — measured against our own reference in
+`docs/adversarial.md`. So a PCE score is evidence of a link and never proof of
+origin, and everything the product claims sits behind `registerImage`'s owner
+check, which is the one mechanism no attack got past. `docs/security.md` is
+the posture and `docs/claims.md` is the closed list of two claims.
 
 `docs/e2e-checklist.md` is the ordered list of what unblocks what.
 
