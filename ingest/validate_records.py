@@ -201,6 +201,12 @@ def test_erc7053_commit_is_deterministic_and_carries_the_score():
     assert given["assetCid"] == "ipfs://bafy"
 
 
+#: Regression vector. A change to the field order, the length-prefixing or
+#: BODY_COMMITMENT_VERSION moves this, and every commitment already written
+#: into a `genesis.body` resolver record stops verifying.
+PINNED_BODY_COMMITMENT = "dfdc609697348023fbe729c63fc9450e6d382342173570f059764e717a80e093"
+
+
 def test_body_commitment_binds_every_field():
     """Change any field and the commitment must move, or it binds nothing."""
     key = b"k" * 32
@@ -231,3 +237,35 @@ def test_body_commitment_is_reproducible():
     key = b"k" * 32
     base = dict(make="Canon", model="EOS R10", serial="473034005088", owner="osoro.eth")
     assert hashing.body_commitment(key, **base) == hashing.body_commitment(key, **base)
+
+
+def test_evidence_is_optional_and_changes_the_commitment():
+    """Committed evidence must bind, and omitting it must stay valid."""
+    key = b"k" * 32
+    base = dict(make="Canon", model="EOS R10", serial="473034005088", owner="osoro.eth")
+
+    without = hashing.body_commitment(key, **base)
+    with_ev = hashing.body_commitment(key, **base, evidence=b"\xab" * 32)
+    other_ev = hashing.body_commitment(key, **base, evidence=b"\xcd" * 32)
+
+    assert without != with_ev != other_ev
+    assert without == hashing.body_commitment(key, **base, evidence=None)
+
+
+def test_evidence_accepts_a_hex_digest_or_raw_bytes():
+    """A photographer hashing a receipt will hand over hex, not bytes."""
+    key = b"k" * 32
+    base = dict(make="Canon", model="EOS R10", serial="1", owner="o")
+    digest = bytes(range(32))
+    assert hashing.body_commitment(key, **base, evidence=digest) == hashing.body_commitment(
+        key, **base, evidence="0x" + digest.hex()
+    )
+
+
+def test_the_body_commitment_scheme_is_versioned():
+    """A scheme change must break old commitments loudly, not recompute them."""
+    assert hashing.BODY_COMMITMENT_VERSION == b"genesis-body-v1"
+    key = b"k" * 32
+    base = dict(make="Canon", model="EOS R10", serial="1", owner="o")
+    # Pinned: if this digest moves, every prior commitment has been invalidated.
+    assert hashing.body_commitment(key, **base).hex() == PINNED_BODY_COMMITMENT

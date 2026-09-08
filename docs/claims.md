@@ -113,6 +113,30 @@ photographer has ever delivered to a client, and those cannot be recalled. The
 system therefore does not assume RAW files stay private; it assumes they do
 not, and rests on the owner's registration instead.
 
+## Contesting a claim: who supplies what
+
+The system does not adjudicate. It supplies the half nobody else can, and
+stops there.
+
+**What the system supplies.** That a registration exists on chain, signed by
+the body's owner, at time T. That the pixels correlate with body X at PCE *p*.
+And, if the photographer chooses to reveal it, that the `genesis.body`
+commitment recomputes to a named serial and to a digest of evidence they held
+at enrolment. All of it verifiable by anyone against a public chain.
+
+**What the photographer supplies.** The camera itself, the serial, the HMAC
+key, and whatever material they committed to. A receipt or an insurance
+record belongs here.
+
+**Who decides.** A court, a newsroom, a platform's appeals process. Not us.
+They can weigh a receipt, contact an issuer, compel disclosure — none of which
+this system can do, and pretending otherwise would substitute a weak link for
+a strong one.
+
+The value of the commitment is only that it **predates the dispute**. A
+photographer producing a serial after the fact is asserting; one whose serial
+was committed before any dispute existed is showing.
+
 ## Say it before someone else does
 
 A camera pointed at a high-quality screen produces a genuine exposure of a

@@ -147,6 +147,24 @@ a serial committed at enrolment and later checked against the physical body
 means anything. This strengthens claim 1, record integrity. Claim 2 is
 untouched.
 
+**Optional evidence.** The commitment takes an `evidence` digest — a hash the
+photographer computes over whatever supporting material they hold, a purchase
+receipt or an insurance schedule. **We never see the document and never verify
+it.** Committing it buys exactly one thing: if a dispute arrives they can show
+the material they produce *then* is the material they committed to *before* the
+dispute existed. Whether the document is genuine is not a question this system
+answers — a receipt is a forgeable image like any other, and an adjudicator
+with subpoena power settles that.
+
+Deliberately not built: receipt parsing, OCR, issuer checks, or storing any of
+it. Verifying documents is a different forensics problem, harder than the pixel
+one, and it would add a weak link that becomes the thing an opponent attacks.
+
+The scheme is versioned (`BODY_COMMITMENT_VERSION`) and pinned by a regression
+vector, so a change to the fields or their order breaks old commitments loudly
+rather than silently recomputing to something else — the same one-way door as
+`prnu.COMMITMENT_VERSION`.
+
 Extension not built: a Merkle commitment over the fields instead of one HMAC,
 so a serial can be revealed without also revealing geolocation. Worth it only
 once there is more than one field anyone would want to disclose separately.

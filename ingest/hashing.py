@@ -111,7 +111,15 @@ def hamming(a: int, b: int) -> int:
     return int(a ^ b).bit_count()
 
 
-def body_commitment(key: bytes, *, make, model, serial, owner=None) -> bytes:
+#: Version tag mixed into :func:`body_commitment`. Adding or reordering a
+#: field changes the digest, so any prior commitment stops verifying -- the
+#: same one-way door as ``prnu.COMMITMENT_VERSION``. Changing the scheme MUST
+#: change this string, so an old commitment fails loudly rather than silently
+#: recomputing to something else.
+BODY_COMMITMENT_VERSION = b"genesis-body-v1"
+
+
+def body_commitment(key: bytes, *, make, model, serial, owner=None, evidence=None) -> bytes:
     """Bind a bodyId to the physical camera, without publishing its serial.
 
     HMAC-SHA256 over make, model, serial and owner, length-prefixed like
@@ -141,10 +149,34 @@ def body_commitment(key: bytes, *, make, model, serial, owner=None) -> bytes:
 
     So this strengthens claim 1 in `docs/claims.md`, record integrity. It does
     nothing for claim 2 and nothing against forgery.
+
+    Parameters
+    ----------
+    evidence : bytes | str, optional
+        A digest of whatever supporting material the photographer holds -- a
+        purchase receipt, an insurance schedule, a service record. **We never
+        see the document and never verify it.** They hash it themselves and
+        pass the digest.
+
+        What committing it buys is one thing only: if a dispute arrives, they
+        can show the material they are producing *now* is the material they
+        committed to *before* the dispute existed. Whether the document is
+        genuine is not a question this system answers, and a receipt is a
+        forgeable image like any other -- an adjudicator with subpoena power
+        settles that, not us. Timestamping their own evidence is the whole
+        contribution, and it is a real one.
     """
     mac = hmac.new(key, digestmod=hashlib.sha256)
-    for field in (make, model, serial, owner):
-        encoded = b"" if field is None else str(field).encode("utf-8")
+    mac.update(BODY_COMMITMENT_VERSION)
+    if isinstance(evidence, str):
+        evidence = bytes.fromhex(evidence.removeprefix("0x"))
+    for field in (make, model, serial, owner, evidence):
+        if field is None:
+            encoded = b""
+        elif isinstance(field, (bytes, bytearray)):
+            encoded = bytes(field)
+        else:
+            encoded = str(field).encode("utf-8")
         mac.update(len(encoded).to_bytes(4, "big"))
         mac.update(encoded)
     return mac.digest()
