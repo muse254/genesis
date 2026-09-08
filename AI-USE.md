@@ -108,7 +108,25 @@ passage describes the *Birthmark Standard's* roadmap, as does the README's
 `docs/phones.md` that nobody had made. Caught by re-reading the surrounding
 lines before citing them, which is the only reason it was caught at all.
 
-Six of the eight were found by measuring or by the tooling failing loudly.
+**A subagent's numbers that did not reproduce.** The adversarial research was
+delegated, came back with measured tables, and read as authoritative. Three
+figures did not survive an independent re-run: a different-model carrier
+scored 393,382 rather than the 2,895 reported, because the agent cropped K to
+the carrier where an attacker would resize the carrier instead; the minimum
+injection strength from one stolen RAW was 0.10, not 0.250; and the reported
+trend of needing *more* strength as the attacker steals *more* frames was
+backwards. The conclusion held and was understated in every case, which is
+exactly what makes it worth recording — plausible numbers in the right
+direction are the ones that get quoted without checking.
+
+The first re-run also failed, and that was the checker's error rather than the
+agent's: `postprocess` was applied to the attacker's estimate, which is a
+defender-side step that destroys the attack. It read as "the finding is wrong"
+until the control — planting the leaked K, which had to work — was run and did.
+A negative result against your own tooling needs a positive control before it
+means anything.
+
+Seven of the nine were found by measuring or by the tooling failing loudly.
 The other two — the constant taken from memory, and the roadmap misread —
 were found only by going back to the source and reading it.
 
