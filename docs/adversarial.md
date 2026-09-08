@@ -490,6 +490,44 @@ It proves a set of hashes was fixed at a time, which is useful against later
 substitution and useless against a forgery committed alongside the genuine
 frames.
 
+**Degrading the verifier's copy of K.** Measured 8 September 2026, and it
+does not work. The idea: a genuine photograph carries K at full strength while
+a forgery carries only `alpha * K`, so a weakened K might still verify while
+no longer forging — letting the scoring service hold something less dangerous
+than the master.
+
+The asymmetry is real on a strong frame and vanishes on a weak one. All 41 R10
+frames plus both native-resolution delivered JPEGs, scored against four
+variants:
+
+| Verifier holds | weakest | median | `game.jpg` | pass at 100 |
+| --- | --- | --- | --- | --- |
+| master K | 672 | 22,814 | 1,148 | **43/43** |
+| centre 50% | 74 | 4,520 | 222 | 42/43 |
+| centre 25% | -48 | 927 | **-48** | 36/43 |
+| downsample 4x | -51 | 512 | 25 | 29/43 |
+
+And the forgery survives all of it, planted into the other R10 body and scored
+against the master:
+
+| Verifier holds | alpha 0.6 | alpha 1.5 | alpha 3.0 | alpha 6.0 |
+| --- | --- | --- | --- | --- |
+| centre 50% | 1,110 | 7,535 | 25,642 | 61,503 |
+| centre 25% | 39 | 72 | 423 | 1,631 |
+
+`centre 25%` is the best of them at resisting a forgery and it takes
+`game.jpg` from 1,148 to **-48** — a genuine delivered JPEG, which is the case
+demo step 4 exists to serve. The variant that resists forgery is the variant
+that destroys the delivered path, because degradation costs the *weak-signal*
+cases and those are the ones the product is for. Even then it only raises the
+attacker's distortion budget: `centre 25%` clears the threshold again by
+alpha 3.0.
+
+A preliminary run on IMG_0191 alone looked promising — 81,663 verifying
+against a forgery stuck at the null. That frame scores 409,387 against the
+master, the strongest in the corpus, and its headroom is not evidence about
+anything. The weakest frames decide this and they say no.
+
 **What does help**, in order of how much:
 
 1. **`registerImage`'s owner check.** It is the only mechanism in the system
