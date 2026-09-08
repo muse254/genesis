@@ -68,11 +68,18 @@ false-positive rate, and a second enrolment so the test runs both ways.
       against a bare `anvil`. A frame from another body is refused before it
       reaches the chain
 
-**6. Testnet and ENS.**
+**6. Testnet and ENS.** Chain done; ENS outstanding.
 
-- [ ] Deploy `Registry` to Sepolia, record the address
-- [ ] Register `r10-4471.cam.osoro.eth` live, no hardcoded values
-- [ ] Pin the four ENSv2 addresses in `identity/addresses.md` and freeze
+- [x] `Registry` deployed to Sepolia at `0xDf71e9350B4cA587eb3Bd01F2e7D710F3Fc25CF3`, block 11659977
+- [x] Source verified on Blockscout — the Read Contract tab lets anyone check
+      a claim without taking the demo's word for it
+- [x] Body, image and session registered live, and they read back
+- [x] ENSv2 Sepolia addresses recorded in `identity/addresses.md`
+- [ ] Verify on Etherscan too — needs `ETHERSCAN_API_KEY`
+- [ ] Register `osoro.eth` at <https://app.ens.dev/> from the deployer
+      address, then `cam.osoro.eth`. Names there get reset by redeployments,
+      so do it near the recording
+- [ ] `identity/scripts/register-body.ts` — four stubs, the last ENS work
 
 **7. Subgraph.** Written and tested; deployment waits on §6.
 
@@ -85,8 +92,10 @@ false-positive rate, and a second enrolment so the test runs both ways.
 - [x] Deployed to a local graph-node against anvil and queried: body, image,
       session and commit log all indexed, with the record fields read back
       from storage
-- [ ] Fill the address and `startBlock` in `subgraph.yaml` after the deploy
-- [ ] Deploy to Subgraph Studio and point the verify page at it
+- [x] Address and `startBlock` filled: `0xDf71e9350B4cA587eb3Bd01F2e7D710F3Fc25CF3`, block 11659977
+- [ ] Deploy to Subgraph Studio — needs a free deploy key from
+      <https://thegraph.com/studio>. Then set `GENESIS_SUBGRAPH_URL` for the
+      MCP server and the verify page's perceptual branch
 
 **8. Scoring service and verify page.** Done bar the chain read.
 

@@ -9,10 +9,11 @@ dataSources:
     name: Registry
     network: sepolia
     source:
-      # Fill in after the day-4 deploy, then freeze.
-      address: "0x0000000000000000000000000000000000000000"
+      address: "0xDf71e9350B4cA587eb3Bd01F2e7D710F3Fc25CF3"
       abi: Registry
-      startBlock: 0
+      # The deploy block. Zero here means indexing from genesis:
+      # hours of work to find nothing.
+      startBlock: 11659977
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.7

@@ -272,8 +272,8 @@ Nothing downstream matters until both have run. See `docs/gates.md`.
 | ███████░░░ | Gate B — does K survive the web | **conditional pass** |
 | ██████████ | `fingerprint/stress.py` — degradation ladder | done |
 | ██████████ | `ingest/` — hashing, record, Merkle | done, 17 tests |
-| ██████████ | `contracts/` — ERC-7053 registry | done, 12 tests |
-| ░░░░░░░░░░ | `identity/` — ENSv2 subnames | not started |
+| ██████████ | `contracts/` — ERC-7053 registry | **live on Sepolia**, verified |
+| ██░░░░░░░░ | `identity/` — ENSv2 subnames | addresses pinned; registration outstanding |
 | █████████░ | `subgraph/` — image → record | indexes a local chain; needs the testnet deploy |
 | ██████████ | `scoring/` — FastAPI wrapper | done, 5 tests |
 | █████████░ | `verify/` — the page | both branches verified against anvil |
