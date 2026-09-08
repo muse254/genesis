@@ -90,3 +90,52 @@ def test_state_reports_a_broken_chain_rather_than_raising(client, monkeypatch):
     body = client.get("/state").json()
     assert body["ready"] is False
     assert "no route to host" in body["chain"]["error"]
+
+
+def test_register_body_refuses_a_slot_that_is_taken(client, monkeypatch):
+    """registerBody is a race and it is won once. Say so rather than reverting."""
+    monkeypatch.setattr(
+        console_app, "_bodies",
+        lambda: {"b1": {"name": "r10", "commitment": "cc", "planes": {}, "meta": {}}},
+    )
+    from console import registry as reg
+
+    monkeypatch.setattr(reg, "_bodies", console_app._bodies)
+    monkeypatch.setattr(chain, "body", lambda b: chain.BodyRecord("0xcc", "0xsomeone", "0x0", False))
+
+    r = client.post("/register-body", data={"name": "r10", "ens_label": "r10-4471"})
+    assert r.status_code == 409
+    assert "0xsomeone" in r.json()["detail"]
+
+
+def test_register_image_refuses_below_threshold(client, monkeypatch):
+    """A frame the pixels do not support must not reach the chain."""
+    from console import registry as reg
+
+    monkeypatch.setattr(
+        reg, "_bodies", lambda: {"b1": {"name": "r10", "commitment": "cc", "planes": {}, "meta": {}}}
+    )
+
+    class Weak:
+        pce_score = 41
+    monkeypatch.setattr(reg.record, "build_record", lambda *a, **k: Weak())
+
+    sent = []
+    monkeypatch.setattr(reg, "cast_send", lambda args: sent.append(args))
+
+    r = client.post(
+        "/register-image",
+        files={"file": ("x.cr3", b"x", "image/x-raw")},
+        data={"body": "r10"},
+    )
+    assert r.status_code == 422
+    assert "below" in r.json()["detail"]
+    assert sent == []  # nothing was signed
+
+
+def test_signing_needs_a_key(client, monkeypatch):
+    from console import registry as reg
+
+    monkeypatch.delenv("DEPLOYER_PRIVATE_KEY", raising=False)
+    with pytest.raises(Exception):
+        reg._key()

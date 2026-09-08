@@ -14,15 +14,18 @@ cannot reproduce.
 
 from __future__ import annotations
 
+import json
 import os
 import tempfile
+from datetime import datetime, timezone
 from pathlib import Path
 
-from fastapi import FastAPI, File, HTTPException, UploadFile
+from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import StreamingResponse
 
-from console import chain
-from fingerprint import consistency, prnu
+from console import chain, jobs, registry
+from fingerprint import consistency, prnu, stress
 from ingest import hashing, record
 from scoring.app import _bodies, _score_against
 
@@ -38,6 +41,11 @@ app.add_middleware(
     allow_methods=["GET", "POST"],
     allow_headers=["*"],
 )
+
+
+#: The signing endpoints live in their own module so the one boundary in the
+#: system is visible in the file listing (`docs/security.md`).
+app.include_router(registry.router)
 
 
 @app.get("/health")
@@ -207,3 +215,138 @@ async def verify(file: UploadFile = File(...)) -> dict:
         return payload
     finally:
         path.unlink(missing_ok=True)
+
+
+@app.post("/degrade")
+async def degrade(
+    file: UploadFile = File(...),
+    longest_edge: int = Form(...),
+    quality: int = Form(...),
+    strip_metadata: bool = Form(True),
+) -> StreamingResponse:
+    """Demo step 4: strip, resize, re-encode -- live, not pre-baked.
+
+    `quality` has no default on purpose. `docs/gates.md` measured 1800px at
+    q95 scoring 408 and the same pixels at q80 scoring 37: the claim dies
+    between them. A default here would hide the one number the demo depends
+    on, and would let a presenter show the good rung without knowing they
+    chose it.
+
+    Metadata is dropped by re-encoding from the pixel buffer rather than by
+    editing tags, so nothing survives in a container this code did not write.
+    That is the point of the step -- the fingerprint is in the pixels, and it
+    has to be the only thing that carries over.
+    """
+    import io
+
+    from PIL import Image
+
+    if not 1 <= quality <= 100:
+        raise HTTPException(422, "quality must be 1-100")
+    if longest_edge < 64:
+        raise HTTPException(422, "longest_edge must be at least 64")
+
+    path = _save(file)
+    try:
+        Image.MAX_IMAGE_PIXELS = None
+        try:
+            with Image.open(path) as opened:
+                image = opened.convert("RGB")
+        except OSError:
+            image = stress.develop(path).convert("RGB")
+
+        width, height = image.size
+        if max(width, height) > longest_edge:
+            scale = longest_edge / max(width, height)
+            image = image.resize(
+                (max(1, round(width * scale)), max(1, round(height * scale))),
+                Image.LANCZOS,
+            )
+
+        buffer = io.BytesIO()
+        # No exif= argument: a fresh encode from the pixel buffer carries none.
+        image.save(buffer, format="JPEG", quality=quality)
+        buffer.seek(0)
+        return StreamingResponse(
+            buffer,
+            media_type="image/jpeg",
+            headers={
+                "Content-Disposition": 'attachment; filename="degraded.jpg"',
+                "X-Genesis-Size": f"{image.size[0]}x{image.size[1]}",
+                "X-Genesis-Quality": str(quality),
+            },
+        )
+    finally:
+        path.unlink(missing_ok=True)
+
+
+@app.post("/enrol")
+async def enrol(folder: str = Form(...), name: str = Form(...)) -> dict:
+    """Demo step 1. Returns a job id; progress streams from `/enrol/{id}/events`.
+
+    The reference path is never returned. Only the commitment leaves this
+    process -- a published fingerprint is a published forgery kit, and so is
+    a path that tells a browser where to ask for one (`docs/security.md`).
+    """
+    source = Path(folder).expanduser()
+    if not source.is_dir():
+        raise HTTPException(422, f"{folder} is not a directory")
+
+    frames = sorted(
+        p for p in source.iterdir() if p.suffix.lower() in record.hashing_raw_suffixes()
+    )
+    if not frames:
+        raise HTTPException(422, f"no RAW frames in {folder}")
+
+    references = Path(os.environ.get("GENESIS_REFERENCES", "data/references"))
+    references.mkdir(parents=True, exist_ok=True)
+    out = references / f"{name}.npz"
+
+    def work(job: jobs.Job) -> None:
+        job.emit(event="start", frames=len(frames), enough=len(frames) >= 40)
+
+        def progress(index, total, path):
+            job.emit(event="frame", index=index + 1, total=total, name=Path(path).name)
+
+        k = prnu.postprocess(prnu.estimate_fingerprint(frames, progress=progress))
+        meta = {
+            "frames": len(frames),
+            "crop": None,
+            "cfa_pattern": prnu.cfa_pattern(frames[0]),
+            "enrolled_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+            "wavelet": prnu.WAVELET,
+            "wavelet_levels": prnu.WAVELET_LEVELS,
+            "commitment_version": prnu.COMMITMENT_VERSION.decode(),
+        }
+        prnu.save_fingerprint(out, k, meta)
+        _bodies.cache_clear()
+
+        digest = prnu.commitment(k)
+        job.finish(
+            {
+                "name": name,
+                "frames": len(frames),
+                "commitment": "0x" + digest.hex(),
+                "bodyId": "0x" + record.body_id(digest).hex(),
+                "planes": {str(c): list(k[c].shape) for c in sorted(k)},
+            }
+        )
+
+    job = jobs.start(work)
+    return {"jobId": job.id, "frames": len(frames)}
+
+
+@app.get("/enrol/{job_id}/events")
+async def enrol_events(job_id: str) -> StreamingResponse:
+    job = jobs.get(job_id)
+    if job is None:
+        raise HTTPException(404, f"no job {job_id}")
+
+    def stream():
+        while True:
+            event = job.events.get()
+            yield f"data: {json.dumps(event)}\n\n"
+            if event.get("event") == "done":
+                return
+
+    return StreamingResponse(stream(), media_type="text/event-stream")

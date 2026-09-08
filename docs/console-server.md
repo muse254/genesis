@@ -173,6 +173,32 @@ Verified against the live Sepolia deployment, 8 September 2026:
 The first row is the point. Eighty-two thousand and no record still does not
 read as a pass.
 
+## Demo step 4 is limited to `fingerprint-only`, and that is not a bug
+
+Measured through the running server: `game.jpg` degraded to 1800px comes back
+at **PCE 126.5 at q95** and **33.3 at q80**, reproducing the Gate B result on
+the live path. The q95 copy matches — and its verdict is `fingerprint-only`,
+not `registered`.
+
+That is correct and it is a real limit. A degraded copy has a different pixel
+hash, so `images(imageHash)` misses, and the only thing that could link it to
+the original's registration is a **perceptual-hash index** — which is the
+subgraph, still blocked on a Graph Studio key (`docs/e2e-checklist.md` §7).
+
+So today the money shot proves the fingerprint survives re-encoding, and
+cannot yet show the registration it descends from. Two ways forward, and the
+second is honest:
+
+1. Deploy the subgraph. The designed path.
+2. Have the console keep a local index of the registrations *it* made, look up
+   a near pHash, then **do a real chain read of that image hash** before
+   reporting `registered`, with a field saying the link was perceptual rather
+   than exact. The registration stays chain-verified; only the lookup is
+   local. That is what the subgraph would serve anyway.
+
+What must not happen is reporting `registered` from a pHash match alone. The
+verdict has to keep meaning a chain read succeeded.
+
 ## Build order
 
 1. `/health`, `/state` — nothing else is debuggable without them.
