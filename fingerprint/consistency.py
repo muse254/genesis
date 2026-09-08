@@ -272,3 +272,65 @@ def stages(*, matched: bool, registered: bool, signals: dict, path: str = "deliv
             "decides": "the verdict. This is the only stage that grants a claim.",
         },
     ]
+
+
+#: Samples per class needed before a likelihood ratio is worth quoting. Not a
+#: derived figure -- a floor. Today's corpus has ten per class per path, and
+#: ten is how the bands in this module came to be overstated by three hundred
+#: times before they were re-measured. `docs/gates.md` applies the same rule to
+#: the false-positive rate: "one body is not a false-positive rate".
+LR_MIN_SAMPLES = 50
+
+
+def likelihood_ratio(value: float, genuine: list, forged: list) -> dict:
+    """How much more likely this reading is under 'genuine' than under 'forged'.
+
+    Forensic feature-comparison disciplines moved from match/no-match to
+    likelihood ratios precisely because the distributions overlap, which is
+    our situation on every signal here. A ratio is honest where a verdict is
+    not: it says how far the evidence moves you, rather than pretending it
+    settles anything.
+
+    PCAST's 2016 report on feature-comparison methods is the standard this
+    aims at -- error rates established by designed studies, and empirical
+    validation as the thing nothing can substitute for. We do not meet it.
+    Ten samples per class is what produced the overstated bands corrected
+    above, so this **refuses to quote a ratio** below `LR_MIN_SAMPLES` and
+    returns what it would need instead.
+
+    The estimate, when there is enough data, is deliberately crude: the
+    fraction of each class at least as extreme as the observed value, Laplace
+    smoothed. A kernel density estimate would look more precise and would not
+    be more true at these sample sizes.
+
+    Returns
+    -------
+    dict
+        ``sufficient`` says whether the number may be used at all. When it is
+        ``False`` there is no ``ratio`` key -- a caller cannot accidentally
+        read one.
+    """
+    genuine, forged = list(genuine), list(forged)
+    have = min(len(genuine), len(forged))
+    if have < LR_MIN_SAMPLES:
+        return {
+            "sufficient": False,
+            "have": have,
+            "need": LR_MIN_SAMPLES,
+            "why": (
+                "too few samples per class to quote a likelihood ratio. The "
+                "bands in this module were overstated by up to 300x at this "
+                "sample size before they were re-measured."
+            ),
+        }
+
+    lower = min(len(genuine), len(forged))  # symmetric two-tailed extremity
+    g = (sum(1 for x in genuine if abs(x) >= abs(value)) + 1) / (len(genuine) + 2)
+    f = (sum(1 for x in forged if abs(x) >= abs(value)) + 1) / (len(forged) + 2)
+    return {
+        "sufficient": True,
+        "ratio": g / f,
+        "samples": {"genuine": len(genuine), "forged": len(forged)},
+        "reading": "ratios near 1 mean the evidence distinguishes nothing",
+        "floor": lower,
+    }

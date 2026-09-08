@@ -3,13 +3,54 @@
 A product decision, not a copywriting one. Overclaiming gets you publicly
 dismantled by anyone who understands the analog hole.
 
-## We certify
+## We certify, and this is the closed list
 
-- this image contains the sensor fingerprint of body X, **and body X's owner
-  registered it on chain**
-- body X is registered to identity Y
-- it was first registered at time T
-- these derivatives descend from that original
+Two claims. Anything not on this list is out of scope, and saying so is the
+discipline — not modesty.
+
+**1. Record integrity.** A registration for this image exists on chain, signed
+by the body's owner, at time T. Verifiable by anyone against
+`0xDf71e9350B4cA587eb3Bd01F2e7D710F3Fc25CF3` without taking our word for it.
+This is the claim that survived every attack in `docs/adversarial.md`.
+
+**2. Pixel linkage.** These pixels correlate with body X's fingerprint at
+PCE *p* against a threshold of 100. This is evidence of a link, **not proof
+of origin**, and its error rate is not established — see below.
+
+Derived from those: body X is registered to identity Y, it was first
+registered at time T, and these derivatives descend from that original.
+
+The structure follows the largest standard in the field, which is equally
+narrow about it. The C2PA Explainer, verbatim:
+
+> Provenance information can help establish the truth about the origin,
+> history and authenticity of digital content, by providing evidence for its
+> creation, discovery, ownership and movement over time; but provenance
+> information alone cannot tell you whether the digital content is true,
+> accurate or factual.
+
+<https://spec.c2pa.org/specifications/specifications/2.4/explainer/Explainer.html>
+
+Being this narrow is not unusual caution. It is what the field does.
+
+## Strength of evidence, not a verdict
+
+Claim 2 is a feature-comparison method, which is the category PCAST's 2016
+report on forensic science governs. Its bar is empirical: error rates
+established by designed studies, and nothing substitutes for that evidence.
+<https://obamawhitehouse.archives.gov/sites/default/files/microsites/ostp/PCAST/pcast_forensic_science_report_final.pdf>
+
+**We do not meet it, and we say so.** There is no measured false-positive
+rate for the fingerprint match against a population of bodies — one negative
+body is not a rate — and no established error rate for distinguishing a
+genuine frame from a forged one. Measured separations are AUC 0.725 to 0.900
+with every range overlapping (`docs/security.md`).
+
+So a PCE score is reported as strength of evidence and never as a verdict.
+`fingerprint.consistency.likelihood_ratio` exists for the ratio a forensic
+report would carry, and **refuses to quote one** below fifty samples per
+class, because ten is the sample size that produced bands overstated by three
+hundredfold before they were re-measured.
 
 ## What the fingerprint alone proves
 

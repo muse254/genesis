@@ -170,3 +170,28 @@ def test_the_measured_aucs_are_honest():
         for path in consistency.MEASURED_AUC.values()
         for v in path.values()
     )
+
+
+def test_likelihood_ratio_refuses_to_quote_below_the_floor():
+    """Ten per class is what produced the overstated bands. It must not answer."""
+    out = consistency.likelihood_ratio(0.5, [0.1] * 10, [0.9] * 10)
+    assert out["sufficient"] is False
+    assert "ratio" not in out          # a caller cannot read one by accident
+    assert out["need"] == consistency.LR_MIN_SAMPLES
+
+
+def test_likelihood_ratio_answers_once_there_is_enough():
+    rng = np.random.default_rng(9)
+    genuine = list(rng.normal(1.0, 0.1, 60))
+    forged = list(rng.normal(0.0, 0.1, 60))
+    out = consistency.likelihood_ratio(1.0, genuine, forged)
+    assert out["sufficient"] is True
+    assert out["ratio"] > 1.0
+
+
+def test_an_indistinguishable_signal_reads_near_one():
+    rng = np.random.default_rng(10)
+    same = list(rng.normal(0.0, 1.0, 80))
+    other = list(rng.normal(0.0, 1.0, 80))
+    out = consistency.likelihood_ratio(0.3, same, other)
+    assert 0.3 < out["ratio"] < 3.0
