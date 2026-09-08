@@ -133,3 +133,40 @@ def test_pooled_triangle_responds_to_a_positive_tail():
 def test_pooled_triangle_handles_degenerate_input():
     assert consistency.pooled_triangle([]) == 0.0
     assert consistency.pooled_triangle([1.0]) == 0.0
+
+
+def test_only_the_chain_read_grants_a_claim():
+    """Stages 1 and 2 must never be able to produce `registered`."""
+    strong = {"bodyConsistency": 0.05, "effectiveStrength": 1.2, "resamplingPeak": 16.0}
+    reported = consistency.stages(matched=True, registered=False, signals=strong)
+    assert reported[2]["result"] == "no registration"
+    assert all("registered" != s["result"] for s in reported[:2])
+
+
+def test_every_reported_signal_carries_its_auc():
+    """A number that travels without its error bar is how a weak signal gets read
+    as a strong one."""
+    reported = consistency.stages(
+        matched=True, registered=True,
+        signals={"bodyConsistency": 0.01, "effectiveStrength": 0.5},
+        path="delivered",
+    )
+    for entry in reported[1]["result"]:
+        assert entry["auc"] is not None
+        assert entry["auc"] < 1.0   # nothing here is a test
+
+
+def test_absent_signals_are_omitted_not_faked():
+    reported = consistency.stages(matched=True, registered=False, signals={})
+    assert reported[1]["result"] is None
+
+
+def test_the_measured_aucs_are_honest():
+    """If someone edits these upward, the docs and the measurement disagree."""
+    assert consistency.MEASURED_AUC["bodyConsistency"]["delivered"] == 0.725
+    assert consistency.MEASURED_AUC["resamplingPeak"]["delivered"] == 0.517
+    assert all(
+        v is None or v < 0.95
+        for path in consistency.MEASURED_AUC.values()
+        for v in path.values()
+    )

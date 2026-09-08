@@ -189,8 +189,17 @@ async def verify(file: UploadFile = File(...)) -> dict:
             "perceptualHash": perceptual_hash,
             "body": None,
             "registration": None,
-            "consistency": _signals(path, best["body"], best),
+            "consistency": None,   # filled below, with the stage report
         }
+
+        signals = _signals(path, best["body"], best)
+        payload["consistency"] = signals
+        payload["stages"] = consistency.stages(
+            matched=matched,
+            registered=registration is not None,
+            signals=signals,
+            path="raw" if best.get("path") == "aligned" else "delivered",
+        )
 
         if registration:
             on_chain_body = chain.body(registration.body_id)

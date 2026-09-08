@@ -65,10 +65,24 @@ scalar multiple.
 Detection raises an attacker's cost. It is not a boundary and nothing here
 gates a verdict.
 
+Measured 8 September 2026 on ten genuine images per path against forgeries
+that clear PCE, references held out. **Every range overlaps. None is a test.**
+
+| Check | RAW AUC | Delivered AUC | Reading |
+| --- | --- | --- | --- |
+| `body_consistency` | **0.900** | 0.725 | Strongest we have, and weakest on the path that matters |
+| `effective_strength` | 0.800 | 0.767 | A weak signal both ways |
+| `resampling_peak` | — | **0.517** | Chance. Scene content drives it, not resampling |
+
+Earlier readings of these were far more flattering and came from two to eight
+genuine images. Ten per path was enough to collapse them: the genuine
+`effective_strength` band on the delivered path is 0.0011-0.6674, not the
+0.0109-0.0218 that two files suggested, and forgeries land inside it without
+aiming. Any figure quoted from a sample that small is a description of the
+sample.
+
 | Check | Status | Result |
 | --- | --- | --- |
-| `body_consistency` | Built, `fingerprint/consistency.py` | Catches a synthetic carrier 23x clear; **fails** on a delivered-JPEG forgery at 1.6x |
-| `resampling_peak` | Built | Catches an attacker who resized; blind to one who generates at native resolution |
 | Triangle test `[G11]` | Tried | Negative result on a corpus that was never suitable — 41 frames, few scenes |
 | Effective strength `alpha_hat` | Tried | Separates every forgery here from every genuine frame — then falls to a six-line alpha sweep. A window, not a boundary |
 | Triangle test implementation | **Validated** | Recovers on a synthetic corpus with independent scenes: lambda +1.338, Pearson +0.729, against -0.163 / -0.379 on ours. The code is right; the corpus was wrong |
@@ -80,6 +94,14 @@ gates a verdict.
 
 Nothing built so far catches the delivered-JPEG forgery, and the delivered
 path is the one the product exists to serve. That is the honest state.
+
+**There is no forgery detection success rate, and none should be quoted.**
+With overlapping ranges no operating point gives useful detection at a
+tolerable false-positive cost, and a false positive here means calling a
+photographer's real photograph a fake. `fingerprint.consistency.stages`
+encodes the consequence: stages 1 and 2 may add doubt and can never grant a
+claim, and only the chain read produces `registered`. There is a test that
+fails if that ordering is broken.
 
 ## Chainlink CRE, and what confidential compute does not do
 

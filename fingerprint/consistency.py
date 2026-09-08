@@ -84,15 +84,18 @@ def body_consistency(planes, k, references, plane: int = DEFAULT_PLANE) -> float
         forgery, synthetic carrier  +0.00052
         a different R10 body        +0.00040
 
-    It separates the synthetic forgery decisively -- 23x below the weakest
-    genuine frame. It does **not** separate the delivered-JPEG forgery: 0.0077
-    against 0.012 is 1.6x, and on the per-reference maximum that forgery
-    (+0.029) beats two genuine probes outright. The delivered path carries far
-    less of the residual structure this keys on than a RAW does, and the
-    delivered path is the one the product exists to serve.
+    Re-measured on ten genuine frames per path, references held out from the
+    genuine set, against forgeries that clear PCE::
 
-    So: useful as evidence, useless as a gate, and n is three genuine probes
-    against two forgeries. Report it; do not threshold it.
+        RAW        genuine -0.0018 - 0.0116   forged 0.0004 - 0.0006   AUC 0.900
+        delivered  genuine -0.0007 - 0.0086   forged 0.0002 - 0.0077   AUC 0.725
+
+    The strongest signal here and still overlapping on both paths: a genuine
+    RAW frame reaches -0.0018, below every forgery. On the delivered path --
+    the one the product exists to serve -- it falls to 0.725, which is barely
+    a signal at all.
+
+    Report it, do not threshold it, and do not call it detection.
     """
     if not references:
         return 0.0
@@ -108,20 +111,17 @@ def resampling_peak(image, side: int = 1024) -> float:
     native capture has no reason to carry. Our attack-3 forgery was upsampled
     5760x3840 -> 6000x4000 to reach the aligned lattice, so it should show it.
 
-    **Measured, and it is weak.** Peak-to-median of the windowed spectrum::
+    **Measured on ten genuine images per path, it is chance.** AUC **0.517**,
+    genuine 15.5-96.8 against forged 15.3-33.1 (8 September 2026). An earlier
+    reading of two genuine files put them at 16.0 and 25.8 against forgeries
+    at 32-33 and looked promising; ten genuine files reach 96.8, which
+    swallows the forgeries whole.
 
-        genuine game.jpg          16.0
-        genuine a-piece-of-quiet  25.8
-        forgery, 5D3 upsampled    32.1
-        forgery, same at alpha 1.5 33.2
-        forgery, synthetic         7.4
-
-    The upsampled forgeries do sit above both genuine files, but 25.8 against
-    32.1 is not a threshold on n = 2, and the synthetic forgery scores
-    *lowest* of everything because it was generated at native resolution and
-    never resampled at all. This check only ever sees attackers who resized,
-    and an attacker who generates at the sensor's native size is invisible to
-    it. Kept because it costs nothing and it is one more thing to get right.
+    Scene content drives this far harder than resampling does. Retained only
+    because it is nearly free, and because a *specific* claim -- this file says
+    it is a native capture and its spectrum says it was upsampled -- may still
+    be worth making about one suspect image. As a population discriminator it
+    is worth nothing and nothing should read it as one.
     """
     g = np.asarray(image, dtype=np.float64)
     if g.ndim == 3:
@@ -145,23 +145,20 @@ def effective_strength(planes, k, plane: int = DEFAULT_PLANE) -> float:
     chose. So a forgery tuned only to clear the threshold sits outside the
     range genuine frames occupy.
 
-    **The range is per processing path and the two differ by a hundredfold**,
-    measured 8 September 2026::
+    **Measured properly it barely separates.** An earlier reading quoted a
+    genuine RAW band of 0.97-3.64 from eight frames and a delivered band of
+    0.0109-0.0218 from *two*. Both were artefacts of the sample. Ten genuine
+    frames per path, against forgeries that clear PCE, 8 September 2026::
 
-        RAW / CFA        genuine 0.97 - 3.64 (n=8)   forgeries 0.029 - 0.469
-        delivered JPEG   genuine 0.0109 - 0.0218 (n=2)  forgeries 0.065 - 0.653
+        RAW        genuine 0.0326 - 3.6250   forged 0.0293 - 1.0883   AUC 0.800
+        delivered  genuine 0.0011 - 0.6674   forged 0.0086 - 0.6530   AUC 0.767
 
-    Forgeries fall *below* on RAW, because an attacker plants the least that
-    clears the threshold, and *above* on delivered, because 8-bit
-    quantisation swallows anything under about alpha 0.3, so clearing PCE at
-    all costs more energy than a real attenuated fingerprint carries.
+    The ranges **overlap on both paths**. One real frame sits at 0.033, inside
+    the forgery range, so there is no threshold that separates them -- and the
+    alpha 0.35 evasion found earlier was almost beside the point, since most
+    forgeries land in the genuine band without aiming for it.
 
-    **Evadable, and cheaply.** At alpha 0.35 a delivered forgery scores 1,515
-    and returns 0.0166 -- inside the genuine band. Finding that took a
-    six-value sweep. This narrows an attacker's usable alpha from a floor to a
-    window; it does not close it. And the delivered band above rests on two
-    images, which is not a band. Report it, calibrate it per path, and do not
-    decide on it.
+    AUC 0.8 is a weak signal, not a test. Report it; never decide on it.
     """
     image = np.asarray(planes[plane], dtype=np.float64)
     field = np.asarray(k[plane], dtype=np.float64)
@@ -208,3 +205,70 @@ def pooled_triangle(d_values) -> float:
         return 0.0
     centred = (d - d.mean()) / spread
     return float(np.sum(np.sign(centred) * centred**2) / np.sqrt(3.0 * d.size))
+
+
+#: What each advisory signal was measured to be worth, so a caller reporting
+#: one is obliged to report how weak it is. Separability of forgeries that
+#: clear PCE from genuine frames, ten of each per path, 8 September 2026.
+#: Every one of these ranges overlaps; none is a test.
+MEASURED_AUC = {
+    "bodyConsistency": {"raw": 0.900, "delivered": 0.725},
+    "effectiveStrength": {"raw": 0.800, "delivered": 0.767},
+    "resamplingPeak": {"raw": None, "delivered": 0.517},
+}
+
+
+def stages(*, matched: bool, registered: bool, signals: dict, path: str = "delivered") -> list:
+    """The verification pipeline, as an ordered, reportable list.
+
+    Staggered on purpose. One number that folds pixels and chain together
+    would let a weak signal quietly raise a verdict, and today's measurements
+    say every signal here is weak: the best is AUC 0.900 on RAW and it falls
+    to 0.725 on the delivered path, with overlapping ranges throughout.
+
+    So the rule this encodes is one-directional. **Stages 1 and 2 can add
+    doubt and can never grant a claim.** Only stage 3, a chain read, produces
+    `registered`. A caller that lets a signal upgrade a verdict has
+    reintroduced exactly the hole `verify/src/main.ts` had before `acf3f87`.
+
+    Returns one entry per stage: what it asked, what it found, and -- for the
+    advisory stage -- what it is measured to be worth, so the number never
+    travels without its own error bar.
+    """
+    advisory = [
+        {
+            "signal": name,
+            "value": signals.get(name),
+            "auc": MEASURED_AUC.get(name, {}).get(path),
+        }
+        for name in ("bodyConsistency", "effectiveStrength", "resamplingPeak")
+        if signals.get(name) is not None
+    ]
+
+    return [
+        {
+            "stage": 1,
+            "name": "pixel match",
+            "asks": "do these pixels carry this body's fingerprint?",
+            "result": "match" if matched else "no match",
+            "decides": "whether to look further. A match alone claims nothing.",
+        },
+        {
+            "stage": 2,
+            "name": "consistency",
+            "asks": "does anything about this image contradict a genuine capture?",
+            "result": advisory or None,
+            "decides": (
+                "nothing. Advisory only -- every signal here overlaps between "
+                "genuine frames and forgeries, best AUC 0.900 on RAW and 0.725 "
+                "on delivered. It may add doubt; it may never add confidence."
+            ),
+        },
+        {
+            "stage": 3,
+            "name": "registration",
+            "asks": "did this body's owner register this image on chain?",
+            "result": "registered" if registered else "no registration",
+            "decides": "the verdict. This is the only stage that grants a claim.",
+        },
+    ]
