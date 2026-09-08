@@ -6,7 +6,7 @@ run start to finish. Ticked items were verified on 7 September 2026.
 ## Works today
 
 - [x] `demo` passes on the synthetic sensor — `python3 fingerprint/fingerprint.py demo`
-- [x] `pytest` — 31 tests; `forge test` — 12
+- [x] `pytest` — 32 tests; `forge test` — 12; `npm test` — 6 in `mcp/`, 8 in `identity/`
 - [x] Flow A on real CR3: 16 frames enrolled, `.npz` written, commitment printed
 - [x] Flow C upper branch, offline: 13/13 held-out frames MATCH via the CLI,
       PCE 1,895 to 56,255, exit 0
@@ -75,11 +75,25 @@ false-positive rate, and a second enrolment so the test runs both ways.
       a claim without taking the demo's word for it
 - [x] Body, image and session registered live, and they read back
 - [x] ENSv2 Sepolia addresses recorded in `identity/addresses.md`
-- [ ] Verify on Etherscan too — needs `ETHERSCAN_API_KEY`
+- [x] Verified on Etherscan too — `Registry`, solc 0.8.24, optimizer 200.
+      Blockscout and Etherscan now both serve the ABI, so a reader who
+      distrusts one explorer has a second
 - [ ] Register `osoro.eth` at <https://app.ens.dev/> from the deployer
-      address, then `cam.osoro.eth`. Names there get reset by redeployments,
-      so do it near the recording
-- [ ] `identity/scripts/register-body.ts` — four stubs, the last ENS work
+      address, then `cam.osoro.eth` — which is the step that provisions the
+      subregistry, not a nicety. Names there get reset by redeployments, so
+      do it near the recording, and re-run the `--dry-run` on the day.
+      Needs faucet ETH in the deployer address, which it does not have yet
+- [x] `identity/scripts/register-body.ts` — the four stubs implemented
+      against the real ENSv2 ABIs, read from the verified sources on
+      Blockscout rather than guessed. 8 tests on the name arithmetic, which
+      is where a silent bug costs most: a record written against the wrong
+      node succeeds, costs gas, and resolves to nothing
+- [x] Every write takes `--dry-run` — each read, and the call simulated,
+      nothing sent. Both failure paths checked against live Sepolia: an
+      unregistered parent, and `raffy.eth`, which is owned but has no
+      subregistry. **Owning a name does not give it one**, so `osoro.eth`
+      alone will not be enough; the first subname created through the app is
+      what provisions it. `identity/addresses.md` has the sequence
 
 **7. Subgraph.** Written and tested; deployment waits on §6.
 
@@ -106,7 +120,11 @@ false-positive rate, and a second enrolment so the test runs both ways.
       all — it failed silently before
 - [x] The exact branch verified against anvil: a registered hash returns its
       record, an unregistered one a zeroed struct
-- [ ] Repoint at Sepolia once §6 lands
+- [x] Repointed at Sepolia — `verify/.env.example` carries the live
+      address, and the branch was re-checked against the deployment itself:
+      the registered pixel hash returns its record with score 1,895, an
+      unregistered one a zeroed struct. The same assertion as anvil, on the
+      chain the demo actually uses
 - [ ] The perceptual branch re-scores against every body the service holds,
       which is right for one photographer and does not scale. Needs §7
 

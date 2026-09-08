@@ -42,6 +42,37 @@ A transfer step mid-demo is a step that can fail on camera.
 3. Create `cam.osoro.eth` as a subname of it.
 4. Leave `r10-4471.cam.osoro.eth` for the demo to create live.
 
+Step 3 is not optional tidiness, and this is the part that is easy to get
+wrong. In ENSv2 a name does not own a flat entry in a global registry: every
+name points at its own **subregistry**, and children live in that. Owning a
+name does not create one. Checked against live Sepolia on 8 September 2026:
+`raffy.eth` and `hello.eth` both have real owners and both return the zero
+address for their subregistry.
+
+So `osoro.eth` registered and paid for is still a parent nothing can be
+registered under. Creating the first subname through app.ens.dev is what
+provisions the subregistry, and only after that can the script create body
+names. `identity/scripts/register-body.ts` tells the two cases apart —
+unregistered, versus owned but empty — because they look identical from a
+zero address and have different fixes.
+
+## Rehearsing it without registering anything
+
+Every write in `register-body.ts` takes `--dry-run`: it does each read and
+simulates the call, and sends nothing.
+
+```bash
+cd identity && npm install && npm run build
+node dist/register-body.js register r10-4471 <commitment> <signer> --dry-run
+node dist/register-body.js resolve r10-4471.cam.osoro.eth
+```
+
+That is the check to run on the morning of the recording. It answers the only
+question that matters that day — did the name survive the last redeployment —
+without spending anything and without a transaction to undo. Today it returns
+`osoro.eth is not registered`, which is the correct answer and will stay
+correct until step 2 is done.
+
 `ENS_PARENT_NAME=cam.osoro.eth` in `.env` already assumes this, as do
 `BUILD.md`, the README diagram and the MCP tool descriptions. Registering
 anything else means changing all four.
