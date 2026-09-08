@@ -9,6 +9,26 @@ mainnet yet. A mainnet ENS name does not carry over.
 beta moved; the old host still answers, which is exactly how you end up
 registering in the wrong place.
 
+## The registration is not durable
+
+The app warns, verbatim: *"ENS v2 is in active development. Registered names
+on Sepolia and state data may be reset periodically due to routine contract
+deployments. The most recent deployment was on July 30, 2026."*
+
+So the name is not an asset and not a milestone to tick early. A redeployment
+between registering and demoing takes the name with it, and the demo depends
+on resolving it live.
+
+Consequences, and they cut against `BUILD.md`'s day-4 instinct:
+
+- **Register late, not early.** Close to the demo recording, not now.
+- **Re-check the day of.** Resolve the name before recording; if it is gone,
+  register again — minutes, not hours, and free.
+- **Never hardcode a resolved value** as insurance against the reset. ENS's
+  own rule forbids it, and it would hide exactly the failure you need to see.
+- The pinned addresses below can still move. Pin them, and re-verify on the
+  day rather than trusting a table written a week earlier.
+
 ## Registration order
 
 Register the parent from the **deployer address**, not a personal wallet.
@@ -52,8 +72,11 @@ ETHRegistrarController `0xfb3cE5D01e0f33f41DbB39035dB9745962F1f968`.
 
 ## What registration costs
 
-Nothing real. On Sepolia the fee is paid in Sepolia ETH from the faucet. The
-app may still show a dollar figure — ENS prices by name length, 5+ characters
-being the cheapest tier at about $5/year, and `osoro` is five — but that is a
-display of a testnet payment. **A wallet asking for real value means the
-network is set to mainnet.** Switch it before signing.
+Nothing real. `app.ens.dev` is Sepolia-only, so the dollar figure it shows —
+about $8 for `osoro.eth`, ENS pricing by name length with 5+ characters the
+cheapest tier — is a display of a payment made in **Sepolia ETH**, which comes
+free from the faucet. There is no mainnet charge on that app to be confused
+about.
+
+What it does mean: the deployer address needs faucet ETH before the app will
+let the transaction through, and right now it has none.
