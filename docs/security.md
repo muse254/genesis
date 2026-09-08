@@ -81,6 +81,23 @@ gates a verdict.
 Nothing built so far catches the delivered-JPEG forgery, and the delivered
 path is the one the product exists to serve. That is the honest state.
 
+## Chainlink CRE, and what confidential compute does not do
+
+Not built — `docs/e2e-checklist.md` §10. Recorded here because it is easy to
+mistake for a defence against what this document describes, and it is not one.
+
+Confidential compute removes the **scorer** as a trusted party: published
+algorithm, private reference, signed score, so a third party gets a verdict
+without anyone holding K and the service cannot lie about the number. That is
+real, and it is the honest answer to keeping a reference off other people's
+machines.
+
+It does nothing about forgery. An enclave would score the forged DNG above at
+868 and sign it faithfully. The signature attests that the computation was
+performed correctly on the pixels it was given; it says nothing about where
+those pixels came from. Confidential compute protects the reference from the
+verifier. The attack happens before the pixels arrive.
+
 ## Disclosure
 
 Fingerprints, references and the raw corpus are not published, and the reason

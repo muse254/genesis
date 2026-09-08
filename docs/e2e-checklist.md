@@ -18,6 +18,24 @@ python3 fingerprint/fingerprint.py enroll --out data/references/r10.npz <16 fram
 python3 fingerprint/fingerprint.py test --fingerprint data/references/r10.npz <held-out frames>
 ```
 
+## Credentials still missing
+
+Three, and only one of them is a self-serve key. `.env.example` says what
+breaks without each.
+
+| Key | Where to get it | Blocks |
+| --- | --- | --- |
+| `GRAPH_DEPLOY_KEY` | <https://thegraph.com/studio> — create a subgraph, copy the deploy key. Free, self-serve, minutes | §7, and §9 and §8's perceptual branch behind it |
+| `SUBGRAPH_URL` | Not a signup. `graph deploy` prints it once the key above exists | §9, the MCP server |
+| `CRE_WORKFLOW_OWNER` | <https://docs.chain.link/cre/getting-started/overview> for the CLI and account. **Confidential Workflows is private beta** and deploying needs enrolment through a Chainlink account team — see *Requesting Confidential Workflows Access* in <https://docs.chain.link/cre/concepts/confidential-workflows> | §10 |
+
+`ETHERSCAN_API_KEY` was the fourth and is done — the registry is verified on
+Etherscan as well as Blockscout.
+
+The Graph key is the one to get first: it is free, takes minutes, and it
+unblocks three items at once. The CRE one is not a key at all but an approval
+with unknown turnaround, which is why §10 below assumes simulation.
+
 ## Blocking, in the order they block
 
 **1. More camera bodies.** One same-model negative now exists and it lands in
@@ -136,6 +154,32 @@ false-positive rate, and a second enrolment so the test runs both ways.
 - [x] Run against a local graph-node: all three tools answered from really
       indexed events
 - [ ] Point `GENESIS_SUBGRAPH_URL` at the deployed subgraph
+
+**10. Chainlink CRE — not started.** No code exists. This is the one
+sponsor track in `BUILD.md` §11 with nothing behind it, and until now nothing
+tracked that.
+
+What it would buy, precisely: `scoring/app.py` is the trust hole by design —
+it holds K and you take its word for a score. A confidential workflow makes
+the algorithm public, keeps the reference private, and returns a *signed*
+score, so a third party verifies without anyone holding K and the scorer
+cannot lie about the number.
+
+What it would **not** buy: anything against forgery. An enclave would score
+the forged DNG in `docs/adversarial.md` at 868 and sign it faithfully. The
+signature attests that the score was computed correctly, not that the pixels
+are honest. See `docs/security.md`.
+
+- [ ] `cre` CLI installed and an account — <https://docs.chain.link/cre/getting-started/overview>
+- [ ] A standard workflow running in simulation before anything confidential
+- [ ] Client-side residual extraction, so only a 512x512 crop leaves the
+      machine and never K
+- [ ] The correlation as a confidential workflow, reference as a Vault secret
+- [ ] Fallback if a ~1 MB reference will not ride as a secret: Confidential
+      HTTP, which now supports production workflows
+- [ ] **Deployment needs enrolment** — Confidential Workflows is private beta
+      and access goes through a Chainlink account team. Unknown turnaround, so
+      plan the demo on simulation and treat deployment as a bonus
 
 ## The whole stack, offline
 
