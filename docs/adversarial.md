@@ -469,6 +469,75 @@ shows the self-estimated forgery is cheaper to mount and, per this table,
 harder to detect. Deploy the check — it is one wavelet decomposition per
 enrolment frame and it raises the bar — but do not let it into a claim.
 
+### Effective strength, and the window that defeats it
+
+Measured 8 September 2026. The idea: a genuine exposure carries whatever PRNU
+strength the silicon has, while a forgery carries whatever alpha the attacker
+picked. Estimate it — `alpha_hat = <W, J*K> / ||J*K||^2` — and a forgery
+tuned only to clear PCE should sit outside the genuine range.
+
+It works, on both paths, and in opposite directions:
+
+| Path | genuine alpha-hat | forgeries |
+| --- | --- | --- |
+| RAW / CFA | 0.97 – 3.64 (n=8) | 0.029 at PCE 229, 0.469 at PCE 106,896 — **below** |
+| Delivered JPEG | 0.0109 – 0.0218 (n=2) | 0.065 at PCE 11,934, 0.653 at PCE 393,382 — **above** |
+
+Below on RAW because the attacker plants the least that clears the threshold;
+above on delivered because 8-bit quantisation swallows anything under about
+alpha 0.3, so clearing PCE at all forces more energy than a real attenuated
+fingerprint carries. Every forgery in this document is outside the band for
+its path. That is the first statistic here that separates all of them.
+
+**And it is evaded by one parameter sweep.** The bands are wide enough to
+aim at:
+
+| alpha | PCE | alpha-hat | clears 100 | inside the genuine band |
+| --- | --- | --- | --- | --- |
+| 0.25 | 95 | 0.0034 | no | no |
+| 0.30 | 496 | 0.0086 | yes | no |
+| **0.35** | **1,515** | **0.0166** | **yes** | **yes** |
+| 0.40 | 3,471 | 0.0282 | yes | no |
+| 0.50 | 11,934 | 0.0650 | yes | no |
+
+At alpha 0.35 the forgery clears the threshold fifteen times over and sits
+inside the genuine band. Finding it took six lines.
+
+So: it catches an attacker who does not know about it, and not one who does.
+It is worth having as one more thing to satisfy — it narrows the usable alpha
+from a floor to a window — and it is not a boundary. Two further limits: the
+band is entirely path-dependent, RAW and delivered differing by a factor of a
+hundred, so each processing path needs its own calibration; and the delivered
+band rests on **two** genuine images, which is not a band.
+
+### The triangle test implementation is sound; the corpus was the problem
+
+The negative result above blamed our corpus rather than [G11]. That was a
+claim about something untested, so it was tested: a synthetic camera with
+independent scenes by construction, 24 public frames, 8 stolen, forgery
+planted into a different synthetic body.
+
+| Corpus | lambda | Pearson |
+| --- | --- | --- |
+| Ours, 41 frames from one shoot | -0.163 | -0.379 |
+| Synthetic, independent scenes | **+1.338** | **+0.729** |
+
+[G11] expects lambda near 1. The calibration recovers on a corpus of the right
+shape, so the implementation is correct and the diagnosis was right.
+
+Per-frame detection still overlaps, which is the part that matters:
+
+| Probe | d on the 8 stolen | d on the other 16 |
+| --- | --- | --- |
+| forgery | mean +1.08, max +2.04 | mean -0.09, max +3.06 |
+| genuine held-out | mean +0.49, max +2.18 | mean -0.21, max +1.59 |
+
+The means separate by 2.2x and the maxima cross. That is exactly why [B18]
+pools rather than deciding per frame, and the pooled statistic is still not
+implemented here. N/N_c is 0.33 in this run, below the 0.5 the pooled test is
+reported to need. So Tier 2 is a live avenue rather than a dead one — which
+is what this experiment was for.
+
 ### What does not help
 
 **The commitment on chain.** `fingerprintCommitment` is `SHA-256` over K. Once
