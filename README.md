@@ -108,6 +108,41 @@ rather than a calibrated operating point.
 
 Method, numbers and the rest of the findings are in `docs/gates.md`.
 
+## Live on Sepolia
+
+The registry is deployed, source-verified, and carries a real body and a real
+photograph — not a local chain:
+
+**[`0xDf71e9350B4cA587eb3Bd01F2e7D710F3Fc25CF3`](https://eth-sepolia.blockscout.com/address/0xDf71e9350B4cA587eb3Bd01F2e7D710F3Fc25CF3)**
+· [transactions](https://eth-sepolia.blockscout.com/address/0xDf71e9350B4cA587eb3Bd01F2e7D710F3Fc25CF3?tab=txs)
+· [Etherscan](https://sepolia.etherscan.io/address/0xDf71e9350B4cA587eb3Bd01F2e7D710F3Fc25CF3)
+
+| Block | Call | Transaction |
+| --- | --- | --- |
+| 11659977 | deploy | [`0xb83e420b…`](https://eth-sepolia.blockscout.com/tx/0xb83e420b4b30dd317368fd50020459053d5a8d5df796865fcd4069ce6544454a) |
+| 11660058 | `registerBody` | [`0x14d09e01…`](https://eth-sepolia.blockscout.com/tx/0x14d09e012a1b38752d5747185f834d1a1b119aa50fc1604274117d8bc95c46ad) |
+| 11660059 | `registerImage` | [`0x1ed19fe6…`](https://eth-sepolia.blockscout.com/tx/0x1ed19fe69ffa448dbc2f15a098883ae2605141361c42fe71423e0773d53acd3a) |
+| 11660060 | `commitSession` | [`0x2d580e61…`](https://eth-sepolia.blockscout.com/tx/0x2d580e61fcc0071a15511e266214f96f1b7ecf5bbea9d6453e0390e53a074511) |
+
+`registerImage` emits two events: `ImageRegistered`, and an ERC-7053 `Commit`
+under `genesis:2224a686…` so an indexer that knows only the standard sees it
+too.
+
+**Check it yourself without trusting this page.** The source is verified, so
+the explorer's *Read contract* tab needs no wallet:
+
+- `deriveBodyId` with `0xbb3e3a38e051973355faf0d7dcdb8a0598c87d4f04b8a8ecbff152c4ad5cb5d7`
+  — the commitment `enroll` printed for the R10 — returns
+  `0xb5ed056e…`, the same body id `ingest/record.py` derives locally. The
+  Python and the Solidity agree about which camera this is.
+- `images` with `0x2224a686797182e43b86a0efb74fe34d29424b51ce7df233914508c887624725`
+  returns that body, a PCE of 1895, and the registration time.
+- `bodies` with the body id returns the fingerprint commitment — a hash. K
+  itself is not there, and never will be.
+
+The body behind these records is the demo body whose frames were published
+and then withdrawn, so treat it as burned rather than as a live registration.
+
 ## Validate the mathematics yourself
 
 **The test frames are not in this repository.** Publishing 16 enrolment
