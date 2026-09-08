@@ -64,6 +64,13 @@ export interface BodySubname {
   parent: string; // "cam.osoro.eth"
   fingerprintCommitment: `0x${string}`;
   signingKey: `0x${string}`;
+  /**
+   * Keyed commitment to make, model, serial and owner, from
+   * `ingest/hashing.py:body_commitment`. Optional: a body registered without
+   * one is still a body, it just cannot later be tied to a camera anyone can
+   * physically produce. Never the serial in clear.
+   */
+  bodyCommitment?: `0x${string}`;
 }
 
 export interface Options {
@@ -249,6 +256,7 @@ export async function setBodyRecords(
     [TEXT_KEY.commitment, body.fingerprintCommitment],
     [TEXT_KEY.signer, body.signingKey],
     [TEXT_KEY.status, STATUS_ACTIVE],
+    ...(body.bodyCommitment ? [[TEXT_KEY.body, body.bodyCommitment]] : []),
   ].map(([key, value]) =>
     encodeFunctionData({
       abi: permissionedResolverAbi,
@@ -320,11 +328,13 @@ export async function resolveBody(name: string): Promise<BodySubname | null> {
   if (!commitment) return null;
   if (status === STATUS_REVOKED) return null;
 
+  const bodyCommitment = await readText(TEXT_KEY.body);
   return {
     label: labelOf(name),
     parent: parentOf(name),
     fingerprintCommitment: commitment as `0x${string}`,
     signingKey: (signer ?? "0x") as `0x${string}`,
+    ...(bodyCommitment ? { bodyCommitment: bodyCommitment as `0x${string}` } : {}),
   };
 }
 

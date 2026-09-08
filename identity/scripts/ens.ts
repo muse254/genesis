@@ -80,11 +80,24 @@ export const BODY_ROLES =
   asAdmin(ROLE.renew) |
   asAdmin(ROLE.unregister);
 
-/** Resolver text keys. Namespaced so they cannot collide with ENS's own. */
+/**
+ * Resolver text keys. Namespaced so they cannot collide with ENS's own.
+ *
+ * `body` is the keyed commitment to the physical camera -- make, model,
+ * serial, owner, under HMAC (`ingest/hashing.py:body_commitment`). It lives
+ * here rather than on chain because `Registry.registerBody` takes only a
+ * bodyId, a fingerprint commitment and an ENS node, and adding a field would
+ * mean redeploying and abandoning the live registration. The resolver is also
+ * the honest place for it: this is identity, which is what the name is for.
+ *
+ * Never the serial itself. Ten digits is about 2^33 and a published hash of
+ * it is not a commitment -- see the docstring on `body_commitment`.
+ */
 export const TEXT_KEY = {
   commitment: "genesis.fingerprint",
   signer: "genesis.signer",
   status: "genesis.status",
+  body: "genesis.body",
 } as const;
 
 export const STATUS_ACTIVE = "active";

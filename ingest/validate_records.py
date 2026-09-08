@@ -199,3 +199,35 @@ def test_erc7053_commit_is_deterministic_and_carries_the_score():
 
     given = record.to_erc7053_commit(_record(), asset_cid="ipfs://bafy")
     assert given["assetCid"] == "ipfs://bafy"
+
+
+def test_body_commitment_binds_every_field():
+    """Change any field and the commitment must move, or it binds nothing."""
+    key = b"k" * 32
+    base = dict(make="Canon", model="EOS R10", serial="473034005088", owner="osoro.eth")
+    reference = hashing.body_commitment(key, **base)
+
+    for field in base:
+        altered = {**base, field: base[field] + "x"}
+        assert hashing.body_commitment(key, **altered) != reference, field
+
+
+def test_body_commitment_resists_field_shuffling():
+    """Length-prefixing is why these two cannot collide."""
+    key = b"k" * 32
+    a = hashing.body_commitment(key, make="Canon", model="EOS", serial="1", owner="o")
+    b = hashing.body_commitment(key, make="CanonEOS", model="", serial="1", owner="o")
+    assert a != b
+
+
+def test_body_commitment_needs_the_key():
+    """Without the key a ten-digit serial would be enumerable in seconds."""
+    base = dict(make="Canon", model="EOS R10", serial="473034005088", owner="osoro.eth")
+    assert hashing.body_commitment(b"k" * 32, **base) != hashing.body_commitment(b"j" * 32, **base)
+
+
+def test_body_commitment_is_reproducible():
+    """The reveal is worthless if recomputing it does not match."""
+    key = b"k" * 32
+    base = dict(make="Canon", model="EOS R10", serial="473034005088", owner="osoro.eth")
+    assert hashing.body_commitment(key, **base) == hashing.body_commitment(key, **base)

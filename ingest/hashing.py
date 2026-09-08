@@ -111,6 +111,45 @@ def hamming(a: int, b: int) -> int:
     return int(a ^ b).bit_count()
 
 
+def body_commitment(key: bytes, *, make, model, serial, owner=None) -> bytes:
+    """Bind a bodyId to the physical camera, without publishing its serial.
+
+    HMAC-SHA256 over make, model, serial and owner, length-prefixed like
+    :func:`metadata_hmac` so no two different tuples can collide by shuffling
+    separators.
+
+    **HMAC and not a plain hash, and that is the whole design.** A camera
+    serial is low entropy -- Canon bodies are ten digits, about 2^33 -- so
+    `SHA-256(serial)` is not a commitment at all. Anyone can enumerate the
+    space in seconds and recover it, which would publish the serial of every
+    registered body. Keyed, the space is unreachable without the key.
+
+    Committed at enrolment, revealed only if the claim is ever contested: the
+    photographer produces the serial and the key, and anyone recomputes this
+    value and compares it against the record. That the commitment predates the
+    dispute is what makes the reveal worth anything.
+
+    What this binds and what it does not:
+
+    - It binds a bodyId to a camera someone can physically produce. A
+      photographer holding the body can demonstrate that the registration
+      made at enrolment names *that* camera.
+    - It says nothing about any image. A serial read out of a file's EXIF is
+      worth nothing -- `docs/adversarial.md` writes `Canon EOS R10` into a
+      forged DNG, and `SerialNumber` is as easy. Only a serial committed at
+      enrolment and later checked against the physical body means anything.
+
+    So this strengthens claim 1 in `docs/claims.md`, record integrity. It does
+    nothing for claim 2 and nothing against forgery.
+    """
+    mac = hmac.new(key, digestmod=hashlib.sha256)
+    for field in (make, model, serial, owner):
+        encoded = b"" if field is None else str(field).encode("utf-8")
+        mac.update(len(encoded).to_bytes(4, "big"))
+        mac.update(encoded)
+    return mac.digest()
+
+
 def metadata_hmac(key: bytes, timestamp, geolocation, owner) -> bytes:
     """HMAC-SHA256 over timestamp, geolocation and owner.
 

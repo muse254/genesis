@@ -120,6 +120,37 @@ performed correctly on the pixels it was given; it says nothing about where
 those pixels came from. Confidential compute protects the reference from the
 verifier. The attack happens before the pixels arrive.
 
+## Binding a body to a physical camera
+
+`ingest/hashing.py:body_commitment` and the `genesis.body` resolver record.
+
+At enrolment the photographer commits to make, model, serial and owner under
+HMAC-SHA256, and the commitment goes in the body subname's resolver records.
+If a claim is ever contested they reveal the serial and the key, and anyone
+recomputes and compares. That the commitment predates the dispute is the whole
+value of it.
+
+**Why keyed and not hashed.** A camera serial is low entropy — Canon bodies
+are ten digits, roughly 2^33. `SHA-256(serial)` is enumerable in seconds, so
+publishing one would publish the serial of every registered body. Keyed, the
+space is unreachable without the key.
+
+**Why the resolver and not the contract.** `Registry.registerBody` takes a
+bodyId, a fingerprint commitment and an ENS node; adding a field means
+redeploying and abandoning the live registration. The resolver is also where
+this honestly belongs — it is identity, which is what the name is for.
+
+**What it does not do.** Nothing against forgery, and nothing about any
+image. A serial read out of a file is worth nothing: `docs/adversarial.md`
+writes `Canon EOS R10` into a forged DNG and `SerialNumber` is no harder. Only
+a serial committed at enrolment and later checked against the physical body
+means anything. This strengthens claim 1, record integrity. Claim 2 is
+untouched.
+
+Extension not built: a Merkle commitment over the fields instead of one HMAC,
+so a serial can be revealed without also revealing geolocation. Worth it only
+once there is more than one field anyone would want to disclose separately.
+
 ## Disclosure
 
 Fingerprints, references and the raw corpus are not published, and the reason
