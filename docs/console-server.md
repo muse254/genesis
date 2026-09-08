@@ -173,7 +173,35 @@ Verified against the live Sepolia deployment, 8 September 2026:
 The first row is the point. Eighty-two thousand and no record still does not
 read as a pass.
 
-## Demo step 4 is limited to `fingerprint-only`, and that is not a bug
+## Demo step 4 works, and it is `derived` rather than `registered`
+
+Superseded by the subgraph deployment on 8 September 2026. `/verify` now has
+four verdicts, and the separation matters more than the count:
+
+| Probe | verdict | PCE | link |
+| --- | --- | --- | --- |
+| IMG_0230, the registered original | `registered` | 1,895 | exact pixel hash |
+| The same, stripped to 1800px q95 | **`derived`** | **37.3** | perceptual hash, Hamming 0, chain-confirmed |
+| A forgery that was never a photograph | `fingerprint-only` | **82,190** | none |
+| Canon 5D Mark III | `no-record` | 38.4 | none |
+
+Read rows two and three together. **A real degraded photograph scoring 37
+gets a stronger verdict than a forgery scoring 82,190**, because one descends
+from a registration and the other does not. That is the whole argument, and it
+is now a table rather than a paragraph.
+
+`derived` is deliberately not `registered`. The link is a perceptual hash,
+which is collidable and cheap to forge, so it says the image *descends from* a
+registered photograph rather than *is* one — and note the PCE on that row is
+below threshold, which is the honest state of a copy that has been through
+Flickr. The pixels do not support it; the pHash and the chain do, and the
+response says which.
+
+Two rules the tests enforce. A perceptual hit the chain cannot confirm grants
+nothing — the index is not the authority. And a dead subgraph degrades to the
+pixel answer rather than inventing a link.
+
+## Superseded: why step 4 was limited to `fingerprint-only`
 
 Measured through the running server: `game.jpg` degraded to 1800px comes back
 at **PCE 126.5 at q95** and **33.3 at q80**, reproducing the Gate B result on

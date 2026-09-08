@@ -24,7 +24,7 @@ from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 
-from console import chain, jobs, registry
+from console import chain, jobs, registry, subgraph
 from fingerprint import consistency, prnu, stress
 from ingest import hashing, record
 from scoring.app import _bodies, _score_against
@@ -176,8 +176,45 @@ async def verify(file: UploadFile = File(...)) -> dict:
         except chain.ChainError as error:
             raise HTTPException(502, f"chain read failed, verdict withheld: {error}")
 
+        # The lower branch, and the one demo step 4 rides on. A degraded copy
+        # has a different pixel hash, so the exact read above misses; the
+        # perceptual hash finds a candidate and the chain confirms it. The
+        # confirmation is the point -- a pHash hit on its own is a lookup, and
+        # `registered` still means a chain read succeeded.
+        derived_from = None
+        if registration is None:
+            try:
+                near = subgraph.nearest(perceptual_hash)
+            except subgraph.SubgraphError:
+                near = None       # index down: fall through, never fabricate
+            if near:
+                try:
+                    candidate = chain.image(near["imageHash"])
+                except chain.ChainError as error:
+                    raise HTTPException(502, f"chain read failed, verdict withheld: {error}")
+                if candidate:
+                    registration = candidate
+                    derived_from = {
+                        "imageHash": near["imageHash"],
+                        "hammingDistance": near["distance"],
+                        "matchedBy": "perceptual hash",
+                    }
+
         matched = best["pce"] >= prnu.PCE_THRESHOLD
-        verdict = "registered" if registration else ("fingerprint-only" if matched else "no-record")
+        if registration and derived_from is None:
+            # Exact pixel hash. This *is* the registered file, byte for byte.
+            verdict = "registered"
+        elif registration:
+            # A perceptual match the chain confirmed. Weaker on purpose: a
+            # pHash is collidable and cheap to forge, so this says the image
+            # descends from a registered photograph -- not that it is one.
+            # The PCE is reported beside it and here it may well be below
+            # threshold, which is the honest state of a degraded copy.
+            verdict = "derived"
+        elif matched:
+            verdict = "fingerprint-only"
+        else:
+            verdict = "no-record"
 
         payload: dict = {
             "verdict": verdict,
@@ -189,6 +226,7 @@ async def verify(file: UploadFile = File(...)) -> dict:
             "perceptualHash": perceptual_hash,
             "body": None,
             "registration": None,
+            "derivedFrom": derived_from,
             "consistency": None,   # filled below, with the stage report
         }
 

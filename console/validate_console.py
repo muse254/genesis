@@ -139,3 +139,50 @@ def test_signing_needs_a_key(client, monkeypatch):
     monkeypatch.delenv("DEPLOYER_PRIVATE_KEY", raising=False)
     with pytest.raises(Exception):
         reg._key()
+
+
+def test_a_perceptual_match_is_derived_not_registered(client, monkeypatch):
+    """A pHash is collidable and cheap to forge. It must not buy the strong word."""
+    from console import subgraph as sg
+
+    _stub_pixels(monkeypatch, 37.3)               # pixels BELOW threshold
+    monkeypatch.setattr(sg, "nearest", lambda h: {"imageHash": "0xaa", "distance": 0})
+
+    record = chain.ImageRecord("0xaa", "0x22", "0xbb", 0, "0x0", "0x0", 1895, 1788857551)
+    monkeypatch.setattr(chain, "image", lambda h: None if h != "0xaa" else record)
+    monkeypatch.setattr(chain, "body", lambda b: chain.BodyRecord("0xcc", "0xowner", "0xee", False))
+
+    body = client.post("/verify", files={"file": ("x.jpg", b"x", "image/jpeg")}).json()
+    assert body["verdict"] == "derived"
+    assert body["derivedFrom"]["matchedBy"] == "perceptual hash"
+    assert body["registration"] is not None      # the chain still confirmed it
+
+
+def test_a_perceptual_hit_the_chain_cannot_confirm_grants_nothing(client, monkeypatch):
+    """The index is not the authority. No record on chain, no claim."""
+    from console import subgraph as sg
+
+    _stub_pixels(monkeypatch, 5000.0)
+    monkeypatch.setattr(sg, "nearest", lambda h: {"imageHash": "0xaa", "distance": 0})
+    monkeypatch.setattr(chain, "image", lambda h: None)   # nothing on chain
+
+    body = client.post("/verify", files={"file": ("x.jpg", b"x", "image/jpeg")}).json()
+    assert body["verdict"] == "fingerprint-only"
+    assert body["registration"] is None
+
+
+def test_a_dead_subgraph_does_not_fabricate_a_link(client, monkeypatch):
+    """Index down must degrade to the pixel answer, never invent a registration."""
+    from console import subgraph as sg
+
+    _stub_pixels(monkeypatch, 5000.0)
+
+    def dead(_):
+        raise sg.SubgraphError("unreachable")
+
+    monkeypatch.setattr(sg, "nearest", dead)
+    monkeypatch.setattr(chain, "image", lambda h: None)
+
+    body = client.post("/verify", files={"file": ("x.jpg", b"x", "image/jpeg")}).json()
+    assert body["verdict"] == "fingerprint-only"
+    assert body["derivedFrom"] is None
