@@ -136,3 +136,75 @@ def resampling_peak(image, side: int = 1024) -> float:
     spectrum[:4] = 0.0  # DC and the lowest bins carry scene, not lattice
     median = float(np.median(spectrum))
     return 0.0 if median <= 0 else float(spectrum.max() / median)
+
+def effective_strength(planes, k, plane: int = DEFAULT_PLANE) -> float:
+    """How strongly the fingerprint is present, as a least-squares coefficient.
+
+    ``alpha_hat = <W, J*K> / ||J*K||^2``. A genuine exposure carries whatever
+    strength the silicon has; a forgery carries whatever alpha the attacker
+    chose. So a forgery tuned only to clear the threshold sits outside the
+    range genuine frames occupy.
+
+    **The range is per processing path and the two differ by a hundredfold**,
+    measured 8 September 2026::
+
+        RAW / CFA        genuine 0.97 - 3.64 (n=8)   forgeries 0.029 - 0.469
+        delivered JPEG   genuine 0.0109 - 0.0218 (n=2)  forgeries 0.065 - 0.653
+
+    Forgeries fall *below* on RAW, because an attacker plants the least that
+    clears the threshold, and *above* on delivered, because 8-bit
+    quantisation swallows anything under about alpha 0.3, so clearing PCE at
+    all costs more energy than a real attenuated fingerprint carries.
+
+    **Evadable, and cheaply.** At alpha 0.35 a delivered forgery scores 1,515
+    and returns 0.0166 -- inside the genuine band. Finding that took a
+    six-value sweep. This narrows an attacker's usable alpha from a floor to a
+    window; it does not close it. And the delivered band above rests on two
+    images, which is not a band. Report it, calibrate it per path, and do not
+    decide on it.
+    """
+    image = np.asarray(planes[plane], dtype=np.float64)
+    field = np.asarray(k[plane], dtype=np.float64)
+    if image.shape != field.shape:
+        raise ValueError(f"one lattice required: frame {image.shape}, K {field.shape}")
+
+    residual = prnu.noise_residual(planes[plane]).astype(np.float64).ravel()
+    expected = (image * field).ravel()
+    energy = float(expected @ expected)
+    return 0.0 if energy <= 0 else float(residual @ expected) / energy
+
+
+def pooled_triangle(d_values) -> float:
+    """[B18]'s sign-aware pooled statistic over per-candidate triangle scores.
+
+    ``V = sum(sign(d_i) * d_i^2) / sqrt(3 * n)``.
+
+    [G11] decides per candidate frame, and that does not work: measured on a
+    synthetic corpus where the ground truth is known, a forgery's per-frame d
+    against the frames it was built from has mean +1.08 and maximum +2.04,
+    while a genuine held-out frame reaches +2.18. The means separate; the
+    maxima cross. Pooling is the answer [B18] gives, and the sign is the
+    improvement -- a forgery should show *excess* correlation with the stolen
+    set, so positive deviations are evidence and negative ones are not.
+
+    ``mu`` and ``sigma`` are the suspect's **own** mean and spread across
+    candidates -- they carry a ``J`` subscript in [B18] eq. (12) and are not
+    the calibration's. That makes ``V`` scale-free and centred: it asks
+    whether this suspect's ``d`` distribution is skewed positive, which is
+    what a subset of stolen frames does to it. Normalising against the
+    calibration instead gives values in the hundreds and ranks a forgery above
+    a genuine frame in 3 runs out of 8 -- worse than chance, measured.
+
+    Only meaningful when the calibration it came from is sound. Check the
+    Pearson coefficient from :func:`fingerprint.attacks.calibrate_triangle`
+    first -- on this repo's own corpus it is negative, and every ``d`` built on
+    it is noise (`docs/adversarial.md`).
+    """
+    d = np.asarray(list(d_values), dtype=np.float64)
+    if d.size < 2:
+        return 0.0
+    spread = float(d.std())
+    if spread <= 0:
+        return 0.0
+    centred = (d - d.mean()) / spread
+    return float(np.sum(np.sign(centred) * centred**2) / np.sqrt(3.0 * d.size))

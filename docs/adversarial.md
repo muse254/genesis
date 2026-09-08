@@ -538,6 +538,44 @@ implemented here. N/N_c is 0.33 in this run, below the 0.5 the pooled test is
 reported to need. So Tier 2 is a live avenue rather than a dead one — which
 is what this experiment was for.
 
+### [B18]'s pooled statistic: implemented, and it did not reproduce
+
+`fingerprint/consistency.py:pooled_triangle`. Two attempts, and the first was
+wrong in an instructive way. [B18] eq. (12) is
+``V = sum(sign(d_i - mu_J) * ((d_i - mu_J)/sigma_J)^2)``, and ``mu_J`` and
+``sigma_J`` carry a **J subscript** -- they are the suspect's own mean and
+spread across candidates, not the calibration's. Normalising against the
+calibration instead produced values in the hundreds and ranked a forgery above
+a genuine frame in 3 runs of 8, worse than chance. Corrected, the statistic is
+scale-free and centred, and reads on a z-score scale.
+
+It still does not separate. Synthetic corpus, independent scenes, ground truth
+known, eight seeds per row:
+
+| Stolen / public | N/N_c | mean V, forgery | mean V, genuine | forgery ranked higher |
+| --- | --- | --- | --- | --- |
+| 8 / 24 | 0.33 | -0.00 | +0.05 | 5/8 |
+| 12 / 24 | 0.50 | -0.01 | +0.05 | 5/8 |
+| 16 / 24 | 0.67 | -0.01 | +0.05 | 5/8 |
+| 20 / 24 | 0.83 | -0.01 | +0.05 | 5/8 |
+
+Flat across every ratio, including the ones above the 0.5 the pooled test is
+reported to need.
+
+**What this does and does not establish.** It does not establish that [B18] is
+wrong; that would be a strong claim about published work resting on one
+reimplementation. Three explanations remain open and we cannot separate them
+here: the implementation may still diverge from the paper, the synthetic model
+may not reproduce the leakage the test keys on (i.i.d. noise at sigma 0.002,
+with scene content dominating the residual), or the effect may need conditions
+we did not set up -- [B18] specifies small test images and a large public
+dataset.
+
+What it does establish is that the machinery underneath is sound: the
+calibration recovers on this corpus at lambda +1.338 and Pearson +0.729. So
+the honest status is *not reproduced*, with the pieces in place for anyone who
+wants to take it further, rather than *does not work*.
+
 ### What does not help
 
 **The commitment on chain.** `fingerprintCommitment` is `SHA-256` over K. Once

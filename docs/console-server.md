@@ -94,10 +94,27 @@ distinction the whole system now rests on:
   pass. `registration` is null and the frontend must render it differently.
 - `no-record` is neutral. Absence means nothing.
 
-`consistency` is advisory and **must not** be thresholded — neither check
-catches a delivered-JPEG forgery (`docs/security.md`). It is shown as evidence
-beside the score, never as a verdict, and the API returning it does not make
-it one.
+`consistency` carries the advisory signals from
+`fingerprint/consistency.py`, in the order they run:
+
+| Field | Check | What it is worth |
+| --- | --- | --- |
+| `bodyConsistency` | Does the frame carry the body's structure beyond K? | Catches a synthetic carrier 23x clear; fails on a delivered-JPEG forgery at 1.6x |
+| `effectiveStrength` | How hard was the fingerprint planted? | Separates every forgery we built — until an attacker sweeps alpha and lands in the band. Path-dependent: calibrate RAW and delivered separately |
+| `resamplingPeak` | Was this interpolated to reach the lattice? | Catches an attacker who resized; blind to one who generates at native size |
+| `pooledTriangle` | `[B18]`, when reference frames are available | **Not reproduced.** Returned for research, and no consumer should read it yet |
+
+All four are advisory and **must not** be thresholded. None catches a
+delivered-JPEG forgery, which is the path the product serves
+(`docs/security.md`). They are shown as evidence beside the score, never as a
+verdict, and the API returning them does not make them one. A frontend that
+turns any of these into a pass/fail has misread the contract — which is why
+`verdict` is a separate field decided only by the chain read.
+
+`effectiveStrength` and `pooledTriangle` need a calibration the server does
+not have at first run: the genuine band per processing path, and reference
+vectors from the enrolment set. Until `/enrol` stores them, both are returned
+as `null` rather than as a number nobody can interpret.
 
 ### `GET /health`, `GET /state`
 

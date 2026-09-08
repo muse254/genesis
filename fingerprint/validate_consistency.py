@@ -94,3 +94,42 @@ def test_neither_check_is_a_verdict():
     source = (consistency.__doc__ or "") + (consistency.body_consistency.__doc__ or "")
     assert "never a verdict" in source and "do not threshold" in source
     assert not hasattr(consistency, "THRESHOLD")
+
+
+def test_effective_strength_tracks_the_planted_alpha():
+    """The whole point: alpha-hat must move with what the attacker planted."""
+    rng = np.random.default_rng(6)
+    k, _ = _body(rng)
+    scene = rng.uniform(0.3, 0.7, (96, 96)).astype(np.float32)
+
+    measured = []
+    for alpha in (0.1, 0.5, 1.0):
+        frame = {3: (scene * (1 + alpha * k[3])).astype(np.float32)}
+        measured.append(consistency.effective_strength(frame, k))
+    assert measured[0] < measured[1] < measured[2]
+
+
+def test_effective_strength_needs_one_lattice():
+    rng = np.random.default_rng(7)
+    k, _ = _body(rng)
+    with pytest.raises(ValueError, match="one lattice"):
+        consistency.effective_strength({3: rng.uniform(0, 1, (64, 64)).astype(np.float32)}, k)
+
+
+def test_pooled_triangle_is_centred_and_scale_free():
+    """mu and sigma are the suspect's own, so scaling d must not move V."""
+    d = [0.4, -1.2, 2.0, -0.3, 0.7, -0.9]
+    assert abs(consistency.pooled_triangle(d) - consistency.pooled_triangle([3 * x for x in d])) < 1e-9
+    assert abs(consistency.pooled_triangle([1.0] * 6)) < 1e-9   # no spread, no signal
+
+
+def test_pooled_triangle_responds_to_a_positive_tail():
+    """A subset of stolen frames should push the statistic positive."""
+    symmetric = [-1.0, -0.5, 0.0, 0.5, 1.0, -0.2, 0.2, 0.1]
+    tailed = symmetric[:-2] + [4.0, 4.5]
+    assert consistency.pooled_triangle(tailed) > consistency.pooled_triangle(symmetric)
+
+
+def test_pooled_triangle_handles_degenerate_input():
+    assert consistency.pooled_triangle([]) == 0.0
+    assert consistency.pooled_triangle([1.0]) == 0.0

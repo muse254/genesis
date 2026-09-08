@@ -72,7 +72,7 @@ gates a verdict.
 | Triangle test `[G11]` | Tried | Negative result on a corpus that was never suitable — 41 frames, few scenes |
 | Effective strength `alpha_hat` | Tried | Separates every forgery here from every genuine frame — then falls to a six-line alpha sweep. A window, not a boundary |
 | Triangle test implementation | **Validated** | Recovers on a synthetic corpus with independent scenes: lambda +1.338, Pearson +0.729, against -0.163 / -0.379 on ours. The code is right; the corpus was wrong |
-| **Pooled statistic `[B18]`** | **Not implemented** | Per-frame d overlaps even on a clean corpus (means separate 2.2x, maxima cross). Pooling is the whole point of `[B18]` and is the largest open lead |
+| Pooled statistic `[B18]` | Implemented, `pooled_triangle` | **Not reproduced.** Flat at every stolen/public ratio from 0.33 to 0.83, 5/8 runs — chance. Cannot separate implementation, synthetic model, or unmet conditions |
 | **Two fingerprints in one image** | **Not tested** | A forgery on a real carrier holds the carrier's PRNU *and* ours. A genuine frame holds one |
 | Noise-floor physics | Not tested | Shot-noise scaling and read noise at the claimed ISO should not match a foreign carrier |
 | Demosaic / CFA consistency | Not tested | A forgery carries the carrier's interpolation signature |
