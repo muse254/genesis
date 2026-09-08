@@ -125,9 +125,11 @@ false-positive rate, and a second enrolment so the test runs both ways.
       session and commit log all indexed, with the record fields read back
       from storage
 - [x] Address and `startBlock` filled: `0xDf71e9350B4cA587eb3Bd01F2e7D710F3Fc25CF3`, block 11659977
-- [ ] Deploy to Subgraph Studio — needs a free deploy key from
-      <https://thegraph.com/studio>. Then set `GENESIS_SUBGRAPH_URL` for the
-      MCP server and the verify page's perceptual branch
+- [x] Deployed to Subgraph Studio, 8 September 2026 — `genesis` v0.0.1,
+      queries at `api.studio.thegraph.com/query/1758974/genesis/v0.0.1`.
+      Synced past the registration blocks with `hasIndexingErrors: false`,
+      and the body and image read back with the same owner, commitment and
+      PCE the chain returns directly
 
 **8. Scoring service and verify page.** Done bar the chain read.
 
@@ -144,7 +146,11 @@ false-positive rate, and a second enrolment so the test runs both ways.
       unregistered one a zeroed struct. The same assertion as anvil, on the
       chain the demo actually uses
 - [ ] The perceptual branch re-scores against every body the service holds,
-      which is right for one photographer and does not scale. Needs §7
+      which is right for one photographer and does not scale. §7 is now
+      deployed, so this is unblocked: `lookupByPerceptualHash` in
+      `verify/src/main.ts` still throws `needs the subgraph` and can now be
+      written. It is also what would let demo step 4 return `registered`
+      instead of `fingerprint-only`
 
 **9. Subgraph MCP server.** Written and tested; needs §7 deployed.
 
@@ -153,7 +159,15 @@ false-positive rate, and a second enrolment so the test runs both ways.
       and a missing record reads as "nothing registered" rather than "fake"
 - [x] Run against a local graph-node: all three tools answered from really
       indexed events
-- [ ] Point `GENESIS_SUBGRAPH_URL` at the deployed subgraph
+- [x] `GENESIS_SUBGRAPH_URL` points at the deployment, and all three tools
+      answer from really indexed Sepolia events rather than a local node
+- [x] The wording an agent repeats was wrong and is fixed. It said "Exposed
+      on body X" and "which sensor the light fell on" — the sentence
+      `docs/adversarial.md` falsifies. `registerImage` checks only that the
+      body's owner sent the transaction, so a registration establishes who
+      claimed the image and when, not where the light fell. It now says
+      "Registered by the owner of body X" and states the two claims from
+      `docs/claims.md`. A test fails if "exposed on" returns
 
 **10. Chainlink CRE — not started.** No code exists. This is the one
 sponsor track in `BUILD.md` §11 with nothing behind it, and until now nothing

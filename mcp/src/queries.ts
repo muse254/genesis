@@ -137,7 +137,12 @@ export function describeImage(record: ImageRecord | null, hash: string): string 
   }
 
   const lines = [
-    `Exposed on body ${record.body.id}`,
+    // Not "exposed on body X". `registerImage` checks that the body's owner
+    // sent the transaction and nothing else, so a registration establishes
+    // who claimed the image and when -- not where the light fell. A
+    // fingerprint can be planted by anyone holding one RAW file off the body
+    // (docs/adversarial.md), the owner included. See docs/claims.md.
+    `Registered by the owner of body ${record.body.id}`,
     `  ENS node             ${record.body.ensNode}`,
     `  Owner                ${record.body.owner}`,
     `  PCE score            ${record.pceScore}`,
@@ -163,9 +168,14 @@ export function describeImage(record: ImageRecord | null, hash: string): string 
 
   lines.push(
     "",
-    "This certifies origin, not truth: which sensor the light fell on, which",
-    "identity that body is registered to, and when it was first seen. It does",
-    "not say the image is authentic, AI-free, or that the scene was real.",
+    "Two things are certified here and nothing else. That this registration",
+    "exists on chain, signed by the body's owner, at the time shown. And that",
+    "these pixels carry that body's fingerprint at the PCE above.",
+    "",
+    "The fingerprint alone proves nothing: anyone holding one RAW file off a",
+    "body can plant it in an image the camera never took, invisibly. So this",
+    "does not say the light fell on that sensor, and it does not say the image",
+    "is authentic, AI-free, or that the scene was real.",
   );
 
   return lines.join("\n");

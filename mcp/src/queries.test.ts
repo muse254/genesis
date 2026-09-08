@@ -58,14 +58,23 @@ test("a missing record says nothing was registered, not that the image is fake",
   }
 });
 
-test("a match reports origin and refuses authenticity", async () => {
+test("a match reports a registration, not where the light fell", async () => {
   const client = stub({ image: IMAGE });
   const answer = describeImage(await client.imageByHash(IMAGE.id), IMAGE.id);
 
-  assert.match(answer, /Exposed on body/);
+  // `registerImage` checks only that the body's owner sent the transaction,
+  // and a fingerprint can be planted from one RAW file off the body. So the
+  // agent must say who registered it, never that the sensor saw the scene.
+  assert.match(answer, /Registered by the owner of body/);
+  assert.ok(!/exposed on/i.test(answer), "must not claim where the light fell");
+  assert.ok(
+    !/light fell/i.test(answer) || /does not say the light fell/i.test(answer),
+    "may only mention the light to deny the claim",
+  );
+
   assert.match(answer, /1895/);
-  assert.match(answer, /certifies origin, not truth/);
-  assert.match(answer, /does\s+not say the image is authentic, AI-free/s);
+  assert.match(answer, /fingerprint alone proves nothing/i);
+  assert.match(answer, /does\s+not say the image\s+is authentic, AI-free/s);
   assert.ok(!/\bverified\b/i.test(answer), "must never say verified");
 });
 
