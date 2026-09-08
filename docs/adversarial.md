@@ -647,6 +647,40 @@ is for.
    Already measured above: catches a leaked-K forgery outright, misses an
    own-estimate one.
 
+Tier 1 items 1 and 3 are now implemented in `fingerprint/consistency.py`,
+with `fingerprint/validate_consistency.py` for the shape of each. Measured on
+this body, five reference frames, 8 September 2026:
+
+| Probe | body consistency | resampling peak |
+| --- | --- | --- |
+| genuine IMG_0217 | +0.055 | — |
+| genuine `a-piece-of-quiet.jpg` | — | 25.8 |
+| genuine `game.jpg` | +0.015 | 16.0 |
+| genuine IMG_0230, the weakest | +0.012 | — |
+| **forgery, 5D3 carrier, alpha 1.5** | **+0.0077** | 33.2 |
+| **forgery, synthetic carrier** | **+0.00052** | **7.4** |
+| a different R10 body | +0.00040 | — |
+
+Both checks are partial and the module says so in its own docstrings.
+
+Consistency catches the synthetic forgery outright, 23x below the weakest
+genuine frame, and **fails on the delivered-JPEG forgery**: 0.0077 against
+0.012 is 1.6x, and on the per-reference maximum that forgery reaches +0.029,
+beating two genuine probes. A delivered JPEG carries far less of the residual
+structure this keys on than a RAW does — and the delivered path is the one the
+product exists to serve, so the check is weakest exactly where it is needed.
+
+Resampling has the same shape of problem from the other side. The upsampled
+forgeries sit above both genuine files, 32–33 against 16–26, but that is not a
+threshold on n = 2, and the synthetic forgery scores *lowest of everything* at
+7.4 because it was generated at native resolution and never resampled. The
+check only sees an attacker who resized.
+
+So neither is a gate, and `validate_consistency.py` has a test that fails if
+anyone gives the module a threshold constant. They are reported beside a score
+to raise what a forgery has to satisfy. The security boundary is still
+`registerImage`'s owner check and nothing here moves it.
+
 **Tier 2 — aimed at the catalogue attacker specifically.**
 
 4. **Re-run the pooled triangle test [B18] on a corpus that suits it** — many
