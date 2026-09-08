@@ -45,6 +45,19 @@ its own work. Editorial calls were surfaced, not taken silently.
 | Commit the corpus; document a sample run | 662 MB of frames published, with the forgery-kit consequence stated |
 | Then: scrub it and keep the files private | History rewritten and force-pushed. The rewrite also deleted the local copies — see below |
 
+## Log — 8 September 2026
+
+| Asked | Produced |
+| --- | --- |
+| Pick up what the checklist can unblock | Etherscan verification of the live `Registry`, and the verify page's chain read re-checked against Sepolia itself rather than anvil |
+| (key provided mid-task) | `forge verify-contract` run; confirmed independently through the Etherscan V2 API rather than trusting the command's own output |
+| The last four ENS stubs | `identity/scripts/register-body.ts` implemented against ENSv2 ABIs read from the verified sources on Blockscout, plus `ens.ts` and 8 tests |
+| Adversarial research: K has leaked | Subagent briefed to attack the system as built and measure it, with the attack code and `docs/adversarial.md` as deliverables. In flight at time of writing |
+| Can the library process HEIC, from two phones? | No, and `docs/phones.md` — the reasons are architectural, not a missing codec |
+| Explain the birthmark each photo carries | `docs/camera-sensors.md` — sensor physics, the estimator, the enrolment set |
+| Link the references for each claim | Four papers added and verified by lookup rather than recalled; paper claims and repo measurements marked as different kinds of source |
+| Make it shorter | 228 lines to 170, tables in place of prose |
+
 ## Model errors worth recording
 
 **A constant taken from memory.** The model wrote `SIGMA = 5.0 / 255.0` with
@@ -80,13 +93,35 @@ photographs. Caught before the force-push that would have destroyed both.
 Restoring from `origin` first, then scrubbing, was the order that should have
 been planned rather than recovered into.
 
-Four of the five were found by measuring or by the tooling failing loudly.
-The first was found only because the human asked for a citation.
+**An empty string is a perfectly good string.** `.env` declared the `ENS_*`
+keys blank, and the model used `??` for the fallback, which only catches
+`undefined`. The address became `""`, and the RPC rejected it as "Invalid
+params" — an error four frames away from the mistake and naming none of it.
+The offline tests all passed. It surfaced only when the code was pointed at
+live Sepolia, which is the argument for running the read paths against the
+real chain rather than trusting a green suite.
+
+**A roadmap that belonged to someone else.** The model reported that
+`BUILD.md` put an Android app in this project's phase 2. It does not — that
+passage describes the *Birthmark Standard's* roadmap, as does the README's
+"PRNU on phones". Left uncorrected it would have written a commitment into
+`docs/phones.md` that nobody had made. Caught by re-reading the surrounding
+lines before citing them, which is the only reason it was caught at all.
+
+Six of the eight were found by measuring or by the tooling failing loudly.
+The other two — the constant taken from memory, and the roadmap misread —
+were found only by going back to the source and reading it.
 
 ## Not done
 
-The subgraph, the scoring service, the verify page, the MCP server and the
-CRE workflow are stubs. Nothing has touched a testnet; ENS is unstarted.
+The CRE workflow is still a stub. The subgraph, the scoring service, the
+verify page and the MCP server are written and tested, and the subgraph is
+not deployed — that waits on a Graph Studio key.
+
+`Registry` is live on Sepolia, verified on both Blockscout and Etherscan,
+with a body, an image and a session registered and reading back. ENS is
+implemented but not registered: the parent name is deliberately left until
+close to the recording, because ENSv2 Sepolia resets names on redeployment.
 
 The false-positive rate is still unmeasured. One same-model negative exists
 and it lands in the null band, which rules out a broken approach but does not
@@ -112,3 +147,11 @@ so the test has never run both ways.
   scoring them as negatives would have produced a fake result.
 - The whole chain path was run offline against `anvil` before any claim that
   it works.
+- ENSv2 ABIs were read from the verified sources on Blockscout rather than
+  recalled, and both failure paths of the registry walk were exercised
+  against live Sepolia state — including `raffy.eth`, which is owned but has
+  no subregistry, the case that would otherwise have been found on camera.
+- The Etherscan verification was confirmed through the API rather than
+  trusting the exit status of the command that submitted it.
+- The papers cited in `docs/camera-sensors.md` were verified by lookup
+  before being added, after the sigma error above.
