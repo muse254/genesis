@@ -19,9 +19,14 @@
         color: inherit; cursor: pointer; }
       #result { margin-top: 1.75rem; padding: 1.1rem 1.25rem; border: 1px solid var(--line);
         border-radius: .6rem; border-left-width: 4px; }
-      #result.match { border-left-color: #0a8f4d; }
-      #result.no-match { border-left-color: #9a7b12; }
+      /* Three outcomes, three treatments. A fingerprint score is not a
+         verdict, so it must not borrow the colour of one. */
+      #result.registered { border-left-color: #0a8f4d; }
+      #result.pixels-only { border-left-color: #9a7b12; border-left-width: 6px; }
+      #result.no-record { border-left-color: var(--line); }
       #result.error { border-left-color: #b3261e; }
+      #result.pixels-only h2 { color: #7a600e; }
+      @media (prefers-color-scheme: dark) { #result.pixels-only h2 { color: #d8b442; } }
       #result.working { border-left-color: var(--line); opacity: .7; }
       #result h2 { font-size: 1.05rem; margin: 0 0 .75rem; }
       dl { margin: 0; }
@@ -42,15 +47,16 @@
     -->
     <main>
       <h1>Verify an image</h1>
-      <p class="lede">Drop a photograph. We tell you which camera body exposed it — or that we don't know.</p>
+      <p class="lede">Drop a photograph. We tell you whether its owner registered it — or that we have no record.</p>
       <input id="file" type="file" accept="image/*" />
       <section id="result" hidden></section>
       <footer>
         <p>
-          We certify origin, not truth: exposed on body X, registered to
-          identity Y, first seen at time T. We do not say “authentic”,
-          “AI-free”, or “verified real”, and the absence of a record means
-          nothing.
+          We certify origin, not truth: body X’s owner registered this image
+          at time T. A fingerprint score on its own proves nothing — it can be
+          planted — so only an owner’s registration counts. We do not say
+          “authentic”, “AI-free”, or “verified real”, and the absence of a
+          record means nothing.
         </p>
       </footer>
     </main>

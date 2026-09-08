@@ -24,6 +24,14 @@ export type Verdict = "exact" | "perceptual" | "no-match";
 
 export interface VerifyResult {
   verdict: Verdict;
+  /**
+   * Whether a registration for this image was actually read off the chain.
+   * The PRNU score alone cannot establish this and must never imply it:
+   * anyone holding one RAW file off the body can plant the fingerprint in
+   * an image the camera never took, at a distortion no eye can see
+   * (`docs/adversarial.md`). Only the chain says who signed for what.
+   */
+  registered: boolean;
   bodyName?: string; // e.g. r10-4471.cam.osoro.eth
   pceScore?: number;
   modificationLevel?: 0 | 1 | 2;
@@ -111,6 +119,7 @@ export async function verifyImage(file: File): Promise<VerifyResult> {
   if (exact) {
     return {
       verdict: "exact",
+      registered: true,
       bodyName: best?.body,
       pceScore: exact.pceScore,
       modificationLevel: exact.modificationLevel,
@@ -125,6 +134,7 @@ export async function verifyImage(file: File): Promise<VerifyResult> {
   if (lookup.verdict === "match" && best) {
     return {
       verdict: "perceptual",
+      registered: false,
       bodyName: best.body,
       pceScore: best.pce,
       method: best.path,
@@ -133,7 +143,12 @@ export async function verifyImage(file: File): Promise<VerifyResult> {
     };
   }
 
-  return { verdict: "no-match", pceScore: best?.pce, threshold: lookup.threshold };
+  return {
+    verdict: "no-match",
+    registered: false,
+    pceScore: best?.pce,
+    threshold: lookup.threshold,
+  };
 }
 
 /** Exact branch: pixel hash straight to the registry. */
@@ -175,8 +190,10 @@ function render(result: VerifyResult): void {
     rows.push(`<div class="row"><dt>${label}</dt><dd>${value}</dd></div>`);
 
   if (result.verdict === "no-match") {
-    section.className = "no-match";
-    rows.push("<h2>No match</h2>");
+    // Neutral, deliberately. An absent record is not a finding about the
+    // image, and `docs/claims.md` is explicit that it means nothing.
+    section.className = "no-record";
+    rows.push("<h2>No record</h2>");
     rows.push(
       `<p>This does not resolve to any body we hold${
         result.pceScore !== undefined
@@ -184,9 +201,33 @@ function render(result: VerifyResult): void {
           : ""
       }. That means we have no record — not that the image is fake.</p>`,
     );
+  } else if (!result.registered) {
+    // The fingerprint matched and nobody registered the image. This is NOT a
+    // pass and must not look like one. Measured against our own reference: a
+    // forged image scores 393,382 where the best genuine frame scores 56,255,
+    // at a distortion of 51.6 dB — invisible. See `docs/adversarial.md`.
+    section.className = "pixels-only";
+    rows.push("<h2>Fingerprint matched — but nothing is registered</h2>");
+    if (result.bodyName) say("Fingerprint of", result.bodyName);
+    if (result.pceScore !== undefined) {
+      say("Score", `${result.pceScore.toFixed(1)} (threshold ${result.threshold})`);
+    }
+    say("Matched by", result.method ?? "PRNU");
+    if (result.orientation && result.orientation !== "0 deg") {
+      say("Orientation", `${result.orientation} — the image had been turned`);
+    }
+    say("On chain", "no registration found");
+    rows.push(
+      "<p class=\"caveat\"><strong>This is not a pass.</strong> These pixels carry " +
+        "that body’s fingerprint, but nobody has registered this image on chain. " +
+        "A fingerprint can be planted: a single RAW file off a camera is enough " +
+        "to stamp it onto an image the camera never took, at a distortion no eye " +
+        "can see. Only a registration signed by the body’s owner means anything " +
+        "here.</p>",
+    );
   } else {
-    section.className = "match";
-    rows.push("<h2>Exposed on a known body</h2>");
+    section.className = "registered";
+    rows.push("<h2>Registered by the body’s owner</h2>");
     if (result.bodyName) say("Body", result.bodyName);
     if (result.pceScore !== undefined) {
       say("PCE", `${result.pceScore.toFixed(1)} (threshold ${result.threshold})`);
@@ -200,7 +241,8 @@ function render(result: VerifyResult): void {
       say("Modification level", ["unedited raw", "adjusted", "generative edit"][result.modificationLevel]);
     }
     rows.push(
-      "<p class=\"caveat\">Origin, not truth. This says which sensor the light fell on. It does not say the scene was real.</p>",
+      "<p class=\"caveat\">Origin, not truth. The owner of this body signed for " +
+        "this image at the time shown. That does not say the scene was real.</p>",
     );
   }
 
