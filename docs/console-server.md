@@ -154,6 +154,25 @@ ENSv2 names on Sepolia reset on redeployment, so `/state` resolves the parent
 live and the console shows it before recording. `identity/addresses.md` has
 the sequence and the `--dry-run` rehearsal.
 
+## Built so far
+
+`console/chain.py` and `console/app.py`, with `console/validate_console.py`.
+`/health`, `/state` and `/verify` are live. Chain reads go over raw JSON-RPC —
+the registry's getters return fixed-size static structs, so a selector plus one
+word and some slicing beats a `web3` dependency and leaves nothing to guess
+about what went over the wire.
+
+Verified against the live Sepolia deployment, 8 September 2026:
+
+| Probe | verdict | PCE | registration |
+| --- | --- | --- | --- |
+| A forgery that was never a photograph | `fingerprint-only` | 82,190 | null |
+| IMG_0230, the registered original | `registered` | 1,895 | block time 1788857551, owner `0x91c968d9…` |
+| Canon 5D Mark III | `no-record` | 38.4 | null |
+
+The first row is the point. Eighty-two thousand and no record still does not
+read as a pass.
+
 ## Build order
 
 1. `/health`, `/state` — nothing else is debuggable without them.
