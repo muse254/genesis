@@ -544,6 +544,134 @@ anything. The weakest frames decide this and they say no.
    is the cheaper attack. A bar, not a wall.
 4. **Registering the body early.** It closes the `registerBody` race.
 
+## Prior art, and what to try next
+
+We are not the first at this crossroads, and the field that settled it is not
+image forensics. It is biometrics.
+
+### The framing that makes it tractable
+
+**PRNU is a biometric of the camera**, and it has the defining property of
+one: the trait is irrevocable and it is exposed every time it is used. You
+cannot reset a stolen fingerprint, and you cannot re-fab a sensor. Biometrics
+converged on the rule that a trait of this kind is an *identifier, not a
+secret*. PRNU is the harder case, because the trait is broadcast in every
+photograph the camera has ever produced — including every RAW already
+delivered to a client, which cannot be recalled.
+
+Everything in this section follows from that sentence.
+
+### What the industry actually deployed
+
+Not sensor noise. The deployed answer is a hardware key signing at capture,
+under C2PA:
+
+| System | What it does |
+| --- | --- |
+| Leica M11-P, Oct 2023 | First consumer camera with C2PA built in |
+| Leica SL3-S, Jan 2025 | Signs every JPEG and DNG by default, dedicated hardware security chip |
+| Sony PXW-Z300, 2025 | First camcorder with native C2PA signing |
+| Samsung Galaxy S25 | Snapdragon 8 Elite secure processing unit holds the key |
+| Google Pixel 10 | Signs by default, Titan M2, on-device timestamping authority |
+| Nikon Z6 III, Aug 2025 | C2PA by firmware — **then suspended after a signing vulnerability** |
+
+Two things to take from that table [C2PA26]. Leica could not backport signing
+by firmware to the M11, Q3 or SL3 because those bodies lack the chip, which is
+the whole reason a fingerprint approach exists: it works on hardware that
+already shipped. And Nikon's certificate programme was suspended within a year
+of launch. Hardware attestation is the right answer and it is not a magic
+escape.
+
+One thing not to claim: no document was found in which C2PA considered and
+rejected PRNU. What is observable is that the deployed systems key at capture,
+and that the sensor-noise route — the Birthmark Standard, `BUILD.md` §2 — is
+the unadopted one. That is an observation about adoption, not a proof about
+merit.
+
+### The arms race is four rounds deep
+
+| Round | Work | Result |
+| --- | --- | --- |
+| 1 | [G10] / [G11] | The fingerprint-copy attack. What this document runs |
+| 2 | [G11] §3 | The triangle test answers it |
+| 3 | [L17] | Improved copy attack defeats the triangle test |
+| 4 | [B18] | Sign-aware pooled statistic answers that |
+
+**The nuance that changes our conclusion.** [B18] reports the pooled test
+working best when the attacker uses *many* images, when the public dataset is
+*large*, and when the test image is *small* — degrading when N is small and
+images are large. That is the opposite of what our own negative result
+assumed. A photographer with a public catalogue is the case the defence is
+*strongest* in, not weakest. And [B18] does not require knowing which images
+the attacker used, only the public set — so it is deployable by anyone with a
+portfolio.
+
+Our triangle-test failure was a corpus of 41 frames from one shoot with a
+handful of scenes. That is the wrong shape for the test, and it says nothing
+about the test.
+
+### The same problem, in four other industries
+
+| Field | The same problem | What they did |
+| --- | --- | --- |
+| Biometrics | Trait irrevocable and publicly observable | Cancelable templates: ISO/IEC 24745 requires irreversibility, unlinkability, **revocability** [ISO24745] |
+| Hardware PUFs | A readable response is a modelable one | Fuzzy extractor turns the noisy measurement into a key; the verifier holds only the public half |
+| Luxury goods, pharma | Intrinsic features get copied | **Add** a secret — taggants, DNA tagging — rather than measure an intrinsic one |
+| Serialization | Identifiers are copyable | Registry plus first-seen-wins priority, not object properties |
+
+The biometrics row is the one to read closely, because it names the distinction
+this document keeps running into. **Cancelable templates protect the stored
+template, not the trait.** They defend a database breach. They do nothing about
+a trait the subject emits publicly — and that is exactly why degrading the
+verifier's copy of K failed above, and why it failed for a second reason too:
+the degradation costs the weak-signal images, which are the ones the product
+is for.
+
+### Proposals, ranked
+
+**Tier 1 — cheap, no new dependencies, worth building.**
+
+1. **Multi-artefact consistency.** Stop scoring PRNU alone and require the
+   other body- and pipeline-specific traces to agree. The forgery in attack 3
+   is the argument: it was upsampled 5760x3840 -> 6000x4000 with Lanczos, and
+   resampling of that kind is detectable. Check that the native dimensions are
+   plausible for the claimed body, that the demosaic and CFA signature match,
+   that the JPEG quantisation lineage is consistent, that the noise-versus-
+   brightness curve is this sensor's. A forgery carries the *carrier's*
+   artefacts plus our K, and that combination is internally inconsistent in
+   ways a genuine capture is not.
+2. **A hot-pixel and defect map**, captured at enrolment as a second sparse
+   body-specific trace. An attacker planting PRNU does not reproduce it, and
+   extracting it costs nothing we are not already paying.
+3. **Collinearity re-scoring** on anything the scoring service calls a match.
+   Already measured above: catches a leaked-K forgery outright, misses an
+   own-estimate one.
+
+**Tier 2 — aimed at the catalogue attacker specifically.**
+
+4. **Re-run the pooled triangle test [B18] on a corpus that suits it** — many
+   scenes, many frames, smaller test images. Given [B18]'s conditions this is
+   the one avenue that specifically addresses an attacker holding a
+   photographer's whole catalogue, and our negative result does not apply to it.
+5. Expect round 3 back. [L17]'s block-wise dispersal is the counter, and it is
+   not attempted here.
+
+**Tier 3 — structural, and the only durable ones.**
+
+6. **Registration priority.** Already built, and the cheapest real defence:
+   register at capture and a later forgery cannot claim to predate it.
+7. **Capture-time signing.** The industry answer, needing manufacturer
+   cooperation — which is the gap this project exists to fill. So the honest
+   positioning is *PRNU for the archive that already exists, C2PA for what is
+   shot from now on*, and not PRNU as a replacement for it.
+
+**What cannot work, with a name for why.** Any keyed transform of K held by
+the verifier. If the transform is public the attacker applies it too; if it is
+secret, verification has to apply it to the probe as well, which restores the
+symmetry exactly. That is the trait-versus-template distinction from
+[ISO24745], and it is why no preprocessing yields asymmetry from a trait that
+ships inside every output the device produces.
+
 ## What has to change
 
 **`docs/claims.md`, "We certify".** The first bullet is false as written and
@@ -660,3 +788,12 @@ Not attempted, and each would make the attack stronger rather than weaker:
   Applicability of Fragile Camera Fingerprints", ESORICS 2019,
   arXiv:1907.04025. JPEG-quality cliff at q85; the 1.4M-image social-media
   quality survey.
+- **[ISO24745]** ISO/IEC 24745, *Biometric information protection*. The
+  irreversibility / unlinkability / revocability requirements, and the
+  template-versus-trait distinction this document leans on. Summary:
+  <https://www.nist.gov/system/files/documents/2021/01/26/4buschb_ibpc-iso-24745-100305-2p.pdf>;
+  overview of the protection literature: arXiv:2303.02715.
+- **[C2PA26]** C2PA hardware adoption as of early 2026 — Leica M11-P and
+  SL3-S, Sony PXW-Z300, Nikon Z6 III and its suspension, Samsung Galaxy S25,
+  Google Pixel 10. <https://attesttrail.com/blog/c2pa-cameras-support> and
+  <https://www.softwareseni.com/c2pa-adoption-in-2026-hardware-platforms-and-verification-reality/>
