@@ -488,8 +488,13 @@ Confidential HTTP if a ~1 MB reference won't ride as a Vault secret.
 A product decision, not a copywriting one. Overclaiming here gets you publicly
 dismantled by anyone who understands the analog hole.
 
-**We certify:** exposed on body X · body registered to identity Y · first
-registered at time T · these derivatives descend from that original.
+**We certify:** this image carries body X's sensor fingerprint *and* body X's
+owner registered it · body registered to identity Y · first registered at
+time T · these derivatives descend from that original.
+
+The fingerprint on its own certifies nothing — one RAW file off the body is
+enough to plant it invisibly (`docs/adversarial.md`). Everything the product
+says has to be downstream of `registerImage`'s owner check.
 
 **We never say:** "authentic" · "AI-free" · "verified real" · that the absence
 of a record means anything.

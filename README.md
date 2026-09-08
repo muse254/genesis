@@ -34,8 +34,13 @@ input — K is estimated by maximum likelihood from the frames the body itself
 produced, so nothing outside them is needed to enrol a body or to score an
 image against it.
 
-We certify: exposed on camera body X · camera body registered to identity Y · first
+We certify: this image carries body X's sensor fingerprint **and body X's
+owner registered it** · camera body registered to identity Y · first
 registered at time T · these derivatives descend from that original.
+
+The fingerprint alone certifies nothing: it can be planted by anyone holding
+one RAW file off the body, invisibly (`docs/adversarial.md`). The owner's
+registration is what carries the claim.
 
 ## The maths behind K
 
@@ -76,6 +81,11 @@ Two properties are what make this work retroactively. K is a property of the
 silicon, not of the file, so stripping metadata removes nothing. And K is
 never published — only a hash of it goes on chain, because a published
 fingerprint is a forgery kit.
+
+The same estimator that reads K can plant it. Measured on this body, one RAW
+file is enough to forge a match at a distortion no eye sees, which is why
+neither the references nor the enrolment frames are in this repository —
+`docs/claims.md` has the reasoning and `docs/adversarial.md` the numbers.
 
 The full derivation is Fridrich, *Digital Image Forensics Using Sensor Noise*,
 IEEE Signal Processing Magazine 26(2), 2009: sensor model eq. (3), estimator

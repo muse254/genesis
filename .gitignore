@@ -7,8 +7,11 @@ __pycache__/
 .ruff_cache/
 *.egg-info/
 
-# Fingerprints and enrolment data — a published reference is a published
-# forgery kit. These never leave the machine.
+# Fingerprints and enrolment data. A published reference is a published
+# forgery kit — and so is a single RAW file: measured on this body, one frame
+# is enough to estimate K well enough to plant it invisibly in an image the
+# camera never took (docs/adversarial.md). So the frames are covered here too,
+# not just the .npz. These never leave the machine.
 *.npz
 data/references/
 data/flats/
