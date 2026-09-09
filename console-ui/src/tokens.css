@@ -36,15 +36,16 @@ html, body {
   -webkit-font-smoothing: antialiased;
 }
 
-/* The board is drawn at the recording resolution. Scaling the whole stage
-   keeps every measurement in the handoff literal rather than approximate. */
+/* The handoff draws 1280x720 because that is the recording resolution, not
+   because the console should be that size. Locked to it and scaled, anything
+   that is not 16:9 letterboxes and the page's height goes unused -- so the
+   stage fills the viewport instead and the layout flexes into it. Size the
+   window to 16:9 when recording and it is the board again, exactly. */
 #stage {
-  width: 1280px;
-  height: 720px;
+  width: 100vw;
+  height: 100vh;
   display: flex;
   flex-direction: column;
-  transform-origin: top left;
-  border: 1px solid var(--hairline);
 }
 
 header.chrome {
@@ -82,7 +83,12 @@ header.chrome .meta {
   color: var(--secondary);
 }
 
-main.screen { flex: 1; overflow: hidden; padding: 28px 32px; }
+main.screen {
+  flex: 1 1 auto;
+  min-height: 0;          /* without this a flex child refuses to shrink */
+  overflow-y: auto;
+  padding: 28px 32px;
+}
 
 footer.chrome {
   height: 38px;

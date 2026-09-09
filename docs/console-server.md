@@ -356,6 +356,31 @@ Verified end to end after the fixes: IMG_0217 registers in block 11666892,
 verifies as `registered` at PCE 49,310, and its 1800px q95 copy comes back
 `derived` at **407.9** — which is `docs/gates.md`'s 408 for that frame.
 
+## The console fills the window; the artboard does not
+
+First cut locked `#stage` to 1280x720 and scaled it, on the reasoning that
+the handoff's measurements should stay literal. Wrong trade: anything that is
+not 16:9 letterboxes, and on an ordinary browser window most of the page's
+height went unused. The stage now fills the viewport, the two-column screens
+flex into it, and the photo slot is `aspect-ratio: 3 / 2` capped at `46vh`
+rather than a hard 430x287. Size the window to 16:9 when recording and it is
+the board again, exactly.
+
+`main.screen` carries `min-height: 0` with it. Without that a flex child
+refuses to shrink below its content, so a long verdict pushed the footer off
+screen instead of scrolling.
+
+## RAW does not render in a browser
+
+`/preview` develops any accepted file to a small JPEG. It exists because the
+register screen showed no image at all: an `<img>` pointing at a CR3 renders
+nothing and reports nothing, so the slot just stayed empty. A browser cannot
+decode RAW, and the only decoder on the machine is the scorer's.
+
+Display only, and the docstring says so: `/verify` and `/register-image` read
+the uploaded file and never this. A preview that could influence a verdict
+would be a second decode path to disagree with the first.
+
 ## Build order
 
 1. `/health`, `/state` — nothing else is debuggable without them.

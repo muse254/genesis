@@ -106,6 +106,16 @@ export const api = {
     return new File([blob], "degraded.jpg", { type: "image/jpeg" });
   },
 
+  /** Display only — a browser cannot decode a CR3. Never feeds a verdict. */
+  async preview(file: File, longestEdge = 720): Promise<string> {
+    const form = new FormData();
+    form.append("file", file);
+    form.append("longest_edge", String(longestEdge));
+    const response = await fetch(`${BASE}/preview`, { method: "POST", body: form });
+    if (!response.ok) throw new Error(`preview: ${response.status}`);
+    return URL.createObjectURL(await response.blob());
+  },
+
   registerImage(file: File, body: string) {
     const form = new FormData();
     form.append("file", file);

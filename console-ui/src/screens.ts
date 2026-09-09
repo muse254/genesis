@@ -30,10 +30,36 @@ function dropSlot(hint: string, onFile: (file: File) => void): HTMLElement {
   return slot;
 }
 
-function showImage(slot: HTMLElement, file: File, degraded = false) {
-  const url = URL.createObjectURL(file);
-  slot.innerHTML = `<img src="${url}" class="${degraded ? "degraded" : ""}" alt="" />`;
+/** What a browser can decode itself. Everything else goes to `/preview`. */
+const NATIVE = /\.(jpe?g|png|webp|gif|avif|bmp)$/i;
+
+/**
+ * Show the photograph being worked on.
+ *
+ * RAW is the whole difficulty: a browser cannot decode a CR3, so an `<img>`
+ * pointing at one renders nothing and reports nothing -- the slot just stays
+ * empty, which is how the register screen came to show no image at all. The
+ * server develops it instead, and only for display.
+ */
+async function showImage(slot: HTMLElement, file: File, degraded = false) {
   slot.classList.add("filled");
+  const cls = degraded ? "degraded" : "";
+
+  if (NATIVE.test(file.name)) {
+    slot.innerHTML = `<img src="${URL.createObjectURL(file)}" class="${cls}" alt="" />`;
+    return;
+  }
+
+  slot.innerHTML = `<span class="developing pulse mono">developing ${escape(file.name)}…</span>`;
+  try {
+    const url = await api.preview(file);
+    slot.innerHTML = `<img src="${url}" class="${cls}" alt="" />`;
+  } catch {
+    // A preview is cosmetic. Say the file is loaded rather than leaving a
+    // slot that looks like nothing happened.
+    slot.innerHTML = `<span class="developing mono">${escape(file.name)}<br/>
+      <small>no preview — RAW decode unavailable</small></span>`;
+  }
 }
 
 async function scored(
@@ -208,7 +234,7 @@ export const register: Render = (host) => {
 
   left.append(
     dropSlot("Drop the RAW to register", async (file) => {
-      showImage(left.querySelector(".slot")!, file);
+      await showImage(left.querySelector(".slot")!, file);
 
       let bodyName = "";
       try {
@@ -264,7 +290,7 @@ export const negative: Render = (host) => {
   const left = host.querySelector(".left")!;
   left.append(
     dropSlot("Drop a frame from another camera", async (file) => {
-      showImage(left.querySelector(".slot")!, file);
+      await showImage(left.querySelector(".slot")!, file);
       await scored(host, file);
     }),
   );
@@ -285,7 +311,7 @@ export const survival: Render = (host) => {
   const orig = host.querySelector(".orig")!;
   orig.append(
     dropSlot("Drop the registered photograph", async (file) => {
-      showImage(orig.querySelector(".slot")!, file);
+      await showImage(orig.querySelector(".slot")!, file);
       const mid = host.querySelector(".mid")!;
       mid.innerHTML = `<ol class="ledger">
         <li>strip metadata</li><li>resize to 1800px</li><li>re-encode q95</li>
@@ -294,7 +320,7 @@ export const survival: Render = (host) => {
         const degraded = await api.degrade(file, 1800, 95);
         const copy = host.querySelector(".copy")!;
         copy.innerHTML = `<div class="slot filled"></div>`;
-        showImage(copy.querySelector(".slot")!, degraded, true);
+        await showImage(copy.querySelector(".slot")!, degraded, true);
         mid.querySelector(".pulse")?.classList.remove("pulse");
         await scored(host, degraded);
       } catch (error) {
@@ -317,7 +343,7 @@ export const verdict: Render = (host) => {
   const left = host.querySelector(".left")!;
   left.append(
     dropSlot("Drop any image", async (file) => {
-      showImage(left.querySelector(".slot")!, file);
+      await showImage(left.querySelector(".slot")!, file);
       await scored(host, file);
     }),
   );

@@ -392,6 +392,47 @@ async def degrade(
         path.unlink(missing_ok=True)
 
 
+@app.post("/preview")
+async def preview(file: UploadFile = File(...), longest_edge: int = Form(720)) -> StreamingResponse:
+    """A browser-renderable thumbnail of any image the pipeline accepts.
+
+    A browser cannot decode a CR3, so an `<img>` pointing at one renders
+    nothing at all -- silently, with no error to notice. Every screen that
+    shows the photograph it is working on therefore needs the RAW developed
+    somewhere, and the only thing on this machine that can develop it is the
+    scorer's own decoder.
+
+    Display only. Nothing here feeds a hash, a score or a record: `/verify`
+    and `/register-image` read the uploaded file, never this. A preview that
+    could influence a verdict would be a second decode path to disagree with
+    the first.
+    """
+    import io
+
+    from PIL import Image
+
+    path = _save(file)
+    try:
+        Image.MAX_IMAGE_PIXELS = None
+        try:
+            with Image.open(path) as opened:
+                image = opened.convert("RGB")
+        except OSError:
+            image = stress.develop(path).convert("RGB")
+
+        image.thumbnail((longest_edge, longest_edge), Image.LANCZOS)
+        buffer = io.BytesIO()
+        image.save(buffer, format="JPEG", quality=82)
+        buffer.seek(0)
+        return StreamingResponse(
+            buffer,
+            media_type="image/jpeg",
+            headers={"Cache-Control": "no-store"},
+        )
+    finally:
+        path.unlink(missing_ok=True)
+
+
 @app.post("/enrol")
 async def enrol(folder: str = Form(...), name: str = Form(...)) -> dict:
     """Demo step 1. Returns a job id; progress streams from `/enrol/{id}/events`.

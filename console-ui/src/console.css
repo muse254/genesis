@@ -1,11 +1,19 @@
 /* Screen layouts. Structure only -- every colour is a token. */
 
-.two-col { display: grid; grid-template-columns: 430px 1fr; gap: 26px; height: 520px; }
-.two-col .right { overflow-y: auto; padding-right: 4px; }
+.two-col {
+  display: grid;
+  grid-template-columns: minmax(320px, 430px) 1fr;
+  gap: 26px;
+  align-items: start;
+  height: 100%;
+  min-height: 0;
+}
+.two-col .right { overflow-y: auto; min-height: 0; height: 100%; padding-right: 4px; }
 
 .slot {
   display: flex; align-items: center; justify-content: center; text-align: center;
-  width: 430px; height: 287px; border: 1.5px dashed var(--hairline);
+  width: 100%; aspect-ratio: 3 / 2; max-height: 46vh;
+  border: 1.5px dashed var(--hairline);
   color: var(--tertiary); font-size: 13px; cursor: pointer; background: var(--paper);
 }
 .slot.filled { border-style: solid; padding: 0; }
@@ -103,7 +111,7 @@
 /* --- survival ------------------------------------------------------------ */
 .survival { display: grid; grid-template-columns: 1fr 260px; gap: 24px; }
 .pair { display: grid; grid-template-columns: 1fr .66fr; gap: 16px; align-items: start; }
-.pair .slot { width: 100%; height: 220px; }
+.pair .slot { width: 100%; max-height: 34vh; }
 .ledger { font: 12.5px/1.9 var(--mono); padding-left: 18px; color: var(--secondary); }
 
 /* --- states -------------------------------------------------------------- */
@@ -116,3 +124,6 @@
 .ledger-area { margin-bottom: 6px; }
 .txlink { font-size: 12.5px; }
 .txlink a { color: var(--derived-text); }
+
+.slot .developing { font-size: 12px; color: var(--tertiary); text-align: center; padding: 12px; }
+.slot .developing small { color: var(--mid); }

@@ -1,9 +1,11 @@
 /**
  * The console shell: chrome, screen switching, presenter shortcuts.
  *
- * Drawn at 1280x720 -- the recording resolution -- and scaled to fit the
- * window, so every measurement in the handoff stays literal instead of
- * becoming approximate on a different display.
+ * The stage fills the viewport. The handoff draws 1280x720 because that is
+ * the recording resolution, not because the console should be that size --
+ * locked to it, anything that is not 16:9 letterboxes and the page's height
+ * goes unused. Size the window to 16:9 when recording and it is the board
+ * again, exactly.
  */
 
 import "./tokens.css";
@@ -100,27 +102,8 @@ addEventListener("keydown", (event) => {
   if (!Number.isNaN(index) && SCREENS[index]) show(SCREENS[index].id);
 });
 
-/**
- * Scale the fixed stage to fill the presenter's window.
- *
- * Deliberately **not** capped at 1. The board is drawn at 1280x720 because
- * that is the recording resolution, not because that is how big it should
- * look -- capped, a 27-inch display shows the whole console in a corner and
- * every measurement in it reads small. Scaling up keeps the handoff's
- * proportions exact and makes the header the size it was drawn to be.
- *
- * Both axes use the same factor, so nothing stretches.
- */
-function fit() {
-  const stage = app.querySelector("#stage") as HTMLElement;
-  const scale = Math.min(innerWidth / 1288, innerHeight / 728);
-  stage.style.transform = `scale(${scale})`;
-  app.style.width = `${1280 * scale}px`;
-  app.style.height = `${720 * scale}px`;
-}
-addEventListener("resize", fit);
+// No stage scaling: #stage fills the viewport and the layout flexes.
 
 show(current);
-fit();
 heartbeat();
 setInterval(heartbeat, 10_000);
