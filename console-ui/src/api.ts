@@ -106,6 +106,39 @@ export const api = {
     return new File([blob], "degraded.jpg", { type: "image/jpeg" });
   },
 
+  /**
+   * Verification with progress. Same work as `verify`, reported as it runs.
+   *
+   * An unfamiliar image pays for all twenty-one correlations of the scale
+   * search even when the answer is `no-record`, which is over a minute of
+   * apparent silence.
+   */
+  verifyStreaming(
+    file: File,
+    onStep: (label: string, fraction: number) => void,
+  ): Promise<VerifyResult> {
+    const form = new FormData();
+    form.append("file", file);
+    return call<{ jobId: string }>("/verify/stream", { method: "POST", body: form }).then(
+      (job) =>
+        new Promise<VerifyResult>((resolve, reject) => {
+          const stream = new EventSource(`${BASE}/verify/${job.jobId}/events`);
+          stream.onmessage = (message) => {
+            const event = JSON.parse(message.data);
+            if (event.event === "step") onStep(event.label, event.fraction);
+            if (event.event === "done") {
+              stream.close();
+              event.error ? reject(new Error(event.error)) : resolve(event.result);
+            }
+          };
+          stream.onerror = () => {
+            stream.close();
+            reject(new Error("progress stream closed"));
+          };
+        }),
+    );
+  },
+
   /** The local catalogue. Never leaves the machine — see console/catalogue.py. */
   catalogue: () =>
     call<{

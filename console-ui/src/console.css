@@ -195,3 +195,11 @@ input.desc:focus { outline: none; border-color: var(--ink); }
 input.desc.saved { border-color: var(--registered); }
 input.desc.failed { border-color: var(--error); }
 .catalogue .empty { font-size: 13px; color: var(--tertiary); }
+
+/* --- determinate progress -------------------------------------------------- */
+.stepper { padding: 18px 0; }
+.stepper .bar { height: 8px; background: var(--panel); margin-bottom: 10px; }
+.stepper .bar i { display: block; height: 8px; background: var(--ink);
+                  transition: width .18s linear; }
+.stepper .step { font-size: 12.5px; color: var(--ink); margin: 0 0 4px; }
+.stepper .elapsed { font-size: 11.5px; color: var(--tertiary); margin: 0; }

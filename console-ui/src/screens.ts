@@ -76,22 +76,40 @@ async function showImage(slot: HTMLElement, file: File, degraded = false) {
   }
 }
 
+/**
+ * Score a file and render the verdict, showing real progress while it runs.
+ *
+ * Determinate, not a spinner. The server reports each stage and, inside the
+ * scale search, each of its twenty-one correlations -- which is where the
+ * wall clock goes. An unfamiliar image pays for all of them even when the
+ * answer is `no-record`, so the slowest case is the one that most needs to
+ * look like it is working.
+ */
 async function scored(
   host: HTMLElement,
   file: File,
   compare?: { pce: number; label: string },
 ) {
-  host.querySelector(".result-area")!.innerHTML =
-    `<p class="working pulse mono">scoring — PRNU on a 24-megapixel frame takes seconds</p>`;
+  host.querySelector(".result-area")!.innerHTML = `
+    <div class="stepper">
+      <div class="bar"><i style="width:2%"></i></div>
+      <p class="step mono">starting…</p>
+      <p class="elapsed mono"></p>
+    </div>`;
+
+  const bar = host.querySelector(".stepper .bar i") as HTMLElement;
+  const step = host.querySelector(".stepper .step")!;
+  const elapsed = host.querySelector(".stepper .elapsed")!;
   const started = Date.now();
   const timer = setInterval(() => {
-    const elapsed = ((Date.now() - started) / 1000).toFixed(1);
-    const note = host.querySelector(".working");
-    if (note) note.textContent = `scoring · ${elapsed}s elapsed · ~9s typical`;
+    elapsed.textContent = `${((Date.now() - started) / 1000).toFixed(1)}s elapsed`;
   }, 100);
 
   try {
-    const result = await api.verify(file);
+    const result = await api.verifyStreaming(file, (label, fraction) => {
+      bar.style.width = `${Math.max(2, Math.round(fraction * 100))}%`;
+      step.textContent = label;
+    });
     clearInterval(timer);
     const marks = [{ pce: result.pce, label: "this file" }];
     if (compare) marks.push(compare);
@@ -103,6 +121,7 @@ async function scored(
     return result;
   } catch (error) {
     clearInterval(timer);
+    host.querySelector(".result-area")!.innerHTML = "";
     host.querySelector(".result-area")!.append(
       failure("SCORING FAILED", (error as Error).message, "Nothing already on screen is withdrawn."),
     );

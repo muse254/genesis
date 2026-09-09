@@ -604,7 +604,8 @@ class ScaleMatch(NamedTuple):
         return f"mirrored, {turn}" if self.mirrored else turn
 
 
-def crop_and_scale_search(residual, reference, scales=None, verbose=False, exhaustive=False):
+def crop_and_scale_search(residual, reference, scales=None, verbose=False,
+                          exhaustive=False, progress=None):
     """Search over scale and orientation for a match -- the Gate B path.
 
     A web JPEG has been resized and re-encoded, so the test residual is no
@@ -633,6 +634,12 @@ def crop_and_scale_search(residual, reference, scales=None, verbose=False, exhau
         settled first at nominal scale, then only the winner is scanned over
         scale -- eight correlations plus thirteen rather than a hundred and
         four.
+    progress : callable, optional
+        Called as ``progress(done, total, label)`` before each correlation.
+        This search is where the wall-clock goes on an unfamiliar image -- a
+        file that will end up as `no-record` still costs all twenty-one -- so
+        a caller that wants to show determinate progress has a real count to
+        show rather than a spinner.
 
     All eight orientations are tried, not four. A fingerprint lives in sensor
     space, which is always landscape, while a developed portrait photograph
@@ -652,7 +659,15 @@ def crop_and_scale_search(residual, reference, scales=None, verbose=False, exhau
     scales = np.linspace(0.94, 1.06, 13) if scales is None else np.asarray(scales)
     orientations = [(turns, flip) for flip in (False, True) for turns in (0, 1, 2, 3)]
 
+    total = len(orientations) * len(scales) if exhaustive else len(orientations) + len(scales)
+    done = 0
+
     def attempt(turns, flip, f):
+        nonlocal done
+        if progress is not None:
+            side = "mirrored " if flip else ""
+            progress(done, total, f"{side}rot {turns * 90} scale {f:.3f}")
+        done += 1
         candidate = np.rot90(np.fliplr(residual) if flip else residual, turns)
         height, width = candidate.shape
         resized = _area_resize(reference, (int(round(width * f)), int(round(height * f))))

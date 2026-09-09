@@ -201,9 +201,16 @@ def _signals(path: Path, body: dict, result: dict) -> dict:
     return signals
 
 
-@app.post("/verify")
-async def verify(file: UploadFile = File(...)) -> dict:
-    """The one verdict endpoint, and the only place `registered` is decided.
+def _verify(path: Path, progress=None) -> dict:
+    """The verification itself, and the only place `registered` is decided.
+
+    Shared by `/verify` and `/verify/stream`, one implementation on purpose: a
+    blocking endpoint and a streaming one that could disagree about the same
+    photograph would repeat the mistake registration and verification already
+    made once, and the fix there was also to collapse onto one function.
+
+    Takes ownership of `path` and deletes it, because the streaming caller
+    outlives the request that saved it.
 
     Three outcomes, and the difference between the first two is a chain read
     and nothing else:
@@ -222,13 +229,13 @@ async def verify(file: UploadFile = File(...)) -> dict:
     """
     bodies = _bodies()
     if not bodies:
+        path.unlink(missing_ok=True)
         raise HTTPException(503, "no enrolled fingerprints")
 
-    path = _save(file)
     try:
         candidates = []
         for body_id, body in bodies.items():
-            scored = _score_against(body, path)
+            scored = _score_against(body, path, progress)
             candidates.append({"bodyId": body_id, "body": body, **scored})
         candidates.sort(key=lambda c: -c["pce"])
         best = candidates[0]
@@ -327,6 +334,64 @@ async def verify(file: UploadFile = File(...)) -> dict:
         return payload
     finally:
         path.unlink(missing_ok=True)
+
+
+@app.post("/verify")
+async def verify(file: UploadFile = File(...)) -> dict:
+    """Blocking verification. `/verify/stream` is the same work, reported."""
+    return _verify(_save(file))
+
+
+@app.post("/verify/stream")
+async def verify_stream(file: UploadFile = File(...)) -> dict:
+    """Start a verification and return a job to watch it.
+
+    An unfamiliar image is slow in a way that looks broken: a file destined
+    for `no-record` still pays for all twenty-one correlations of the scale
+    search, which can take over a minute with nothing on screen.
+    """
+    path = _save(file)
+
+    def work(job: jobs.Job) -> None:
+        def progress(label: str) -> None:
+            # Weighted rather than even. The search is most of the wall clock,
+            # so equal shares would sit at 40% for a minute and then jump --
+            # the spinner problem with extra steps.
+            fraction = 0.06
+            if "residual" in label:
+                fraction = 0.15
+            elif "sensor space" in label or "lattice" in label:
+                fraction = 0.80
+            elif "searching" in label and " of " in label:
+                try:
+                    head = label.split("—")[1].split("(")[0].strip()
+                    done, total = (int(x) for x in head.split(" of "))
+                    fraction = 0.20 + 0.65 * (done / max(total, 1))
+                except (ValueError, IndexError):
+                    fraction = 0.5
+            job.emit(event="step", label=label, fraction=round(fraction, 3))
+
+        result = _verify(path, progress=progress)
+        job.emit(event="step", label="reading the chain", fraction=0.97)
+        job.finish(result)
+
+    return {"jobId": jobs.start(work).id}
+
+
+@app.get("/verify/{job_id}/events")
+async def verify_events(job_id: str) -> StreamingResponse:
+    job = jobs.get(job_id)
+    if job is None:
+        raise HTTPException(404, f"no job {job_id}")
+
+    def stream():
+        while True:
+            event = job.events.get()
+            yield f"data: {json.dumps(event)}\n\n"
+            if event.get("event") == "done":
+                return
+
+    return StreamingResponse(stream(), media_type="text/event-stream")
 
 
 @app.post("/degrade")

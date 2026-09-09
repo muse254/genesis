@@ -6,6 +6,8 @@ read and by nothing else, and a missing chain does not degrade into a verdict
 that looks like success.
 """
 
+import json
+
 import pytest
 from fastapi.testclient import TestClient
 
@@ -45,7 +47,11 @@ def client(monkeypatch):
 
 
 def _scored(pce):
-    return lambda body, path: {"pce": pce, "path": "aligned", "orientation": "0 deg"}
+    # `progress` is optional: /verify passes None, /verify/stream passes a
+    # callback. A stub that only accepts two arguments hides that difference.
+    return lambda body, path, progress=None: {
+        "pce": pce, "path": "aligned", "orientation": "0 deg",
+    }
 
 
 def _stub_pixels(monkeypatch, pce):
@@ -185,7 +191,7 @@ def test_register_image_refuses_below_threshold(client, monkeypatch):
     class Weak:
         pce_score = 41
 
-    monkeypatch.setattr(reg, "_score_against", lambda body, path: {"pce": 41.0})
+    monkeypatch.setattr(reg, "_score_against", lambda body, path, progress=None: {"pce": 41.0})
     monkeypatch.setattr(reg.record, "build_record", lambda *a, **k: Weak())
 
     sent = []
@@ -294,7 +300,7 @@ def test_every_hash_field_is_padded_to_a_word(monkeypatch):
         reg, "_bodies",
         lambda: {"b1": {"name": "r10", "commitment": "cc", "planes": {}, "meta": {}}},
     )
-    monkeypatch.setattr(reg, "_score_against", lambda body, path: {"pce": 49310.0})
+    monkeypatch.setattr(reg, "_score_against", lambda body, path, progress=None: {"pce": 49310.0})
     monkeypatch.setattr(reg.record, "build_record", lambda *a, **k: Built())
     monkeypatch.setattr(reg.prnu, "PCE_THRESHOLD", 100.0)
 
@@ -360,7 +366,7 @@ def test_a_session_refuses_weak_frames_without_failing_the_shoot(client, monkeyp
             self.pce_score = pce
             self.image_hash = bytes([pce % 251]) * 32
 
-    monkeypatch.setattr(reg, "_score_against", lambda body, path: {"pce": 0.0})
+    monkeypatch.setattr(reg, "_score_against", lambda body, path, progress=None: {"pce": 0.0})
     monkeypatch.setattr(reg.record, "build_record", lambda *a, **k: Built(next(scores)))
     monkeypatch.setattr(reg.prnu, "PCE_THRESHOLD", 100.0)
     monkeypatch.setattr(reg, "cast_send", lambda args: {"txHash": "0xabc", "blockNumber": 1,
@@ -389,7 +395,7 @@ def test_a_session_with_nothing_acceptable_signs_nothing(client, monkeypatch):
         pce_score = 12
         image_hash = b"\x01" * 32
 
-    monkeypatch.setattr(reg, "_score_against", lambda body, path: {"pce": 12.0})
+    monkeypatch.setattr(reg, "_score_against", lambda body, path, progress=None: {"pce": 12.0})
     monkeypatch.setattr(reg.record, "build_record", lambda *a, **k: Weak())
     monkeypatch.setattr(reg.prnu, "PCE_THRESHOLD", 100.0)
     sent: list = []
@@ -511,7 +517,7 @@ def test_a_session_records_which_body_it_scored_against(client, monkeypatch):
         reg, "_bodies",
         lambda: {"0xbeef": {"name": "r10", "commitment": "cc", "planes": {}, "meta": {}}},
     )
-    monkeypatch.setattr(reg, "_score_against", lambda body, path: {"pce": 0.0})
+    monkeypatch.setattr(reg, "_score_against", lambda body, path, progress=None: {"pce": 0.0})
 
     class Built:
         pce_score = 9000
@@ -530,3 +536,44 @@ def test_a_session_records_which_body_it_scored_against(client, monkeypatch):
     row = cat.listing()[0]
     assert row["body_id"] == "0xbeef"
     assert cat.statistics()["bodies"] == 1
+
+
+def test_progress_reaches_the_caller_and_the_verdict_is_unchanged(client, monkeypatch):
+    """The streaming path must be the same work, not a second implementation."""
+    seen: list = []
+
+    def scoring(body, path, progress=None):
+        if progress:
+            progress("extracting the noise residual")
+            progress("searching scale and orientation — 11 of 21 (rot 90 scale 1.000)")
+        return {"pce": 38.4, "path": "scale search", "orientation": "90 deg"}
+
+    monkeypatch.setattr(console_app, "_score_against", scoring)
+    monkeypatch.setattr(console_app.hashing, "pixel_sha256", lambda p: b"\x11" * 32)
+    monkeypatch.setattr(console_app.hashing, "perceptual_hash", lambda p: 0x1234)
+    monkeypatch.setattr(console_app, "_signals", lambda *a: {"calibrated": False})
+    monkeypatch.setattr(chain, "image", lambda h: None)
+
+    job = client.post(
+        "/verify/stream", files={"file": ("x.jpg", b"x", "image/jpeg")}
+    ).json()["jobId"]
+
+    with client.stream("GET", f"/verify/{job}/events") as stream:
+        for line in stream.iter_lines():
+            if not line.startswith("data: "):
+                continue
+            event = json.loads(line[6:])
+            seen.append(event)
+            if event.get("event") == "done":
+                break
+
+    steps = [e for e in seen if e.get("event") == "step"]
+    assert steps, "no progress reached the caller"
+    # The search dominates the wall clock, so its share of the bar dominates too.
+    mid = next(e for e in steps if "11 of 21" in e["label"])
+    assert 0.4 < mid["fraction"] < 0.8
+    assert seen[-1]["result"]["verdict"] == "no-record"
+
+
+def test_an_unknown_job_is_not_a_silent_stream(client):
+    assert client.get("/verify/nosuchjob/events").status_code == 404

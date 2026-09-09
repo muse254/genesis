@@ -83,7 +83,7 @@ def _save(upload: UploadFile) -> Path:
     return Path(handle.name)
 
 
-def _score_against(body: dict, path: Path) -> dict:
+def _score_against(body: dict, path: Path, progress=None) -> dict:
     """Score one image against one body, choosing the path the image needs.
 
     An untouched file still has its photosite lattice, so it can be scored
@@ -93,12 +93,18 @@ def _score_against(body: dict, path: Path) -> dict:
     """
     planes, meta = body["planes"], body["meta"]
 
+    def step(label: str) -> None:
+        if progress is not None:
+            progress(label)
+
+    step("reading the file")
     try:
         if path.suffix.lower() in record.hashing_raw_suffixes():
             probe = prnu.load_raw_planes(path, crop=meta.get("crop"))
         else:
             probe = prnu.load_delivered_planes(path, meta["cfa_pattern"])
         if all(probe[c].shape == planes[c].shape for c in planes if c in probe):
+            step("correlating on the photosite lattice")
             return {"pce": prnu.score(probe, planes), "path": "aligned", "orientation": "0 deg"}
     except (ValueError, KeyError):
         pass  # fall through to the search, which assumes nothing about size
@@ -126,6 +132,7 @@ def _score_against(body: dict, path: Path) -> dict:
             source = None
 
         if source is not None:
+            step("portrait capture — turning it back into sensor space")
             import tempfile as _tempfile
 
             best = None
@@ -171,8 +178,19 @@ def _score_against(body: dict, path: Path) -> dict:
     image = stress.strip_uniform_border(image)
     stripped = image.size != bordered
 
+    step("extracting the noise residual")
     residual = prnu.noise_residual(stress.green_channel(image))
-    match = prnu.crop_and_scale_search(residual, prnu.sensor_field(planes))
+
+    # The expensive part, and the reason an unfamiliar image takes a minute:
+    # twenty-one correlations, every one of which a file destined for
+    # `no-record` still pays for. Reported per correlation so a caller can
+    # show a count rather than a spinner.
+    def searching(done: int, total: int, label: str) -> None:
+        step(f"searching scale and orientation — {done + 1} of {total} ({label})")
+
+    match = prnu.crop_and_scale_search(
+        residual, prnu.sensor_field(planes), progress=searching if progress else None
+    )
     return {
         "pce": match.pce,
         "path": "scale search",

@@ -443,6 +443,39 @@ grep -oE '"POST [^"]+"' <the uvicorn log> | tail
 An absent request and a hung request look identical from the page, and only
 one of them is worth waiting on.
 
+## Determinate progress, because the slow case looks broken
+
+`POST /verify/stream` returns a job id; `GET /verify/{id}/events` streams what
+the verification is doing. Same work as `/verify` — one `_verify`, so a
+blocking endpoint and a streaming one cannot disagree about a photograph, the
+mistake registration and verification already made once.
+
+The wall clock lives in `crop_and_scale_search`: eight orientations settled at
+nominal scale, then thirteen scales on the winner — **twenty-one
+correlations**, and an image destined for `no-record` pays for every one. That
+is the case that most needs to look alive, and it was the case with nothing on
+screen for over a minute.
+
+So the search reports each correlation and the bar is weighted rather than
+even: reading 6%, residual 15%, the search 20–85%, the chain read 97%. Equal
+shares would sit at 40% for a minute and then jump, which is the spinner
+problem with extra steps.
+
+Measured on a Canon 5D Mark III DNG:
+
+```
+  6%  reading the file
+ 15%  extracting the noise residual
+ 23%  searching scale and orientation — 1 of 21 (rot 0 scale 1.000)
+  …
+ 85%  searching scale and orientation — 21 of 21
+ 97%  reading the chain
+DONE  verdict=no-record pce=38.4
+```
+
+The labels are the real operations, not invented milestones. `rot 90 scale
+1.000` is the correlation actually running.
+
 ## Bulk registration is a session, not a loop
 
 `POST /register-session` takes many frames, scores each locally, makes their
