@@ -121,6 +121,24 @@ needs dozens of bodies. The threshold sits at 100 — about twice the worst null
 observed, well under the weakest true match — and is a floor with a margin
 rather than a calibrated operating point.
 
+**In-camera JPEGs carry no readable fingerprint.** The sharpest limit here,
+and it went untested for weeks because the delivered-JPEG result used a
+*desktop* development. Four JPEGs straight off the card — same body by serial
+— score 24.7, 18.5, −29.2 and 29.6, the null band, colour and monochrome
+alike. The same sensor developed from RAW on a desktop scores 1,148.
+
+It is not geometry: measured by region, a desktop development grows with area
+as PCE should (78 → 206 → 1,293) while the in-camera file is flat at the null
+everywhere (24 → −27 → 30). The fingerprint is not displaced, it is gone. The
+likely cause is in-camera noise reduction, and the irony is exact — PRNU is a
+high-frequency, low-amplitude, spatially random signal, which is what a
+denoiser exists to remove. **The camera deletes the fingerprint because to the
+camera it is noise.**
+
+So: enrol, register and verify from RAW or a desktop development. Monochrome
+is *not* a problem — the same photograph desaturated scores 1,503 against
+1,182 in colour.
+
 Method, numbers and the rest of the findings are in `docs/gates.md`.
 
 ## Live on Sepolia
@@ -191,6 +209,40 @@ files from us.
 
 Check `exiftool -SerialNumber` before trusting a file as a different body.
 Two candidates for that role here turned out to be the same camera.
+
+## The console
+
+Six screens, driven by one presenter on localhost, built to
+`design_handoff_genesis_console/`. Registration and verification go through
+one scorer, so the two cannot disagree about the same photograph.
+
+![02 Register — a registered photograph](docs/screenshots/02-register.png)
+
+*Registering: scored first at PCE 15,358, refused below the threshold before
+anything is signed, then included in block 11667252 with the transaction
+linked. The identity row resolves `cam.osoro.eth` to the address that owns the
+body.*
+
+![03 Negative — a different camera](docs/screenshots/03-negative.png)
+
+*A photograph from a different camera: PCE 34.7 against a threshold of 100.
+It reads **no record**, on a neutral rule rather than an alarming one —
+absence is not a finding about the image, and `docs/claims.md` is explicit
+that it must never read as "fake".*
+
+![05 Verdict — the stage strip](docs/screenshots/05-verdict.png)
+
+*The stage strip under every verdict. Stage 1 decides only whether to look
+further; stage 2 is marked **advisory — decides nothing** and carries each
+signal's measured AUC beside it, because a weak number read without its error
+bar becomes a strong one; stage 3, the chain read, is the only stage that
+grants a claim and is the only one drawn in a heavy rule.*
+
+Scores render in identical ink whatever their magnitude, and the rail is
+logarithmic from 1 to 100,000. Both are deliberate: a forged image scores
+82,190 and a genuine degraded photograph scores 37.3, so **no size, colour or
+bar length may imply trust**. The verdict word is the claim; the number beside
+it is a measurement.
 
 ## The technologies, and what each one carries
 
@@ -348,9 +400,17 @@ forge build && forge test
 
 Nothing downstream matters until both have run. See `docs/gates.md`.
 
-- **Gate A** — does K exist on this body? 40–50 defocused flats, CR3 not
-  C-RAW, Long Exposure NR off.
-- **Gate B** — does K survive a web JPEG round trip?
+- **Gate A** — does K exist on this body? Asked for 40–50 defocused flats,
+  CR3 not C-RAW, Long Exposure NR off. **Passed on frames that broke four of
+  the five**, which is the better news: an archive that already exists works.
+- **Gate B** — does K survive a web JPEG round trip? Conditional pass —
+  1800px at quality 95 scores 408, the same size at quality 80 scores 37. Any
+  claim from that ladder has to name the quality.
+
+Three later findings sit alongside them, each measured on real files: a flat
+border defeats the scale search and not the fingerprint (37.9 → 31,676 once
+stripped), portrait capture costs a delivered file the aligned path (282 →
+838 turned back into sensor space), and in-camera JPEGs carry nothing at all.
 
 ## Status
 
@@ -362,16 +422,28 @@ Nothing downstream matters until both have run. See `docs/gates.md`.
 | ██████████ | `fingerprint/stress.py` — degradation ladder | done |
 | ██████████ | `ingest/` — hashing, record, Merkle | done, 17 tests |
 | ██████████ | `contracts/` — ERC-7053 registry | **live on Sepolia**, verified |
-| ████████░░ | `identity/` — ENSv2 subnames | implemented, 8 tests; registration deliberately left until near the recording |
+| ██████████ | `identity/` — ENSv2 subnames | **live** — `osoro.eth` and `cam.osoro.eth` registered, both subregistries deployed by hand, `--dry-run` rehearses clean |
 | ██████████ | `subgraph/` — image → record | **deployed to Studio**, indexing live Sepolia events |
 | ██████████ | `scoring/` — FastAPI wrapper | done, 5 tests |
 | ██████████ | `verify/` — the page | four verdicts, both branches live against Sepolia and The Graph |
 | ██████████ | `mcp/` — Subgraph MCP server | answers from the deployed subgraph |
-| ████████░░ | `console/` — demo orchestration API | five steps wired; signing paths untested live |
+| ██████████ | `console/` — demo orchestration API | all six screens wired; registration, sessions and the catalogue exercised live on Sepolia |
+| █████████░ | `console-ui/` — the presenter console | six screens built to the handoff; never checked in a browser by anyone but the operator |
+| ██████████ | `docs/adversarial.md` — red team | the fingerprint forged three ways against our own reference |
 | ░░░░░░░░░░ | Chainlink CRE | not started — private beta, needs enrolment |
 
-The imaging core works on real files: `enroll`, `test` and `pair` run against
-RAW and delivered JPEGs, `demo` runs without a camera.
+106 tests. The imaging core works on real files: `enroll`, `test` and `pair`
+run against RAW and delivered JPEGs, `demo` runs without a camera.
+
+**What a day of attacking it changed.** The fingerprint can be planted in an
+image the camera never took, invisibly, by anyone holding **one RAW file** off
+the body — measured against our own reference, `docs/adversarial.md`. So a PCE
+score is evidence of a link and never proof of origin, and every claim the
+product makes now sits behind `registerImage`'s owner check, the one mechanism
+no attack got past. There is no forgery-detection rate and none should be
+quoted: measured separations are AUC 0.725 to 0.900 with every range
+overlapping. `docs/security.md` is the posture; `docs/claims.md` is the closed
+list of two claims.
 
 What the day of adversarial work changed is what the system is allowed to
 say. The fingerprint can be planted by anyone holding **one RAW file** off a
