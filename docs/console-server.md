@@ -423,6 +423,39 @@ grep -oE '"POST [^"]+"' <the uvicorn log> | tail
 An absent request and a hung request look identical from the page, and only
 one of them is worth waiting on.
 
+## Bulk registration is a session, not a loop
+
+`POST /register-session` takes many frames, scores each locally, makes their
+pixel hashes the leaves of a Merkle tree and puts **one root** on chain with
+`commitSession`. Membership is then provable per frame with `verifyInclusion`,
+and the chain never holds a photograph.
+
+This is what the contract was built for — `Registry.commitSession`'s own
+comment says a shoot is two thousand frames — and it is not the same thing as
+calling `registerImage` two thousand times. A session proves *a set of
+photographs was fixed at a time*. An `ImageRecord` attaches a body, a score
+and an owner to *one* photograph. They answer different questions, the demo
+uses both, and a frame that needs its own record still goes through
+`/register-image`.
+
+A frame below threshold is refused and named, and the session commits without
+it rather than failing whole: one bad frame in two thousand should not cost
+the import. If nothing clears, nothing is signed and the response says so —
+tested both ways.
+
+The session id is derived from the root rather than assigned, so two people
+committing the same set arrive at the same id and cannot collide by accident.
+
+## Clearing a screen
+
+Every result screen has a Clear control, and `C` does it from the keyboard. It
+re-renders the screen rather than reloading the page, because a reload also
+throws away the pre-flight state a presenter just checked.
+
+It matters more than it sounds. A presenter runs each screen several times in
+a take, and a result left over from the previous attempt sitting beside a
+fresh photograph is exactly how a demo shows an audience the wrong number.
+
 ## Build order
 
 1. `/health`, `/state` — nothing else is debuggable without them.

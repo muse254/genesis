@@ -132,6 +132,26 @@ export const api = {
     return call<Record<string, unknown>>("/register-image", { method: "POST", body: form });
   },
 
+  /**
+   * A whole shoot in one transaction. `commitSession` exists because a shoot
+   * is two thousand frames and one write per photograph is not affordable.
+   */
+  registerSession(files: File[], body: string) {
+    const form = new FormData();
+    for (const file of files) form.append("files", file);
+    form.append("body", body);
+    return call<{
+      sessionId: string;
+      merkleRoot: string;
+      frameCount: number;
+      accepted: { name: string; imageHash: string; pce: number }[];
+      refused: { name: string; pce?: number; reason: string }[];
+      txHash: string;
+      blockNumber: number;
+      explorerUrl: string;
+    }>("/register-session", { method: "POST", body: form });
+  },
+
   /** Progress arrives per frame; enrolment reads forty 24-megapixel RAWs. */
   enrol(folder: string, name: string, onEvent: (event: Record<string, unknown>) => void) {
     const form = new FormData();

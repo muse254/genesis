@@ -14,6 +14,20 @@ import { el, escape, rail, stageStrip, verdictCard } from "./components";
 
 type Render = (host: HTMLElement) => void;
 
+/**
+ * Clear everything this screen is holding.
+ *
+ * A presenter runs each screen several times in a take, and a result left
+ * from the previous attempt beside a fresh photograph is how a demo shows the
+ * wrong number to an audience. Clearing is one action, not a page reload,
+ * because a reload also loses the pre-flight state.
+ */
+function clearButton(host: HTMLElement, render: Render): HTMLElement {
+  const button = el(`<button class="clear" title="Clear (C)">Clear</button>`);
+  button.addEventListener("click", () => render(host));
+  return button;
+}
+
 /** A fixed-aspect slot. Never bundle real camera files: one full-resolution
  *  photograph is enough to recover a fingerprint (`docs/security.md`). */
 function dropSlot(hint: string, onFile: (file: File) => void): HTMLElement {
@@ -297,6 +311,55 @@ export const register: Render = (host) => {
 
   const left = host.querySelector(".left")!;
   const ledger = host.querySelector(".ledger-area")!;
+  host.querySelector(".title")!.append(clearButton(host, register));
+
+  // Multi-select is the bulk path: one file registers an ImageRecord, many
+  // commit one session root. The contract has both because they answer
+  // different questions -- see `/register-session`.
+  const many = el(`
+    <label class="bulk">
+      <input type="file" multiple accept="image/*,.cr3,.dng,.CR3,.DNG" hidden />
+      <span>or select a whole shoot — one Merkle root, one transaction</span>
+    </label>`);
+  const bulkInput = many.querySelector("input")!;
+  bulkInput.addEventListener("change", async () => {
+    const files = Array.from(bulkInput.files ?? []);
+    if (files.length === 0) return;
+    if (files.length === 1) return;         // one file belongs on the single path
+
+    const bodyName = (await api.state().catch(() => null))?.bodies[0] ?? "";
+    if (!bodyName) {
+      ledger.append(failure("NO ENROLLED BODY", "The scorer holds no fingerprint.",
+                            "Run step 01 first."));
+      return;
+    }
+    ledger.innerHTML = `<ol class="ledger">
+      <li>scoring ${files.length} frames against <b>${escape(bodyName)}</b></li>
+      <li class="pulse">building the Merkle root and committing</li></ol>`;
+    try {
+      const session = await api.registerSession(files, bodyName);
+      ledger.innerHTML = `<ol class="ledger">
+        <li>${session.frameCount} frames accepted${
+          session.refused.length ? `, ${session.refused.length} refused` : ""
+        }</li>
+        <li>one root committed in block ${escape(session.blockNumber)}</li>
+      </ol>
+      <p class="mono small">root ${escape(session.merkleRoot.slice(0, 22))}…</p>
+      ${
+        session.refused.length
+          ? `<ul class="refused">${session.refused
+              .map((r) => `<li class="mono">${escape(r.name)} — ${escape(r.reason)}</li>`)
+              .join("")}</ul>`
+          : ""
+      }
+      <p class="mono txlink"><a href="${escape(session.explorerUrl)}" target="_blank"
+         rel="noreferrer">view transaction ↗</a></p>`;
+    } catch (error) {
+      ledger.innerHTML = "";
+      ledger.append(failure("SESSION FAILED", (error as Error).message,
+                            "Nothing was signed."));
+    }
+  });
 
   left.append(
     dropSlot("Drop the RAW to register", async (file) => {
@@ -345,6 +408,7 @@ export const register: Render = (host) => {
       }
     }),
   );
+  left.append(many);
 };
 
 /** 03 · Negative. Must read as "no record", never as an accusation. */
@@ -353,6 +417,7 @@ export const negative: Render = (host) => {
     <h1 class="title">A photograph from a different camera</h1>
     <p class="lede">Same model, different body — the case that decides the threshold.</p>
     <div class="two-col"><div class="left"></div><div class="right result-area"></div></div>`;
+  host.querySelector(".title")!.append(clearButton(host, negative));
   const left = host.querySelector(".left")!;
   left.append(
     dropSlot("Drop a frame from another camera", async (file) => {
@@ -374,6 +439,7 @@ export const survival: Render = (host) => {
     </div>
     <div class="result-area"></div>`;
 
+  host.querySelector(".title")!.append(clearButton(host, survival));
   const orig = host.querySelector(".orig")!;
   orig.append(
     dropSlot("Drop the registered photograph", async (file) => {
@@ -406,6 +472,7 @@ export const verdict: Render = (host) => {
     <p class="lede">Drop any photograph. We say whether its owner registered it —
        or that we have no record.</p>
     <div class="two-col"><div class="left"></div><div class="right result-area"></div></div>`;
+  host.querySelector(".title")!.append(clearButton(host, verdict));
   const left = host.querySelector(".left")!;
   left.append(
     dropSlot("Drop any image", async (file) => {

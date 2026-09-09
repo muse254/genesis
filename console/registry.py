@@ -16,6 +16,7 @@ argument would put it in `ps` output for every process on the machine.
 
 from __future__ import annotations
 
+import hashlib
 import os
 import subprocess
 import tempfile
@@ -25,7 +26,7 @@ from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 
 from console import chain
 from fingerprint import prnu
-from ingest import record
+from ingest import merkle, record
 from scoring.app import _bodies
 
 router = APIRouter()
@@ -215,3 +216,114 @@ async def register_image(file: UploadFile = File(...), body: str = Form(...)) ->
         }
     finally:
         path.unlink(missing_ok=True)
+
+
+@router.post("/register-session")
+async def register_session(
+    files: list[UploadFile] = File(...),
+    body: str = Form(...),
+) -> dict:
+    """Register a whole shoot in one transaction.
+
+    This is what `commitSession` is for and why it exists: a shoot is two
+    thousand frames, and one write per photograph is neither affordable nor
+    necessary. The frames are scored locally, their pixel hashes become the
+    leaves of a Merkle tree, and **one** root goes on chain. Any frame's
+    membership is then provable against that root with `verifyInclusion`,
+    without the chain ever holding the frame.
+
+    What this does not do is give each frame its own `ImageRecord`. A session
+    proves *a set of photographs was fixed at a time*; `registerImage` is what
+    attaches a body, a score and an owner to one photograph. They answer
+    different questions and the demo uses both -- so a frame that needs an
+    individual record still gets `/register-image`.
+
+    Frames below `PCE_THRESHOLD` are refused and named, and the session is
+    committed without them rather than failing whole. One bad frame in two
+    thousand should not cost the shoot.
+    """
+    bodies = {name: (bid, b) for bid, b in _bodies().items() for name in (b["name"], bid)}
+    if body not in bodies:
+        raise HTTPException(404, f"unknown body {body}")
+    _, holder = bodies[body]
+
+    references = Path(os.environ.get("GENESIS_REFERENCES", "data/references"))
+    reference = references / f"{holder['name']}.npz"
+
+    accepted: list[dict] = []
+    refused: list[dict] = []
+    written: list[Path] = []
+
+    try:
+        for upload in files:
+            suffix = Path(upload.filename or "f").suffix or ".bin"
+            handle = tempfile.NamedTemporaryFile(suffix=suffix, delete=False)
+            handle.write(upload.file.read())
+            handle.close()
+            path = Path(handle.name)
+            written.append(path)
+
+            try:
+                built = record.build_record(
+                    path,
+                    reference,
+                    hmac_key=_hmac_key(),
+                    owner=os.environ.get("ENS_PARENT_NAME"),
+                )
+            except Exception as error:      # a corrupt frame is not fatal to a shoot
+                refused.append({"name": upload.filename, "reason": str(error)[:160]})
+                continue
+
+            if built.pce_score < prnu.PCE_THRESHOLD:
+                refused.append({
+                    "name": upload.filename,
+                    "pce": built.pce_score,
+                    "reason": f"below threshold {prnu.PCE_THRESHOLD}",
+                })
+                continue
+
+            accepted.append({
+                "name": upload.filename,
+                "imageHash": built.image_hash,
+                "pce": built.pce_score,
+            })
+
+        if not accepted:
+            raise HTTPException(
+                422,
+                f"no frame cleared {prnu.PCE_THRESHOLD}; nothing was signed. "
+                f"{len(refused)} refused.",
+            )
+
+        leaves = [a["imageHash"] for a in accepted]
+        root = merkle.merkle_root(leaves)
+        # The session id is derived, not assigned, so two people committing the
+        # same set of frames arrive at the same id and cannot collide by luck.
+        session_id = hashlib.sha256(b"genesis-session" + root).digest()
+
+        receipt = cast_send([
+            "commitSession(bytes32,bytes32,uint32)",
+            "0x" + session_id.hex(),
+            "0x" + root.hex(),
+            str(len(leaves)),
+        ])
+
+        return {
+            "sessionId": "0x" + session_id.hex(),
+            "merkleRoot": "0x" + root.hex(),
+            "frameCount": len(leaves),
+            "accepted": [
+                {
+                    "name": a["name"],
+                    "imageHash": "0x" + a["imageHash"].hex(),
+                    "pce": a["pce"],
+                    "proof": ["0x" + node.hex() for node in merkle.inclusion_proof(leaves, i)],
+                }
+                for i, a in enumerate(accepted)
+            ],
+            "refused": refused,
+            **receipt,
+        }
+    finally:
+        for path in written:
+            path.unlink(missing_ok=True)

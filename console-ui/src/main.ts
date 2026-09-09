@@ -98,6 +98,10 @@ async function heartbeat() {
 addEventListener("keydown", (event) => {
   if ((event.target as HTMLElement)?.tagName === "INPUT") return;
   if (event.key.toLowerCase() === "p") show("preflight");
+  // C re-renders the current screen, which is how it clears: a presenter runs
+  // each screen several times in a take, and a stale result beside a fresh
+  // photograph is how a demo shows the wrong number to an audience.
+  if (event.key.toLowerCase() === "c") show(current);
   const index = Number(event.key);
   if (!Number.isNaN(index) && SCREENS[index]) show(SCREENS[index].id);
 });

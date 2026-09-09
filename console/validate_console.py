@@ -316,3 +316,61 @@ def test_browse_counts_raw_frames_per_folder(client, monkeypatch, tmp_path):
     counts = {e["name"]: e["frames"] for e in body["entries"]}
     assert counts == {"shoot": 3, "empty": 0}      # hidden folders are not listed
     assert body["parent"] is None                   # cannot go above the root
+
+
+def test_a_session_refuses_weak_frames_without_failing_the_shoot(client, monkeypatch):
+    """One bad frame in two thousand must not cost the whole import."""
+    from console import registry as reg
+
+    monkeypatch.setattr(
+        reg, "_bodies",
+        lambda: {"b1": {"name": "r10", "commitment": "cc", "planes": {}, "meta": {}}},
+    )
+
+    scores = iter([9000, 41, 8000])   # the middle frame is below threshold
+
+    class Built:
+        def __init__(self, pce):
+            self.pce_score = pce
+            self.image_hash = bytes([pce % 251]) * 32
+
+    monkeypatch.setattr(reg.record, "build_record", lambda *a, **k: Built(next(scores)))
+    monkeypatch.setattr(reg.prnu, "PCE_THRESHOLD", 100.0)
+    monkeypatch.setattr(reg, "cast_send", lambda args: {"txHash": "0xabc", "blockNumber": 1,
+                                                        "explorerUrl": "http://x"})
+
+    body = client.post(
+        "/register-session",
+        files=[("files", (f"IMG_{i}.CR3", b"x", "image/x-raw")) for i in range(3)],
+        data={"body": "r10"},
+    ).json()
+
+    assert body["frameCount"] == 2
+    assert len(body["refused"]) == 1 and body["refused"][0]["pce"] == 41
+    assert len(body["accepted"][0]["proof"]) >= 1      # inclusion is provable
+
+
+def test_a_session_with_nothing_acceptable_signs_nothing(client, monkeypatch):
+    from console import registry as reg
+
+    monkeypatch.setattr(
+        reg, "_bodies",
+        lambda: {"b1": {"name": "r10", "commitment": "cc", "planes": {}, "meta": {}}},
+    )
+
+    class Weak:
+        pce_score = 12
+        image_hash = b"\x01" * 32
+
+    monkeypatch.setattr(reg.record, "build_record", lambda *a, **k: Weak())
+    monkeypatch.setattr(reg.prnu, "PCE_THRESHOLD", 100.0)
+    sent: list = []
+    monkeypatch.setattr(reg, "cast_send", lambda args: sent.append(args))
+
+    response = client.post(
+        "/register-session",
+        files=[("files", ("a.CR3", b"x", "image/x-raw"))],
+        data={"body": "r10"},
+    )
+    assert response.status_code == 422
+    assert sent == []
