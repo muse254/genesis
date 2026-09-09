@@ -192,6 +192,27 @@ files from us.
 Check `exiftool -SerialNumber` before trusting a file as a different body.
 Two candidates for that role here turned out to be the same camera.
 
+## The technologies, and what each one carries
+
+Every one of these does work the product would not function without. Where a
+piece is not built, the table says so rather than implying it.
+
+| Technology | What it carries here | Status |
+| --- | --- | --- |
+| **Ethereum (Sepolia)** | `Registry.sol` — the body registry, image records, session roots and the ERC-7053 commit log. `registerImage`'s `require(body.owner == msg.sender)` is the system's only real security boundary | **Live** — `0xDf71e935…`, block 11659977, verified on Blockscout *and* Etherscan |
+| **ENS (ENSv2, Sepolia)** | The identity model *is* the hierarchy: `osoro.eth` is the photographer, `cam.osoro.eth` the fleet, `r10-4471.cam.osoro.eth` one enrolled body, with the fingerprint commitment, signer, revocation status and a keyed camera-serial commitment in its resolver records | **Live** — registered, and both subregistries deployed by hand because the beta app has no subname UI (`identity/addresses.md`) |
+| **The Graph** | The perceptual index. A degraded copy has a different pixel hash, so the only way back to the original's registration is a pHash lookup — the registry has no index on it, so the subgraph *is* that index. Demo step 4 depends on it | **Live** — `genesis` v0.0.1, indexing real Sepolia events, all four entity types populated |
+| **The Graph (MCP server)** | Three read-only tools so an agent can verify conversationally, with the claims discipline enforced in the wording an agent repeats | **Live** — answering from the deployed subgraph, 6 tests on the wording |
+| **Chainlink CRE** | Would replace the scoring service, which is the trust hole by design: today you take its word for a PCE. A confidential workflow makes the algorithm public, keeps the reference private and returns a *signed* score | **Not built.** Confidential Workflows is private beta and needs enrolment through a Chainlink account team — `docs/e2e-checklist.md` §10 |
+| **ERC-7053** | The commit log shape, so a record is portable rather than ours alone | **Live** — `commit()` fires on every registration |
+| **Foundry, viem, FastAPI, Vite** | Tooling: contracts and transactions, chain reads in the browser, the scorer and console, the two web surfaces | In use throughout |
+
+One honest note on CRE, because it is easy to oversell after a day of
+adversarial work: confidential compute removes the *scorer* as a trusted
+party. It does nothing about forgery — an enclave would score a planted
+fingerprint faithfully and sign it. `docs/security.md` says so where someone
+would look for it.
+
 ## Layout
 
 ```
