@@ -117,7 +117,6 @@ function fit() {
   stage.style.transform = `scale(${scale})`;
   app.style.width = `${1280 * scale}px`;
   app.style.height = `${720 * scale}px`;
-  app.style.margin = "0 auto";
 }
 addEventListener("resize", fit);
 

@@ -29,10 +29,6 @@
 
 html, body {
   margin: 0;
-  min-height: 100vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
   background: var(--paper);
   color: var(--ink);
   font-family: var(--ui);
@@ -52,8 +48,11 @@ html, body {
 }
 
 header.chrome {
-  height: 54px;
-  flex: 0 0 54px;
+  /* Handoff says 54px. Raised deliberately: at the recording resolution the
+     chrome is the one thing a presenter reads at a glance, and 54 was
+     measured on a board rather than on a monitor. */
+  height: 76px;
+  flex: 0 0 76px;
   border-bottom: 2px solid var(--ink);
   display: flex;
   align-items: center;
@@ -62,22 +61,24 @@ header.chrome {
 }
 /* Explicit box: the native art is 1540x416, so 20px tall is 74px wide.
    `width:auto` here would reflow the step tabs as the PNG decodes. */
-header.chrome img { height: 20px; width: 74px; display: block; }
-header.chrome .divider { width: 1px; height: 20px; background: var(--hairline); }
+/* Native art is 1540x416, so 30px tall is 111px wide. Both set, because
+   width:auto reflows the step tabs as the PNG decodes. */
+header.chrome img { height: 30px; width: 111px; display: block; }
+header.chrome .divider { width: 1px; height: 30px; background: var(--hairline); }
 nav.steps { display: flex; gap: 2px; }
 nav.steps button {
-  font: 600 12.5px/1 var(--ui);
+  font: 600 15px/1 var(--ui);
   letter-spacing: .04em;
   color: var(--tertiary);
   background: transparent;
   border: 0;
-  padding: 7px 10px;
+  padding: 10px 14px;
   cursor: pointer;
 }
 nav.steps button[aria-current="true"] { background: var(--ink); color: var(--paper); }
 header.chrome .meta {
   margin-left: auto;
-  font: 11.5px/1 var(--mono);
+  font: 13px/1 var(--mono);
   color: var(--secondary);
 }
 
