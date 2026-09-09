@@ -125,6 +125,20 @@ false-positive rate, and a second enrolment so the test runs both ways.
       session and commit log all indexed, with the record fields read back
       from storage
 - [x] Address and `startBlock` filled: `0xDf71e9350B4cA587eb3Bd01F2e7D710F3Fc25CF3`, block 11659977
+- [x] All four entity types populated from live Sepolia, checked 9 September
+      2026: `Body`, `Image`, `Session` (root and frameCount 2) and the
+      ERC-7053 `CommitLog` with its `genesis:` asset CID. Four of the five
+      handlers are therefore exercised against real events
+- [ ] `BodyRevoked` has never fired on chain — nothing has been revoked, so
+      that handler rests on matchstick alone. Not a defect, but not evidence
+      either
+- [ ] The verify page's perceptual branch has not been run in a browser. The
+      query is verified from node against the live index, the URL is inlined
+      in the bundle and it typechecks and builds — but nobody has watched it
+      resolve an image on a page. `verify/.env` did not exist until today,
+      which meant `VITE_SUBGRAPH_URL` was undefined and the branch returned
+      early: written, and not wired
+- [x] `graph test` — 5 matchstick tests still green after the deployment
 - [x] Deployed to Subgraph Studio, 8 September 2026 — `genesis` v0.0.1,
       queries at `api.studio.thegraph.com/query/1758974/genesis/v0.0.1`.
       Synced past the registration blocks with `hasIndexingErrors: false`,

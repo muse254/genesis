@@ -225,7 +225,7 @@ flowchart TB
     A4 --> A6["CLI · ingest/<br/>commitment hash of K"]
     subgraph EnrolChain["on chain · Sepolia"]
       A7["contract · Registry.registerBody<br/>bodyId · fingerprintCommitment · ensNode"]
-      A8["contract · ENSv2<br/>subname r10-4471.cam.osoro.eth"]
+      A8["ENS · ENSv2 subname r10-4471.cam.osoro.eth<br/>resolver records: commitment · signer · status · body"]
     end
     A6 --> A7
     A7 <--> A8
@@ -240,7 +240,7 @@ flowchart TB
       B3 --> B4
     end
     subgraph RegChain["on chain · Sepolia"]
-      B5["contract · Registry.registerImage"]
+      B5["contract · Registry.registerImage<br/>requires body.owner == msg.sender"]
       B6["contract · Registry.commitSession<br/>one Merkle root per shoot, not one write per frame"]
       B7["contract · ERC-7053 commit()"]
     end
@@ -251,16 +251,34 @@ flowchart TB
 
   subgraph Verify["Flow C · Verify — anyone, any image, anywhere"]
     direction TB
-    C1["web page · verify/ (browser)<br/>image upload"] --> C2{"exact pixel hash hit?"}
-    C2 -->|yes| C3["record — untouched file"]
-    C2 -->|no| C4["index · subgraph/ on The Graph<br/>pHash lookup → candidate records"]
-    C4 --> C5["HTTP service · scoring/ (FastAPI)<br/>PRNU re-score — the browser cannot do this"]
-    C5 --> C6["web page · verify/<br/>verdict + confidence"]
+    C1["web page · verify/ (browser)<br/>image upload"] --> C2{"exact pixel hash<br/>on chain?"}
+    C2 -->|yes| C3["registered<br/>this IS the registered file"]
+    C2 -->|no| C4["THE GRAPH · subgraph/<br/>pHash lookup → candidate"]
+    C4 -->|candidate| C5{"chain read<br/>confirms it?"}
+    C5 -->|yes| C6["derived<br/>descends from a registration"]
+    C5 -->|no| C7
+    C4 -->|nothing near| C7["HTTP service · scoring/ (FastAPI)<br/>PRNU re-score — the browser cannot do this"]
+    C7 --> C8{"PCE ≥ 100?"}
+    C8 -->|yes| C9["fingerprint-only<br/>NOT a pass — a forgery lands here"]
+    C8 -->|no| C10["no-record<br/>absence means nothing"]
   end
+
+  CRE["CHAINLINK CRE · not built<br/>confidential workflow would replace the<br/>scoring service: public algorithm, secret<br/>reference, signed score"]
+  C7 -.->|"planned · docs/e2e-checklist.md §10"| CRE
 
   A5 -.->|K stays local| B3
   A7 -.->|events indexed| C4
-  B5 -.->|events indexed| C2
+  B5 -.->|events indexed| C4
+  B7 -.->|events indexed| C4
+
+  classDef thegraph fill:#f0f7ff,stroke:#2f6f8f,stroke-width:2px
+  classDef ens fill:#f3f0ff,stroke:#5b4fd0,stroke-width:2px
+  classDef chainlink fill:#f7f7f5,stroke:#9a7b12,stroke-width:2px,stroke-dasharray:5 4
+  classDef weak fill:#fffaf0,stroke:#9a7b12
+  class C4 thegraph
+  class A8 ens
+  class CRE chainlink
+  class C9 weak
 ```
 
 The lower branch of Verify is the one that matters. An exact pixel hash dies
