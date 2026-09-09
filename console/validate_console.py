@@ -229,3 +229,62 @@ def test_a_dead_subgraph_does_not_fabricate_a_link(client, monkeypatch):
     body = client.post("/verify", files={"file": ("x.jpg", b"x", "image/jpeg")}).json()
     assert body["verdict"] == "fingerprint-only"
     assert body["derivedFrom"] is None
+
+
+def test_the_hmac_key_becomes_bytes():
+    """It arrives from the environment as str; hmac.new rejects that with a
+    TypeError inside the request, which surfaced as a bare 500."""
+    from console import registry as reg
+
+    import os
+
+    os.environ["METADATA_HMAC_KEY"] = "11d5ad"
+    assert reg._hmac_key() == b"\x11\xd5\xad"          # hex, as .env holds it
+    os.environ["METADATA_HMAC_KEY"] = "demo-key"
+    assert reg._hmac_key() == b"demo-key"              # utf-8, as local-e2e.sh passes
+    os.environ["METADATA_HMAC_KEY"] = ""
+    assert reg._hmac_key() is None
+    del os.environ["METADATA_HMAC_KEY"]
+
+
+def test_every_hash_field_is_padded_to_a_word(monkeypatch):
+    """The perceptual hash is eight bytes and the ABI wants bytes32.
+
+    Unpadded, `cast` fails with a bare "parser error" naming no field, which
+    reads on camera as the chain refusing a genuine photograph.
+    """
+    from console import registry as reg
+
+    class Built:
+        image_hash = b"\x01" * 32
+        perceptual_hash = b"\x80\x87\x05\x3f\x15\xce\x5f\x73"   # 8 bytes
+        body_id = b"\x02" * 32
+        modification_level = 0
+        parent_image_hash = b"\x00" * 32
+        metadata_hmac = b"\x03" * 32
+        pce_score = 49310
+        registered_at = 1788943766
+
+    monkeypatch.setattr(
+        reg, "_bodies",
+        lambda: {"b1": {"name": "r10", "commitment": "cc", "planes": {}, "meta": {}}},
+    )
+    monkeypatch.setattr(reg.record, "build_record", lambda *a, **k: Built())
+    monkeypatch.setattr(reg.prnu, "PCE_THRESHOLD", 100.0)
+
+    sent: list = []
+    monkeypatch.setattr(reg, "cast_send", lambda args: sent.append(args) or {"txHash": "0x"})
+
+    from fastapi.testclient import TestClient
+    from console import app as ca
+
+    monkeypatch.setattr(ca, "_bodies", reg._bodies)
+    TestClient(ca.app).post(
+        "/register-image",
+        files={"file": ("x.cr3", b"x", "image/x-raw")},
+        data={"body": "r10"},
+    )
+    tuple_arg = sent[0][1]
+    for word in tuple_arg.strip("()").split(",")[:3]:
+        if word.startswith("0x"):
+            assert len(word) == 66, f"{word} is not a full bytes32 word"

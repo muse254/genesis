@@ -327,6 +327,35 @@ The ink lockup is 93% dark pixels on a transparent background, so it is
 correct on paper `#fbfbf9` and would vanish on a dark one. A dark-mode
 console has to swap in `-white`, not invert the ink file.
 
+## Three bugs the first live registration found
+
+Screen 02 registered nothing. It called `/verify` like every other screen, so
+a genuine frame came back `fingerprint-only` — correctly, since nothing was on
+chain — and read as a failure. Verifying asks what the chain already says;
+registering is what puts it there, and only one screen may write.
+
+Then `/register-image` returned 500 twice:
+
+- **`METADATA_HMAC_KEY` is a `str` and `hmac.new` wants `bytes`.** It raised
+  inside the request rather than at startup, so the endpoint looked like the
+  chain refusing a photograph. Hex is decoded as hex, anything else as UTF-8.
+- **The perceptual hash is eight bytes and the ABI field is `bytes32`.**
+  `cast` rejected it with a bare `parser error` naming no field. Every hash is
+  left-padded to a full word now, and a test fails if one is not.
+
+And `cast --interactive` does not work without a terminal — piping to it fails
+with "Device not configured", which is how the ENS registries got deployed
+with `--private-key` instead. The console does the same, so the key is on the
+argv for the length of one transaction and visible in `ps`. Acceptable for a
+localhost demo driver on the operator's own machine; not acceptable for
+anything hosted, which this is not and must not become. `cast`'s stderr is
+redacted before it reaches an error response so a failed transaction cannot
+spill the key into a log or a recording.
+
+Verified end to end after the fixes: IMG_0217 registers in block 11666892,
+verifies as `registered` at PCE 49,310, and its 1800px q95 copy comes back
+`derived` at **407.9** — which is `docs/gates.md`'s 408 for that frame.
+
 ## Build order
 
 1. `/health`, `/state` — nothing else is debuggable without them.

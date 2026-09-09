@@ -113,6 +113,28 @@ photographer has ever delivered to a client, and those cannot be recalled. The
 system therefore does not assume RAW files stay private; it assumes they do
 not, and rests on the owner's registration instead.
 
+## A photographer does not need an ENS name
+
+Worth stating because the architecture invites the opposite assumption.
+
+Nothing about a photographer's use of this system requires them to own an ENS
+name, and the contract does not ask for one: `registerBody` takes an `ensNode`
+that is unconstrained and may be zero, `registerImage` checks only
+`body.owner == msg.sender`, and `revokeBody` likewise. Registration,
+verification and revocation all work with no name at all. What a body without
+one loses is the readable identity and the resolver records, not any claim.
+
+What the hierarchy is actually for is the opposite of a requirement. A body
+gets a subname **under the operator's parent** — `r10-4471.cam.osoro.eth` —
+so a photographer signing up never touches a registrar, never buys a name and
+never holds one. ENSv2's per-record permissions are what let a single body be
+delegated without handing over the namespace, which is the whole reason the
+identity model is a hierarchy rather than a table.
+
+So the ENS dependency sits on Genesis, once. It does not sit on each user, and
+the product should not describe it as though it does. A verifier needs less
+still: they upload an image, with no wallet and no name.
+
 ## Contesting a claim: who supplies what
 
 The system does not adjudicate. It supplies the half nobody else can, and

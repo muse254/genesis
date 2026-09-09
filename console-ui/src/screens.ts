@@ -184,17 +184,73 @@ export const enrol: Render = (host) => {
   });
 };
 
-/** 02 · Register. */
+/**
+ * 02 · Register. This screen **writes**, and it is the only one that does.
+ *
+ * An earlier version of this screen called `/verify` like every other screen,
+ * which scored the photograph and registered nothing -- so a genuine frame
+ * came back `fingerprint-only`, correctly, and looked like a failure. The
+ * distinction is the whole product: verifying asks what the chain already
+ * says, registering is what puts it there.
+ */
 export const register: Render = (host) => {
   host.innerHTML = `
     <h1 class="title">Register a photograph</h1>
-    <p class="lede">Scored first, and refused below the threshold before anything is signed.</p>
-    <div class="two-col"><div class="left"></div><div class="right result-area"></div></div>`;
+    <p class="lede">Scored first and refused below the threshold before anything is
+       signed — a photograph the pixels do not support never reaches the chain.</p>
+    <div class="two-col">
+      <div class="left"></div>
+      <div class="right"><div class="ledger-area"></div><div class="result-area"></div></div>
+    </div>`;
+
   const left = host.querySelector(".left")!;
+  const ledger = host.querySelector(".ledger-area")!;
+
   left.append(
     dropSlot("Drop the RAW to register", async (file) => {
       showImage(left.querySelector(".slot")!, file);
-      await scored(host, file);
+
+      let bodyName = "";
+      try {
+        const state = await api.state();
+        bodyName = state.bodies[0] ?? "";
+      } catch {
+        /* the failure below reports it */
+      }
+      if (!bodyName) {
+        ledger.append(failure("NO ENROLLED BODY", "The scorer holds no fingerprint.",
+                              "Run step 01 first, or check GENESIS_REFERENCES."));
+        return;
+      }
+
+      ledger.innerHTML = `<ol class="ledger">
+        <li>scoring against <b>${escape(bodyName)}</b></li>
+        <li class="pulse">signing and broadcasting</li></ol>`;
+
+      try {
+        const receipt = await api.registerImage(file, bodyName);
+        ledger.innerHTML = `<ol class="ledger">
+          <li>scored — PCE ${Number(receipt.pce).toLocaleString()}</li>
+          <li>signed by the body's owner</li>
+          <li>included in block ${escape(receipt.blockNumber)}</li>
+        </ol>
+        <p class="mono txlink"><a href="${escape(receipt.explorerUrl)}" target="_blank"
+           rel="noreferrer">view transaction ↗</a></p>`;
+
+        // Read it back the way a verifier would, rather than trusting the
+        // receipt. If the chain does not agree, the demo should show that.
+        await scored(host, file);
+      } catch (error) {
+        ledger.innerHTML = "";
+        const message = (error as Error).message;
+        ledger.append(
+          /below/i.test(message)
+            ? failure("REFUSED — BELOW THRESHOLD", message,
+                      "Nothing was signed. The pixels do not support the claim.")
+            : failure("REGISTRATION FAILED", message,
+                      "Nothing already on screen is withdrawn."),
+        );
+      }
     }),
   );
 };

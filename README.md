@@ -38,6 +38,10 @@ We certify: this image carries body X's sensor fingerprint **and body X's
 owner registered it** · camera body registered to identity Y · first
 registered at time T · these derivatives descend from that original.
 
+A photographer needs no ENS name of their own. Each enrolled body gets a
+subname under the operator's parent, and the contract never requires one —
+`registerBody`'s `ensNode` may be zero. The ENS dependency is Genesis's, once.
+
 The fingerprint alone certifies nothing: it can be planted by anyone holding
 one RAW file off the body, invisibly (`docs/adversarial.md`). The owner's
 registration is what carries the claim.

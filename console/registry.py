@@ -33,6 +33,24 @@ router = APIRouter()
 CAST_TIMEOUT = 180
 
 
+def _hmac_key() -> bytes | None:
+    """`METADATA_HMAC_KEY` as bytes.
+
+    It arrives from the environment as a string and `hashing.metadata_hmac`
+    takes bytes, which raised a TypeError inside the request rather than at
+    startup -- the endpoint returned 500 and the demo looked like the chain
+    had refused it. Hex is decoded as hex because that is what `.env` holds;
+    anything else is taken as UTF-8, which is what `local-e2e.sh` passes.
+    """
+    raw = os.environ.get("METADATA_HMAC_KEY", "").strip()
+    if not raw:
+        return None
+    try:
+        return bytes.fromhex(raw.removeprefix("0x"))
+    except ValueError:
+        return raw.encode("utf-8")
+
+
 def _key() -> str:
     key = os.environ.get("DEPLOYER_PRIVATE_KEY", "").strip()
     if not key:
@@ -49,16 +67,21 @@ def cast_send(args: list[str]) -> dict:
     if not chain.REGISTRY:
         raise HTTPException(503, "REGISTRY_ADDRESS is not set")
 
+    # `--interactive` reads the key from a terminal, and there is no terminal
+    # here: piping to it fails with "Device not configured". So the key goes
+    # on the argv, which is visible in `ps` for the length of one transaction.
+    # Acceptable for a localhost demo driver on the operator's own machine
+    # (`docs/security.md`), and not acceptable for anything hosted -- which
+    # this is not, and must not become.
     command = [
         "cast", "send", chain.REGISTRY, *args,
         "--rpc-url", chain.RPC_URL,
-        "--interactive",
+        "--private-key", _key(),
         "--json",
     ]
     try:
         done = subprocess.run(
             command,
-            input=_key() + "\n",
             capture_output=True,
             text=True,
             timeout=CAST_TIMEOUT,
@@ -70,8 +93,10 @@ def cast_send(args: list[str]) -> dict:
         raise HTTPException(504, f"cast timed out after {CAST_TIMEOUT}s")
 
     if done.returncode != 0:
-        # stderr can echo the calldata but never the key -- it went in on stdin.
-        raise HTTPException(502, f"transaction failed: {done.stderr.strip()[:400]}")
+        # stderr can echo the calldata; the key is redacted so a failed
+        # transaction cannot spill it into a log or a screen recording.
+        leaked = done.stderr.replace(_key(), "<key>").strip()
+        raise HTTPException(502, f"transaction failed: {leaked[:400]}")
 
     import json
 
@@ -152,7 +177,7 @@ async def register_image(file: UploadFile = File(...), body: str = Form(...)) ->
         built = record.build_record(
             path,
             references / f"{holder['name']}.npz",
-            hmac_key=os.environ.get("METADATA_HMAC_KEY"),
+            hmac_key=_hmac_key(),
             owner=os.environ.get("ENS_PARENT_NAME"),
         )
         if built.pce_score < prnu.PCE_THRESHOLD:
@@ -162,10 +187,18 @@ async def register_image(file: UploadFile = File(...), body: str = Form(...)) ->
                 "the chain. The pixels do not support the claim.",
             )
 
+        # Every field is bytes32 on chain. The perceptual hash is only eight
+        # bytes -- it is a 64-bit pHash -- so it has to be left-padded, and
+        # `cast` rejects the short form with a bare "parser error" that says
+        # nothing about which field is wrong. The registered record on Sepolia
+        # shows the padding: 0x0000...e829e9b0556d25cb.
+        def word(value: bytes) -> str:
+            return "0x" + value.rjust(32, b"\x00").hex()
+
         tuple_arg = (
-            f"(0x{built.image_hash.hex()},0x{built.perceptual_hash.hex()},"
-            f"0x{built.body_id.hex()},{built.modification_level},"
-            f"0x{built.parent_image_hash.hex()},0x{built.metadata_hmac.hex()},"
+            f"({word(built.image_hash)},{word(built.perceptual_hash)},"
+            f"{word(built.body_id)},{built.modification_level},"
+            f"{word(built.parent_image_hash)},{word(built.metadata_hmac)},"
             f"{built.pce_score},{built.registered_at})"
         )
         receipt = cast_send([

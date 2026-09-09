@@ -112,3 +112,7 @@
 .fhead { font: 800 17px/1 var(--ui); color: var(--error); margin-bottom: 8px; }
 .failure .detail { font-size: 12px; color: var(--secondary); word-break: break-word; }
 .failure .standing { font-size: 12.5px; margin: 8px 0 0; }
+
+.ledger-area { margin-bottom: 6px; }
+.txlink { font-size: 12.5px; }
+.txlink a { color: var(--derived-text); }
