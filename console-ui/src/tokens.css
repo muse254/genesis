@@ -56,7 +56,9 @@ header.chrome {
   gap: 14px;
   padding: 0 20px;
 }
-header.chrome img { height: 20px; }
+/* Explicit box: the native art is 1540x416, so 20px tall is 74px wide.
+   `width:auto` here would reflow the step tabs as the PNG decodes. */
+header.chrome img { height: 20px; width: 74px; display: block; }
 header.chrome .divider { width: 1px; height: 20px; background: var(--hairline); }
 nav.steps { display: flex; gap: 2px; }
 nav.steps button {

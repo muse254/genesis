@@ -312,6 +312,21 @@ refused the connection while `localhost` worked. Both spellings are in the
 API's CORS allowlist and in the handoff's chrome, and a presenter typing the
 wrong one loses a minute on camera to a blank page.
 
+## Chrome does not depend on the internet
+
+The handoff lists the brand marks as public `raw.githubusercontent.com` URLs.
+That is right for a design board and wrong for the console: while this was
+being wired, that host returned **503**, which would have put a broken-image
+icon in the header of a recording.
+
+The marks are served from `console-ui/public/` instead. `width` and `height`
+are set explicitly — the art is 1540x416, so 20px tall is 74px wide, and
+`width:auto` would reflow the step tabs as the PNG decodes.
+
+The ink lockup is 93% dark pixels on a transparent background, so it is
+correct on paper `#fbfbf9` and would vanish on a dark one. A dark-mode
+console has to swap in `-white`, not invert the ink file.
+
 ## Build order
 
 1. `/health`, `/state` — nothing else is debuggable without them.

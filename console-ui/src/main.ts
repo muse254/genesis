@@ -11,13 +11,27 @@ import "./console.css";
 import { api } from "./api";
 import { SCREENS } from "./screens";
 
-const MARK = "https://raw.githubusercontent.com/muse254/genesis/main/logos/genesis-lockup-horizontal-ink.png";
+/**
+ * Served from `public/`, not hotlinked.
+ *
+ * The handoff lists the marks as public raw.githubusercontent URLs, and that
+ * is fine for a design board. In the console it is a network dependency on
+ * the one thing that must not fail: raw.githubusercontent returned 503 while
+ * this was being wired, which would have put a broken-image icon in the
+ * header of a recording. Chrome does not get to depend on the internet.
+ *
+ * 1540x416 native, so 20px tall is 74px wide. Both are set to stop the header
+ * reflowing as the image decodes.
+ */
+const MARK = "/genesis-lockup-horizontal-ink.png";
+const MARK_W = 74;
+const MARK_H = 20;
 
 const app = document.getElementById("app")!;
 app.innerHTML = `
   <div id="stage">
     <header class="chrome">
-      <img src="${MARK}" alt="Genesis" />
+      <img src="${MARK}" width="${MARK_W}" height="${MARK_H}" alt="Genesis" />
       <span class="divider"></span>
       <nav class="steps"></nav>
       <span class="meta"></span>
