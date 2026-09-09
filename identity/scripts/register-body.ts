@@ -383,12 +383,21 @@ async function main(argv: string[]): Promise<void> {
         signingKey: signingKey as `0x${string}`,
       };
       const hash = await registerBody(body, { dryRun });
-      await setBodyRecords(body, { dryRun });
-      console.log(
-        dryRun
-          ? `would register ${label}.${parent} and write its records`
-          : `registered ${label}.${parent} in ${hash}`,
-      );
+      if (dryRun) {
+        // Records cannot be simulated before the name exists: the resolver
+        // authorises writes per node, and the node has no owner until the
+        // registration above actually lands. Simulating it anyway made a
+        // clean rehearsal look like a failure, which is worse than not
+        // rehearsing that step at all.
+        console.log(
+          `would register ${label}.${parent}\n` +
+            `  records are not simulated -- the resolver authorises per node, ` +
+            `and this one has no owner until registration lands`,
+        );
+        break;
+      }
+      await setBodyRecords(body);
+      console.log(`registered ${label}.${parent} in ${hash}`);
       break;
     }
     case "resolve": {

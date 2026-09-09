@@ -77,6 +77,42 @@ correct until step 2 is done.
 `BUILD.md`, the README diagram and the MCP tool descriptions. Registering
 anything else means changing all four.
 
+## What we deployed, and why we had to
+
+Done 9 September 2026. `app.ens.dev` registers a name and, as of the beta,
+**offers no way to create a subname** — there is no such section in the UI.
+Registering `osoro.eth` therefore left it in exactly the state `raffy.eth` is
+in: owned, with `getSubregistry` returning zero and nothing registerable
+underneath.
+
+In ENSv2 a name's children live in a `PermissionedRegistry` that the name
+points at, so the fix is to deploy one and attach it. The sources are public
+and verified, so this is ENS's own contract rather than an imitation:
+
+| Contract | Address | Holds |
+| --- | --- | --- |
+| Registry for `osoro.eth`'s children | `0xbA42b356627ecEC560269d06792C70E3c6A24d4B` | `cam` |
+| Registry for `cam.osoro.eth`'s children | `0xB264327897C7d18bFa10C79C6Abdd9208BD3a118` | body subnames |
+
+Built from the 32 verified sources behind `ETHRegistry` on Blockscout,
+compiled with **solc 0.8.24** rather than the 0.8.27 ENS used — every pragma
+in the tree allows it and this repo already runs 0.8.24. The bytecode is
+therefore not byte-identical to theirs, which is fine for a fresh deployment
+and would not be fine for a verification.
+
+Three things that were not obvious and each cost a transaction:
+
+- **The constructor's root bitmap grants `ROLE_REGISTRAR_ADMIN`, not
+  `ROLE_REGISTRAR`.** Being able to grant a role is not holding it, so the
+  first `register` reverted with `EACUnauthorizedAccountRoles(0, 1, …)`. The
+  deployer had to `grantRootRoles(1, self)` on each registry.
+- **`setParent` is not implied by being pointed at.** A registry deployed
+  fresh returns `(0x0, "")` from `getParent()`, and
+  `register-body.ts` reads the child's expiry through it. Both registries had
+  to be told their parent explicitly.
+- **Expiry is inherited, not chosen.** `cam` was registered at `osoro`'s own
+  expiry, 1820499912 (September 2027). A child cannot outlive its parent.
+
 ## Pinned addresses
 
 From <https://docs.ens.domains/learn/deployments/>, read 8 September 2026.
