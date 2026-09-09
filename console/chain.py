@@ -143,3 +143,59 @@ def balance(address: str) -> int:
 
 def explorer_url(tx_or_address: str, kind: str = "tx") -> str:
     return f"{EXPLORER}/{kind}/{tx_or_address}"
+
+
+#: ENSv2 Sepolia. Pinned in `identity/addresses.md`; blank env means unset,
+#: not empty -- `.env` declared these keys with no value and `??` semantics
+#: cost an afternoon once already.
+ETH_REGISTRY = (os.environ.get("ENS_ETH_REGISTRY") or
+                "0xbdc85dd5b15d7ecb354cd7cb6f2c50b4f2c4f0e2")
+
+
+def _encode_string(value: str) -> str:
+    """ABI-encode one dynamic string argument: offset, length, padded data."""
+    raw = value.encode("utf-8")
+    padded = raw + b"\x00" * ((32 - len(raw) % 32) % 32)
+    return (
+        (32).to_bytes(32, "big").hex()
+        + len(raw).to_bytes(32, "big").hex()
+        + padded.hex()
+    )
+
+
+def block_age_seconds() -> int:
+    """How stale the head is. A chain that stopped advancing looks identical
+    to one that is fine, until a transaction never confirms on camera."""
+    import time
+
+    block = _rpc("eth_getBlockByNumber", ["latest", False])
+    return max(0, int(time.time()) - int(block["timestamp"], 16))
+
+
+def ens_parent_ready(name: str) -> tuple[bool, str]:
+    """Can body subnames actually be created under `name` yet?
+
+    Walks `ETHRegistry` for a subregistry, the same walk
+    `identity/scripts/register-body.ts` does. Owning a name does not give it
+    one -- checked live, `raffy.eth` and `hello.eth` are both owned and both
+    return zero -- so this is the check that says the ENS step is finished,
+    where "is the name registered" would say yes too early.
+    """
+    labels = name.removesuffix(".eth").split(".")
+    registry = ETH_REGISTRY
+    walked: list[str] = []
+
+    for label in reversed(labels):
+        data = "0x" + _selector("getSubregistry(string)") + _encode_string(label)
+        try:
+            result = _rpc("eth_call", [{"to": registry, "data": data}, "latest"])
+        except ChainError as error:
+            return False, str(error)
+        address = "0x" + result[-40:]
+        if int(address, 16) == 0:
+            under = ".".join(reversed(walked)) + ".eth" if walked else "eth"
+            return False, f"`{label}` has no subregistry under {under}"
+        walked.append(label)
+        registry = address
+
+    return True, registry

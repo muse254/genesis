@@ -227,6 +227,66 @@ second is honest:
 What must not happen is reporting `registered` from a pHash match alone. The
 verdict has to keep meaning a chain read succeeded.
 
+## Answering the design handoff
+
+`design_handoff_genesis_console/` is high-fidelity and mostly implementable as
+drawn. These are the places where the backend had to decide something
+different, and why.
+
+**Pre-flight thresholds are ours.** The handoff asks for deployer balance
+>= 0.05 ETH and >= 2 enrolled bodies. Both would read NO-GO today for no real
+reason: the demo sends four transactions, which on Sepolia costs far under
+0.01 ETH, and the deployer holds 0.0484; and a second body needs a second
+physical camera (`docs/e2e-checklist.md` §1). A gate that fails on a condition
+that is actually fine teaches a presenter to override it, which is worse than
+having no gate. `MIN_BALANCE_WEI` is 0.01 ETH and `MIN_BODIES` is 1.
+
+**`/state` now returns rows, not raw values.** Each check carries
+`check / measured / expected / go` — matching the handoff's columns exactly —
+plus a `remedy` string when it fails. The frontend renders; it never
+evaluates. A gate that says no without saying what to do gets ignored.
+
+**The ENS row is a real check, not a string.** It walks `ETHRegistry` for a
+subregistry rather than asking whether the name resolves, because owning a
+name does not give it one — `raffy.eth` and `hello.eth` are both owned and
+both return zero. Asking "does it resolve" would go green too early. This is
+currently the only NO-GO row, correctly.
+
+**The AUCs in 2d are wrong and `calibrated` is not a signal.** The board
+lists 0.900 / 0.842 / 0.810 / 0.777 / 0.725 across five rows including
+`calibrated`, which is a boolean saying whether a band exists. The measured
+values, per path, are:
+
+| Signal | RAW | Delivered |
+| --- | --- | --- |
+| `bodyConsistency` | 0.900 | 0.725 |
+| `effectiveStrength` | 0.800 | 0.767 |
+| `resamplingPeak` | — | 0.517 |
+| `pooledTriangle` | not reproduced | not reproduced |
+
+Two consequences for the drawing. The axis needs a **path** label, because the
+same signal reads differently on RAW and delivered. And `resamplingPeak` at
+0.517 is chance — its band spans nearly the whole axis, which is the honest
+picture and worth drawing rather than tidying.
+
+**The log rail needs a rule for non-positive PCE.** `log10(pce)/5` is
+undefined at or below zero, and scores of -30.9 and -44.0 are ordinary here —
+a different camera frequently lands negative. Rule: clamp the marker to the
+left edge and label it `< 1`. The rail starts at 1 because that is where the
+log scale can start, not because scores do.
+
+**Explorer host.** `chain.explorer_url` uses Blockscout; the handoff says
+Etherscan. The registry is verified on both, so either is honest. The backend
+returns a full `explorerUrl` and the frontend should render whatever comes
+back rather than building the link itself.
+
+**Not yet available: sub-step progress for screen 04's working state.**
+`/verify` and `/degrade` are synchronous and return once. The determinate
+ledger the handoff draws — `scale search · window 4/9` — needs the scorer to
+emit progress, which `/enrol` already does over SSE and these do not. Until
+then the working state has elapsed time and a typical figure, and no window
+count.
+
 ## Build order
 
 1. `/health`, `/state` — nothing else is debuggable without them.

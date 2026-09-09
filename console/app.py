@@ -53,39 +53,104 @@ async def health() -> dict:
     return {"status": "ok", "bodies": len(_bodies())}
 
 
+#: Thresholds for the pre-flight gate. The backend owns these, not the
+#: design: a number in a mockup is a guess, and a check that reads NO-GO for a
+#: condition that is actually fine will get overridden on camera, which
+#: teaches a presenter to ignore the gate.
+#:
+#: Gas: the demo sends four transactions -- registerBody, registerImage,
+#: commitSession, commit -- which on Sepolia costs far under 0.01 ETH. The
+#: handoff asked for 0.05, which the deployer's 0.0484 would fail for no real
+#: reason.
+#:
+#: Bodies: one. Two would be better and needs a second physical camera
+#: (`docs/e2e-checklist.md` §1), so gating the demo on it would gate it on
+#: hardware nobody has.
+MIN_BALANCE_WEI = 10**16          # 0.01 ETH
+MIN_BODIES = 1
+MAX_BLOCK_AGE = 60                # seconds; Sepolia blocks are ~12s
+
+
 @app.get("/state")
 async def state() -> dict:
-    """Everything that can fail on camera, answered before recording starts.
+    """The go/no-go gate, as rows a table renders without deciding anything.
 
-    Deliberately never raises. A presenter needs to see *which* part is down,
-    and an exception here would tell them only that something is.
+    Everything here can fail on camera, and a presenter needs to see *which*
+    part is down rather than that something is -- so this never raises, and
+    every check carries what was measured, what was expected, and whether it
+    passes. The frontend renders; it does not evaluate.
     """
-    report: dict = {"bodies": [b["name"] for b in _bodies().values()]}
+    checks: list[dict] = []
+
+    def record(name, measured, expected, ok, remedy=None):
+        row = {"check": name, "measured": str(measured), "expected": expected, "go": bool(ok)}
+        if remedy and not ok:
+            row["remedy"] = remedy
+        checks.append(row)
+
     try:
-        report["chain"] = chain.status()
+        status = chain.status()
+        record("chain id", status["chainId"], f"{chain.EXPECTED_CHAIN_ID} Sepolia",
+               status["onExpectedChain"], "point SEPOLIA_RPC_URL at Sepolia")
+        record("registry", status["registry"] or "unset", "contract address set",
+               bool(status["registry"]), "set REGISTRY_ADDRESS in .env")
+        try:
+            age = chain.block_age_seconds()
+            record("block", f"{status['blockNumber']} · {age}s old",
+                   f"advancing, under {MAX_BLOCK_AGE}s", age <= MAX_BLOCK_AGE,
+                   "the RPC is stale; switch endpoint")
+        except chain.ChainError as error:
+            record("block", f"error: {error}", "advancing", False, "switch RPC endpoint")
     except chain.ChainError as error:
-        report["chain"] = {"error": str(error)}
+        record("chain id", f"unreachable: {error}", f"{chain.EXPECTED_CHAIN_ID} Sepolia",
+               False, "check SEPOLIA_RPC_URL")
+        status = {}
 
     deployer = os.environ.get("DEPLOYER_ADDRESS")
     if deployer:
         try:
             wei = chain.balance(deployer)
-            report["deployer"] = {
-                "address": deployer,
-                "balanceWei": str(wei),
-                "funded": wei > 0,
-            }
+            record("deployer gas", f"{wei / 1e18:.4f} ETH",
+                   f"at least {MIN_BALANCE_WEI / 1e18:.2f} ETH", wei >= MIN_BALANCE_WEI,
+                   "top up from a Sepolia faucet")
         except chain.ChainError as error:
-            report["deployer"] = {"address": deployer, "error": str(error)}
+            record("deployer gas", f"error: {error}", "balance readable", False)
+    else:
+        record("deployer gas", "DEPLOYER_ADDRESS unset", "an address to check", False,
+               "set DEPLOYER_ADDRESS in .env")
 
-    report["ensParent"] = os.environ.get("ENS_PARENT_NAME")
-    report["threshold"] = prnu.PCE_THRESHOLD
-    report["ready"] = bool(
-        report["bodies"]
-        and report.get("chain", {}).get("onExpectedChain")
-        and report.get("chain", {}).get("registry")
-    )
-    return report
+    parent = os.environ.get("ENS_PARENT_NAME", "")
+    if parent:
+        try:
+            ready, detail = chain.ens_parent_ready(parent)
+            record("ens parent", parent if ready else detail,
+                   f"{parent} has a subregistry", ready,
+                   "register the parent at https://app.ens.dev/ and create one "
+                   "subname under it -- that is what provisions the subregistry")
+        except chain.ChainError as error:
+            record("ens parent", f"error: {error}", f"{parent} resolves", False)
+
+    bodies = _bodies()
+    record("enrolled bodies", len(bodies), f"at least {MIN_BODIES}",
+           len(bodies) >= MIN_BODIES, "run /enrol, or check GENESIS_REFERENCES")
+
+    try:
+        subgraph_ok = bool(subgraph.SUBGRAPH_URL)
+    except Exception:
+        subgraph_ok = False
+    record("perceptual index", subgraph.SUBGRAPH_URL or "unset",
+           "subgraph URL set", subgraph_ok,
+           "set GENESIS_SUBGRAPH_URL; without it a degraded copy cannot find "
+           "its original and step 4 falls back to fingerprint-only")
+
+    return {
+        "ready": all(c["go"] for c in checks),
+        "checks": checks,
+        "bodies": [b["name"] for b in bodies.values()],
+        "threshold": prnu.PCE_THRESHOLD,
+        "chain": status,
+        "ensParent": parent or None,
+    }
 
 
 def _save(upload: UploadFile) -> Path:

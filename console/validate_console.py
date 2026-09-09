@@ -83,13 +83,56 @@ def test_a_dead_rpc_withholds_the_verdict(client, monkeypatch):
 
 
 def test_state_reports_a_broken_chain_rather_than_raising(client, monkeypatch):
+    """A presenter needs to see WHICH part is down, not that something is."""
     def dead():
         raise chain.ChainError("no route to host")
 
     monkeypatch.setattr(chain, "status", dead)
     body = client.get("/state").json()
     assert body["ready"] is False
-    assert "no route to host" in body["chain"]["error"]
+    row = next(c for c in body["checks"] if c["check"] == "chain id")
+    assert row["go"] is False and "no route to host" in row["measured"]
+
+
+def test_state_rows_carry_what_a_table_needs_and_no_logic(client, monkeypatch):
+    """The frontend renders these; it must never have to evaluate them."""
+    monkeypatch.setattr(chain, "status", lambda: {
+        "chainId": 11155111, "onExpectedChain": True, "blockNumber": 1, "registry": "0xr",
+    })
+    monkeypatch.setattr(chain, "block_age_seconds", lambda: 5)
+    body = client.get("/state").json()
+    for row in body["checks"]:
+        assert set(("check", "measured", "expected", "go")) <= set(row)
+        assert isinstance(row["go"], bool)
+
+
+def test_a_failing_check_carries_a_remedy(client, monkeypatch):
+    """A gate that says no without saying what to do gets ignored on camera."""
+    monkeypatch.setenv("ENS_PARENT_NAME", "cam.osoro.eth")
+    monkeypatch.setattr(chain, "ens_parent_ready",
+                        lambda n: (False, "`osoro` has no subregistry under eth"))
+    monkeypatch.setattr(chain, "status", lambda: {
+        "chainId": 11155111, "onExpectedChain": True, "blockNumber": 1, "registry": "0xr",
+    })
+    monkeypatch.setattr(chain, "block_age_seconds", lambda: 5)
+    body = client.get("/state").json()
+    ens = next(c for c in body["checks"] if c["check"] == "ens parent")
+    assert ens["go"] is False and "app.ens.dev" in ens["remedy"]
+
+
+def test_gas_threshold_is_ours_not_a_mockups(client, monkeypatch):
+    """0.0484 ETH is plenty for four Sepolia transactions and must read GO."""
+    from console import app as ca
+
+    monkeypatch.setenv("DEPLOYER_ADDRESS", "0xdeadbeef")
+    monkeypatch.setattr(chain, "balance", lambda a: 48_364_040_818_403_266)
+    monkeypatch.setattr(chain, "status", lambda: {
+        "chainId": 11155111, "onExpectedChain": True, "blockNumber": 1, "registry": "0xr",
+    })
+    monkeypatch.setattr(chain, "block_age_seconds", lambda: 5)
+    gas = next(c for c in client.get("/state").json()["checks"] if c["check"] == "deployer gas")
+    assert gas["go"] is True
+    assert ca.MIN_BALANCE_WEI < 5 * 10**16
 
 
 def test_register_body_refuses_a_slot_that_is_taken(client, monkeypatch):
