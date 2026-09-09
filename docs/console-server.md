@@ -287,6 +287,31 @@ emit progress, which `/enrol` already does over SSE and these do not. Until
 then the working state has elapsed time and a typical figure, and no window
 count.
 
+## Running it
+
+Three processes, in this order. The console API signs, so it binds to
+localhost and nothing else.
+
+```bash
+uvicorn scoring.app:app --port 8000                        # the scorer
+uvicorn console.app:app --host 127.0.0.1 --port 8100       # the console API
+cd console-ui && cp .env.example .env && npm install && npm run dev
+```
+
+Then <http://127.0.0.1:5173> and press **P** for pre-flight. Screens are
+reachable by number key; **P** re-runs the gate.
+
+`console-ui/` is Vite and TypeScript with no framework, matching `verify/` so
+the repo has one idiom rather than two. It is drawn at 1280x720 -- the
+recording resolution -- and scaled to fit the window, so the measurements in
+`design_handoff_genesis_console/` stay literal instead of approximate.
+
+The dev server pins `host: 127.0.0.1`. Vite's default binds `localhost`,
+which resolves to `::1` only on this machine, so `http://127.0.0.1:5173`
+refused the connection while `localhost` worked. Both spellings are in the
+API's CORS allowlist and in the handoff's chrome, and a presenter typing the
+wrong one loses a minute on camera to a blank page.
+
 ## Build order
 
 1. `/health`, `/state` — nothing else is debuggable without them.

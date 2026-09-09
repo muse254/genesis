@@ -1,0 +1,114 @@
+/* Screen layouts. Structure only -- every colour is a token. */
+
+.two-col { display: grid; grid-template-columns: 430px 1fr; gap: 26px; height: 520px; }
+.two-col .right { overflow-y: auto; padding-right: 4px; }
+
+.slot {
+  display: flex; align-items: center; justify-content: center; text-align: center;
+  width: 430px; height: 287px; border: 1.5px dashed var(--hairline);
+  color: var(--tertiary); font-size: 13px; cursor: pointer; background: var(--paper);
+}
+.slot.filled { border-style: solid; padding: 0; }
+.slot img { width: 100%; height: 100%; object-fit: cover; filter: grayscale(1); }
+.slot img.degraded { filter: grayscale(1) blur(.6px) contrast(.94); }
+
+/* --- verdict cards ------------------------------------------------------- */
+.verdict { border: 2px solid var(--ink); margin: 18px 0; }
+.vhead { font: 800 26px/1 var(--ui); letter-spacing: -.01em; padding: 14px 18px; }
+.vbody { padding: 4px 18px 14px; }
+.vrow { display: grid; grid-template-columns: 190px 1fr; gap: 12px; padding: 7px 0;
+        border-top: 1px solid var(--hairline); font-size: 13.5px; align-items: baseline; }
+.vrow:first-child { border-top: 0; }
+.vfoot { margin: 0; padding: 12px 18px; border-top: 1px solid var(--hairline);
+         font-size: 12.5px; line-height: 1.55; color: var(--secondary); }
+
+.verdict.registered { border-color: var(--registered); }
+.verdict.registered .vhead { background: var(--registered); color: var(--paper); }
+.verdict.derived { border-color: var(--derived); }
+.verdict.derived .vhead { background: var(--derived-tint); color: var(--derived-text);
+                          border-bottom: 2px solid var(--derived); }
+.verdict.derived .vfoot { background: var(--derived-tint); }
+.verdict\.fingerprint-only, .verdict.fingerprint-only { border: 3px solid var(--pixels); }
+.verdict.fingerprint-only .vhead { background: var(--pixels-tint); color: var(--pixels-text); }
+.verdict.no-record { border: 1px solid var(--norecord); }
+.verdict.no-record .vhead { color: var(--norecord-text); }
+
+/* --- the log rail -------------------------------------------------------- */
+.rail { position: relative; height: 74px; margin: 22px 0 8px; }
+.rail .line { position: absolute; top: 34px; left: 0; right: 0; height: 1px; background: var(--ink); }
+.rail.idle .line { background: var(--hairline); }
+.rail .tick { position: absolute; top: 34px; transform: translateX(-50%); }
+.rail .tick i { display: block; width: 1px; height: 6px; background: var(--mid); }
+.rail .tick em { position: absolute; top: 9px; left: 50%; transform: translateX(-50%);
+                 font: 10.5px/1 var(--mono); color: var(--tertiary); font-style: normal; }
+.rail .threshold { position: absolute; top: 16px; transform: translateX(-50%); }
+.rail .threshold i { display: block; width: 2px; height: 24px; background: var(--ink); margin: 0 auto; }
+.rail .threshold em { position: absolute; top: -12px; left: 50%; transform: translateX(-50%);
+                      white-space: nowrap; font: 600 10px/1 var(--mono); font-style: normal; }
+.rail .marker { position: absolute; top: 28px; transform: translateX(-50%); }
+.rail .marker i { display: block; width: 12px; height: 12px; background: var(--ink); }
+.rail .marker em { position: absolute; top: 16px; left: 50%; transform: translateX(-50%);
+                   white-space: nowrap; font: 11px/1 var(--mono); font-style: normal; }
+
+/* --- stages -------------------------------------------------------------- */
+.stages { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 20px; }
+.stage { border: 1px solid var(--hairline); padding: 12px; }
+.stage.decides { border: 2px solid var(--ink); }
+.stage .asks { font-size: 12px; color: var(--secondary); margin: 6px 0 8px; line-height: 1.45; }
+.stage .result { font: 600 14px/1 var(--ui); }
+.stage .decides { font-size: 11.5px; color: var(--tertiary); margin: 10px 0 0; line-height: 1.45; }
+.advisory { font: 600 10px/1 var(--mono); letter-spacing: .08em; color: var(--pixels-text);
+            background: var(--pixels-tint); padding: 4px 6px; display: inline-block; margin-bottom: 8px; }
+.signal { display: grid; grid-template-columns: 1fr auto; gap: 2px 8px; margin-bottom: 8px; font-size: 11px; }
+.signal .name { color: var(--secondary); }
+.signal .value { text-align: right; }
+.signal .band { grid-column: 1 / -1; position: relative; height: 7px; background: var(--panel); }
+.signal .band i { position: absolute; top: 0; height: 7px; background: var(--mid); }
+.signal .band b { position: absolute; top: -2px; width: 2px; height: 11px; background: var(--ink); }
+.signal .auc { grid-column: 1 / -1; color: var(--tertiary); font-size: 10.5px; }
+.stage .none { font-size: 11.5px; color: var(--tertiary); }
+
+/* --- pre-flight ---------------------------------------------------------- */
+.preflight { display: grid; grid-template-columns: 1fr 300px; gap: 26px; }
+.preflight table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+.preflight th { text-align: left; font: 600 10.5px/1 var(--ui); letter-spacing: .08em;
+                color: var(--tertiary); padding: 0 0 8px; border-bottom: 1px solid var(--ink); }
+.preflight td { padding: 8px 10px 8px 0; border-bottom: 1px solid var(--hairline); vertical-align: top; }
+.preflight td.expected { color: var(--tertiary); }
+.preflight td.go { font: 600 12px/1 var(--ui); color: var(--registered); text-align: right; }
+.preflight tr.bad td.go { color: var(--error); }
+.preflight tr.remedy td { border-bottom: 1px solid var(--hairline); font-size: 11.5px;
+                          color: var(--secondary); padding-top: 0; }
+.go-block { border: 2px solid var(--registered); padding: 20px; }
+.go-block .word { font: 800 56px/1 var(--ui); color: var(--registered); }
+.nogo-block { border: 2px solid var(--error); padding: 20px; }
+.nogo-block .word { font: 800 30px/1 var(--ui); color: var(--error); }
+.nogo-block p { font-size: 12px; color: var(--secondary); line-height: 1.5; }
+.nogo-block .first { color: var(--ink); }
+
+/* --- enrol --------------------------------------------------------------- */
+.enrol-form { display: flex; gap: 8px; margin-bottom: 18px; }
+.enrol-form input { font: 12.5px var(--mono); padding: 8px 10px; border: 1px solid var(--hairline);
+                    background: var(--paper); color: var(--ink); min-width: 260px; }
+.enrol-form button { font: 600 12.5px var(--ui); padding: 8px 16px; border: 2px solid var(--ink);
+                     background: var(--ink); color: var(--paper); cursor: pointer; }
+.grid { display: grid; grid-template-columns: repeat(8, 26px); gap: 5px; margin-bottom: 20px; }
+.cell { width: 26px; height: 26px; border: 1px solid var(--hairline); display: block; }
+.cell.done { background: var(--ink); border-color: var(--ink); }
+.cell.live { border: 2px solid var(--registered); }
+.commitment { border: 2px solid var(--ink); padding: 14px; max-width: 620px; }
+.commitment .hash { font-size: 15px; word-break: break-all; margin: 6px 0; }
+.commitment .note, .enrol-side .warn { font-size: 12px; color: var(--secondary); line-height: 1.5; }
+
+/* --- survival ------------------------------------------------------------ */
+.survival { display: grid; grid-template-columns: 1fr 260px; gap: 24px; }
+.pair { display: grid; grid-template-columns: 1fr .66fr; gap: 16px; align-items: start; }
+.pair .slot { width: 100%; height: 220px; }
+.ledger { font: 12.5px/1.9 var(--mono); padding-left: 18px; color: var(--secondary); }
+
+/* --- states -------------------------------------------------------------- */
+.working { font-size: 12.5px; color: var(--secondary); }
+.failure { border: 1px solid var(--ink); padding: 16px; margin: 16px 0; }
+.fhead { font: 800 17px/1 var(--ui); color: var(--error); margin-bottom: 8px; }
+.failure .detail { font-size: 12px; color: var(--secondary); word-break: break-word; }
+.failure .standing { font-size: 12.5px; margin: 8px 0 0; }

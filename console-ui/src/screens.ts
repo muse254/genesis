@@ -1,0 +1,279 @@
+/**
+ * The six screens. One file, because they share the drop-slot and result
+ * grammar and splitting them would mean re-deriving it five times.
+ *
+ * Every screen has the same four states: idle, working, a verdict, or an
+ * error. Working states are determinate wherever the server gives us
+ * something to count -- `/enrol` streams per frame, so that one is honest.
+ * `/verify` and `/degrade` return once, so those show elapsed against a
+ * typical figure and no fake sub-steps (`docs/console-server.md`).
+ */
+
+import { api, type Check, type State, type VerifyResult } from "./api";
+import { el, escape, rail, stageStrip, verdictCard } from "./components";
+
+type Render = (host: HTMLElement) => void;
+
+/** A fixed-aspect slot. Never bundle real camera files: one full-resolution
+ *  photograph is enough to recover a fingerprint (`docs/security.md`). */
+function dropSlot(hint: string, onFile: (file: File) => void): HTMLElement {
+  const slot = el(`
+    <label class="slot">
+      <input type="file" accept="image/*,.cr3,.dng,.CR3,.DNG" hidden />
+      <span>${escape(hint)}</span>
+    </label>`);
+  const input = slot.querySelector("input")!;
+  input.addEventListener("change", () => {
+    const file = input.files?.[0];
+    if (file) onFile(file);
+  });
+  return slot;
+}
+
+function showImage(slot: HTMLElement, file: File, degraded = false) {
+  const url = URL.createObjectURL(file);
+  slot.innerHTML = `<img src="${url}" class="${degraded ? "degraded" : ""}" alt="" />`;
+  slot.classList.add("filled");
+}
+
+async function scored(
+  host: HTMLElement,
+  file: File,
+  compare?: { pce: number; label: string },
+) {
+  host.querySelector(".result-area")!.innerHTML =
+    `<p class="working pulse mono">scoring — PRNU on a 24-megapixel frame takes seconds</p>`;
+  const started = Date.now();
+  const timer = setInterval(() => {
+    const elapsed = ((Date.now() - started) / 1000).toFixed(1);
+    const note = host.querySelector(".working");
+    if (note) note.textContent = `scoring · ${elapsed}s elapsed · ~9s typical`;
+  }, 100);
+
+  try {
+    const result = await api.verify(file);
+    clearInterval(timer);
+    const marks = [{ pce: result.pce, label: "this file" }];
+    if (compare) marks.push(compare);
+    const area = host.querySelector(".result-area")!;
+    area.innerHTML = "";
+    area.append(rail(marks));
+    area.append(verdictCard(result));
+    area.append(stageStrip(result.stages));
+    return result;
+  } catch (error) {
+    clearInterval(timer);
+    host.querySelector(".result-area")!.append(
+      failure("SCORING FAILED", (error as Error).message, "Nothing already on screen is withdrawn."),
+    );
+    return undefined;
+  }
+}
+
+/** Errors fail in words, never a stack trace, and withdraw nothing. */
+function failure(heading: string, detail: string, standing: string): HTMLElement {
+  return el(`
+    <div class="failure">
+      <div class="fhead">${escape(heading)}</div>
+      <p class="mono detail">${escape(detail)}</p>
+      <p class="standing">${escape(standing)}</p>
+    </div>`);
+}
+
+/** 00 · Pre-flight. The go/no-go gate, checked before recording starts. */
+export const preflight: Render = (host) => {
+  host.innerHTML = `
+    <h1 class="title">Pre-flight</h1>
+    <p class="lede">Every one of these can fail on camera. Checked now, not during.
+       Press <b>P</b> to re-run.</p>
+    <div class="preflight"><div class="table">loading…</div><div class="gate"></div></div>`;
+
+  const draw = (state: State) => {
+    const rows = state.checks
+      .map(
+        (check: Check) => `
+        <tr class="${check.go ? "" : "bad"}">
+          <td>${escape(check.check)}</td>
+          <td class="mono">${escape(check.measured)}</td>
+          <td class="mono expected">${escape(check.expected)}</td>
+          <td class="go">${check.go ? "GO" : "NO-GO"}</td>
+        </tr>
+        ${check.remedy ? `<tr class="remedy"><td colspan="4">→ ${escape(check.remedy)}</td></tr>` : ""}`,
+      )
+      .join("");
+
+    host.querySelector(".table")!.innerHTML = `
+      <table>
+        <thead><tr><th>CHECK</th><th>MEASURED</th><th>EXPECTED</th><th>GO</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>`;
+
+    const failing = state.checks.filter((c) => !c.go);
+    host.querySelector(".gate")!.innerHTML = state.ready
+      ? `<div class="go-block"><div class="word">GO</div>
+           <p>${state.bodies.length} enrolled ${state.bodies.length === 1 ? "body" : "bodies"} · threshold ${state.threshold}</p></div>`
+      : `<div class="nogo-block"><div class="word">NO-GO</div>
+           <p>${failing.length} check${failing.length === 1 ? "" : "s"} failing.</p>
+           <p class="mono first">${escape(failing[0]?.check ?? "")}</p>
+           <p class="remedy">${escape(failing[0]?.remedy ?? "")}</p></div>`;
+  };
+
+  api
+    .state()
+    .then(draw)
+    .catch((error) => {
+      host.querySelector(".table")!.innerHTML = "";
+      host.querySelector(".table")!.append(
+        failure("CONSOLE UNREACHABLE", error.message, "Start it: uvicorn console.app:app --port 8100"),
+      );
+    });
+};
+
+/** 01 · Enrol. Determinate: the server streams one event per frame. */
+export const enrol: Render = (host) => {
+  host.innerHTML = `
+    <h1 class="title">Enrol a camera body</h1>
+    <p class="lede">Forty-odd RAW frames from an archive that already exists.
+       K never leaves this machine; only its commitment goes on chain.</p>
+    <form class="enrol-form">
+      <input name="folder" placeholder="/path/to/frames" required />
+      <input name="name" placeholder="body name, e.g. r10" required />
+      <button>Enrol</button>
+    </form>
+    <div class="grid"></div>
+    <div class="enrol-side"></div>`;
+
+  host.querySelector("form")!.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const data = new FormData(event.target as HTMLFormElement);
+    const grid = host.querySelector(".grid")!;
+    const side = host.querySelector(".enrol-side")!;
+    let total = 0;
+
+    await api.enrol(String(data.get("folder")), String(data.get("name")), (e) => {
+      if (e.event === "start") {
+        total = Number(e.frames);
+        grid.innerHTML = Array.from({ length: total }, () => `<i class="cell"></i>`).join("");
+        if (!e.enough) {
+          side.innerHTML = `<p class="warn">${total} frames. Gate A asks for 40–50 —
+            K will be noisier than the procedure intends.</p>`;
+        }
+      }
+      if (e.event === "frame") {
+        const cells = grid.querySelectorAll(".cell");
+        cells.forEach((cell, index) => {
+          cell.className =
+            index < Number(e.index) ? "cell done" : index === Number(e.index) ? "cell live pulse" : "cell";
+        });
+        side.innerHTML = `<div class="display">${e.index} / ${total}</div>
+          <p class="label">frames</p><p class="mono">${escape(e.name)}</p>`;
+      }
+      if (e.event === "done") {
+        const result = e.result as Record<string, string> | null;
+        side.innerHTML = e.error
+          ? ""
+          : `<div class="commitment">
+               <p class="label">commitment</p>
+               <p class="mono hash">${escape(result?.commitment ?? "")}</p>
+               <p class="note">The fingerprint itself stays on this machine;
+                  only this commitment goes on chain.</p>
+             </div>`;
+        if (e.error) side.append(failure("ENROLMENT FAILED", String(e.error), "No fingerprint was written."));
+      }
+    }).catch((error) => side.append(failure("ENROLMENT FAILED", error.message, "No fingerprint was written.")));
+  });
+};
+
+/** 02 · Register. */
+export const register: Render = (host) => {
+  host.innerHTML = `
+    <h1 class="title">Register a photograph</h1>
+    <p class="lede">Scored first, and refused below the threshold before anything is signed.</p>
+    <div class="two-col"><div class="left"></div><div class="right result-area"></div></div>`;
+  const left = host.querySelector(".left")!;
+  left.append(
+    dropSlot("Drop the RAW to register", async (file) => {
+      showImage(left.querySelector(".slot")!, file);
+      await scored(host, file);
+    }),
+  );
+};
+
+/** 03 · Negative. Must read as "no record", never as an accusation. */
+export const negative: Render = (host) => {
+  host.innerHTML = `
+    <h1 class="title">A photograph from a different camera</h1>
+    <p class="lede">Same model, different body — the case that decides the threshold.</p>
+    <div class="two-col"><div class="left"></div><div class="right result-area"></div></div>`;
+  const left = host.querySelector(".left")!;
+  left.append(
+    dropSlot("Drop a frame from another camera", async (file) => {
+      showImage(left.querySelector(".slot")!, file);
+      await scored(host, file);
+    }),
+  );
+};
+
+/** 04 · Survival. The money shot: strip, resize, re-encode, and it still resolves. */
+export const survival: Render = (host) => {
+  host.innerHTML = `
+    <h1 class="title">Strip it, resize it, re-encode it</h1>
+    <p class="lede">Metadata removed, 1800px longest edge, JPEG quality 95.
+       Quality is stated because the claim dies between q95 and q80.</p>
+    <div class="survival">
+      <div class="pair"><div class="orig"></div><div class="copy"></div></div>
+      <div class="mid"></div>
+    </div>
+    <div class="result-area"></div>`;
+
+  const orig = host.querySelector(".orig")!;
+  orig.append(
+    dropSlot("Drop the registered photograph", async (file) => {
+      showImage(orig.querySelector(".slot")!, file);
+      const mid = host.querySelector(".mid")!;
+      mid.innerHTML = `<ol class="ledger">
+        <li>strip metadata</li><li>resize to 1800px</li><li>re-encode q95</li>
+        <li class="pulse">re-score</li></ol>`;
+      try {
+        const degraded = await api.degrade(file, 1800, 95);
+        const copy = host.querySelector(".copy")!;
+        copy.innerHTML = `<div class="slot filled"></div>`;
+        showImage(copy.querySelector(".slot")!, degraded, true);
+        mid.querySelector(".pulse")?.classList.remove("pulse");
+        await scored(host, degraded);
+      } catch (error) {
+        host.querySelector(".result-area")!.append(
+          failure("SCORER UNREACHABLE", (error as Error).message,
+                  "The degraded copy is saved; every result already on screen stands."),
+        );
+      }
+    }),
+  );
+};
+
+/** 05 · Verdict. Any image, the full card. */
+export const verdict: Render = (host) => {
+  host.innerHTML = `
+    <h1 class="title">Verify</h1>
+    <p class="lede">Drop any photograph. We say whether its owner registered it —
+       or that we have no record.</p>
+    <div class="two-col"><div class="left"></div><div class="right result-area"></div></div>`;
+  const left = host.querySelector(".left")!;
+  left.append(
+    dropSlot("Drop any image", async (file) => {
+      showImage(left.querySelector(".slot")!, file);
+      await scored(host, file);
+    }),
+  );
+};
+
+export const SCREENS: { id: string; label: string; render: Render }[] = [
+  { id: "preflight", label: "00 PRE-FLIGHT", render: preflight },
+  { id: "enrol", label: "01 ENROL", render: enrol },
+  { id: "register", label: "02 REGISTER", render: register },
+  { id: "negative", label: "03 NEGATIVE", render: negative },
+  { id: "survival", label: "04 SURVIVAL", render: survival },
+  { id: "verdict", label: "05 VERDICT", render: verdict },
+];
+
+export type { VerifyResult };

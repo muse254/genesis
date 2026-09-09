@@ -59,3 +59,6 @@ subgraph/tests/.bin/
 subgraph/matchstick.yaml
 subgraph/tests/.latest.json
 mcp/dist/
+
+# Design handoff bundle — review board, not source. Kept locally.
+design_handoff_genesis_console/
