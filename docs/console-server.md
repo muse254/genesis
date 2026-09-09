@@ -370,6 +370,26 @@ the board again, exactly.
 refuses to shrink below its content, so a long verdict pushed the footer off
 screen instead of scrolling.
 
+## The test suite wrote into the real archive
+
+Recorded because the symptom was confusing and the cause was not obvious: the
+archive screen reported **two bodies** on a machine with one camera.
+
+Neither number was a counting error. `console/validate_console.py` drives the
+real endpoints through `TestClient`, and `console/catalogue.py` resolved its
+path at import — so every run wrote its fixtures into `data/catalogue.db`, the
+operator's real archive. A fabricated body id `0x0202…` and two files named
+`IMG_0.CR3` were sitting in it, and `COUNT(DISTINCT body_id)` counted the
+fixture as a second camera.
+
+An autouse fixture now points the catalogue at a temp file for every test in
+that module, and a full run leaves the real one byte-identical. A test that
+pollutes production data is worse than no test.
+
+The same investigation found `register-session` never recorded `body_id`, so a
+session's frames belonged to no body and the statistics undercounted from the
+other direction. Both are tested now.
+
 ## Choosing an enrolment folder
 
 `GET /browse` lists folders on the machine running the console, each with a

@@ -290,7 +290,8 @@ async def register_session(
     bodies = {name: (bid, b) for bid, b in _bodies().items() for name in (b["name"], bid)}
     if body not in bodies:
         raise HTTPException(404, f"unknown body {body}")
-    _, holder = bodies[body]
+    resolved_id, holder = bodies[body]
+    body_id_hex = resolved_id if str(resolved_id).startswith("0x") else "0x" + str(resolved_id)
 
     references = Path(os.environ.get("GENESIS_REFERENCES", "data/references"))
     reference = references / f"{holder['name']}.npz"
@@ -357,6 +358,9 @@ async def register_session(
         for index, entry in enumerate(accepted):
             catalogue.record_image(
                 image_hash="0x" + entry["imageHash"].hex(),
+                # Recorded, or the archive counts a session's frames as
+                # belonging to no body and the statistics undercount.
+                body_id=body_id_hex,
                 body_name=holder["name"],
                 pce=entry["pce"],
                 registered_at=int(time.time()),

@@ -13,6 +13,29 @@ from console import app as console_app
 from console import chain
 
 
+@pytest.fixture(autouse=True)
+def _isolated_catalogue(tmp_path, monkeypatch):
+    """Point the catalogue at a temp file for every test in this module.
+
+    Without this the suite writes into `data/catalogue.db` -- the operator's
+    real archive -- because these tests drive the real endpoints through
+    TestClient. It did: a fixture body `0x0202…` and two files named IMG_0.CR3
+    showed up in a live archive and made the statistics say two bodies when
+    one camera existed. A test that pollutes production data is worse than no
+    test, so this is autouse rather than opt-in.
+    """
+    import importlib
+
+    from console import catalogue as cat
+
+    monkeypatch.setenv("GENESIS_CATALOGUE", str(tmp_path / "test-catalogue.db"))
+    importlib.reload(cat)
+    monkeypatch.setattr("console.registry.catalogue", cat)
+    monkeypatch.setattr("console.app.catalogue", cat)
+    yield
+    importlib.reload(cat)
+
+
 @pytest.fixture
 def client(monkeypatch):
     monkeypatch.setattr(
@@ -476,3 +499,34 @@ def test_a_duplicate_registration_says_so_plainly(monkeypatch):
         assert error.status_code == 409
         assert "already registered" in error.detail
         assert "0x08c379a0" not in error.detail        # no revert hex
+
+
+def test_a_session_records_which_body_it_scored_against(client, monkeypatch):
+    """Without this the archive counts a session's frames as belonging to no
+    body, and the statistics undercount."""
+    from console import catalogue as cat
+    from console import registry as reg
+
+    monkeypatch.setattr(
+        reg, "_bodies",
+        lambda: {"0xbeef": {"name": "r10", "commitment": "cc", "planes": {}, "meta": {}}},
+    )
+    monkeypatch.setattr(reg, "_score_against", lambda body, path: {"pce": 0.0})
+
+    class Built:
+        pce_score = 9000
+        image_hash = b"\x07" * 32
+
+    monkeypatch.setattr(reg.record, "build_record", lambda *a, **k: Built())
+    monkeypatch.setattr(reg.prnu, "PCE_THRESHOLD", 100.0)
+    monkeypatch.setattr(reg, "cast_send", lambda args: {"txHash": "0x1", "blockNumber": 2,
+                                                       "explorerUrl": "http://x"})
+
+    client.post(
+        "/register-session",
+        files=[("files", ("a.CR3", b"x", "image/x-raw"))],
+        data={"body": "r10"},
+    )
+    row = cat.listing()[0]
+    assert row["body_id"] == "0xbeef"
+    assert cat.statistics()["bodies"] == 1
