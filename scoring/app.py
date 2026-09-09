@@ -103,6 +103,56 @@ def _score_against(body: dict, path: Path) -> dict:
     except (ValueError, KeyError):
         pass  # fall through to the search, which assumes nothing about size
 
+    # A portrait capture is the common reason the shapes disagree. The sensor
+    # is physically landscape and RAW is stored in sensor space, so a RAW is
+    # unaffected -- but a developed JPEG has been turned, and the aligned path
+    # cannot see past that. Turning it back is worth two correlations: on a
+    # real portrait frame it recovers 810 where the scale search finds 282.
+    #
+    # Both directions are tried because only one is right and which one is not
+    # knowable from the pixels: 270 gives 810 on that frame and 90 gives -32.
+    # Two tries raise the null a little, as any search does (`docs/gates.md`),
+    # which is why this is attempted only after the aligned path has already
+    # failed and only for a probe that is actually portrait.
+    if path.suffix.lower() not in record.hashing_raw_suffixes():
+        from PIL import Image
+
+        Image.MAX_IMAGE_PIXELS = None
+        try:
+            with Image.open(path) as opened:
+                turned = opened.size[1] > opened.size[0]
+                source = opened.convert("RGB") if turned else None
+        except OSError:
+            source = None
+
+        if source is not None:
+            import tempfile as _tempfile
+
+            best = None
+            for angle in (270, 90):
+                handle = _tempfile.NamedTemporaryFile(suffix=".png", delete=False)
+                handle.close()
+                rotated = Path(handle.name)
+                try:
+                    source.rotate(angle, expand=True).save(rotated)
+                    candidate = prnu.load_delivered_planes(rotated, body["meta"]["cfa_pattern"])
+                    if all(candidate[c].shape == planes[c].shape for c in planes if c in candidate):
+                        pce = prnu.score(candidate, planes)
+                        if best is None or pce > best[0]:
+                            best = (pce, angle)
+                except (ValueError, KeyError, OSError):
+                    pass
+                finally:
+                    rotated.unlink(missing_ok=True)
+
+            if best and best[0] >= prnu.PCE_THRESHOLD:
+                return {
+                    "pce": best[0],
+                    "path": "aligned",
+                    "orientation": f"{best[1]} deg",
+                    "turned": "portrait capture, rotated back into sensor space",
+                }
+
     from PIL import Image
 
     Image.MAX_IMAGE_PIXELS = None

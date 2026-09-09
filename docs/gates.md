@@ -173,6 +173,39 @@ them; ordinary photographs worked anyway), a second body, and a second body
 of the same model -- the case that matters most, since two R10s share every
 model-level artefact and differ only in the fingerprint itself.
 
+### Portrait capture: RAW is unaffected, a delivered JPEG is not
+
+Measured 9 September 2026, after registration returned 500 on a portrait
+photograph with `image is (3000, 2000), fingerprint is (2000, 3000)`.
+
+The sensor is physically landscape and RAW is stored in sensor space, so the
+CFA planes of a portrait frame are the same shape as any other — IMG_0230 was
+shot portrait and its planes are (2000, 3000) exactly like IMG_0217's. **A RAW
+is unaffected by how the camera was held.** Developing is where it changes: a
+developer honours the orientation flag, so the JPEG comes out 4000x6000 and no
+longer sits on the photosite lattice.
+
+| File | Path | PCE |
+| --- | --- | --- |
+| IMG_0217 (landscape) RAW | aligned | 49,309.6 |
+| IMG_0217 delivered | aligned | 14,917.1 |
+| IMG_0230 (portrait) RAW | aligned | 1,895.4 |
+| IMG_0230 delivered, before | scale search, 270 deg | 282.3 |
+| IMG_0230 delivered, turned back | **aligned, 270 deg** | **838.4** |
+
+So a portrait delivered file used to lose the aligned path entirely and take
+the scale search, at about a third of what turning it back recovers. The
+scorer now tries turning a portrait probe into sensor space before it gives
+up. Both directions are tried because only one is right and the pixels do not
+say which: 270 gives 838 on this frame and 90 gives -32. It runs only after
+the aligned path has already failed and only for a probe that is actually
+portrait, so a landscape file is untouched — IMG_0217 still reports 14,917.1
+via `aligned, 0 deg`.
+
+Two tries raise the null a little, as any search does. That is the same
+caution as the eight-orientation search above and the same reason it is
+attempted last rather than first.
+
 ### A border defeats the search, not the fingerprint
 
 Found 9 September 2026 on a real pair of files, and worth its own note because

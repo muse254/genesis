@@ -74,6 +74,7 @@ def build_record(
     timestamp=None,
     geolocation=None,
     owner=None,
+    score=None,
 ) -> ImageRecord:
     """Score an image against its body and assemble the record.
 
@@ -84,6 +85,14 @@ def build_record(
     fingerprint : str | Path | tuple
         A saved ``.npz``, or the ``(planes, meta)`` pair
         :func:`prnu.load_fingerprint` returns.
+    score : float, optional
+        A PCE already measured by the caller. Supply it when the image needs
+        the orientation or scale search: this function's own scoring is the
+        aligned path only, and a portrait frame -- a fingerprint lives in
+        sensor space, which is always landscape -- raises a shape mismatch
+        there. `scoring.app._score_against` picks the right path and is what
+        `/verify` uses, so passing its answer here keeps registration and
+        verification from disagreeing about the same photograph.
     parent : bytes, optional
         ``image_hash`` of the original this was edited from. Absent for an
         original, which is what makes the records an edit graph rather than
@@ -107,15 +116,17 @@ def build_record(
         planes, meta = fingerprint
 
     path = Path(image_path)
-    if path.suffix.lower() in hashing_raw_suffixes():
-        probe = prnu.load_raw_planes(path, crop=meta.get("crop"))
+    if score is None:
+        if path.suffix.lower() in hashing_raw_suffixes():
+            probe = prnu.load_raw_planes(path, crop=meta.get("crop"))
+        else:
+            pattern = meta.get("cfa_pattern")
+            if pattern is None:
+                raise ValueError("fingerprint has no CFA pattern; a delivered image needs one")
+            probe = prnu.load_delivered_planes(path, pattern)
+        score = prnu.score(probe, planes)
     else:
-        pattern = meta.get("cfa_pattern")
-        if pattern is None:
-            raise ValueError("fingerprint has no CFA pattern; a delivered image needs one")
-        probe = prnu.load_delivered_planes(path, pattern)
-
-    score = prnu.score(probe, planes)
+        score = float(score)
     commitment = prnu.commitment(planes)
 
     return ImageRecord(

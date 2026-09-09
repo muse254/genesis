@@ -28,7 +28,7 @@ from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 from console import catalogue, chain
 from fingerprint import prnu
 from ingest import merkle, record
-from scoring.app import _bodies
+from scoring.app import _bodies, _score_against
 
 router = APIRouter()
 
@@ -95,6 +95,22 @@ def cast_send(args: list[str]) -> dict:
         raise HTTPException(504, f"cast timed out after {CAST_TIMEOUT}s")
 
     if done.returncode != 0:
+        # A revert the contract has a word for deserves that word, not a wall
+        # of hex. "already registered" is the common one and it is not an
+        # error the operator can fix by retrying.
+        for phrase, message in (
+            ("image already registered",
+             "This photograph is already registered. Registering the same pixels "
+             "twice is impossible by design -- verify it instead."),
+            ("body already registered",
+             "This body is already registered. The slot is claimed and cannot be "
+             "re-taken."),
+            ("below threshold",
+             "The pixels do not clear the threshold; nothing was signed."),
+        ):
+            if phrase in done.stderr:
+                raise HTTPException(409, message)
+
         # stderr can echo the calldata; the key is redacted so a failed
         # transaction cannot spill it into a log or a screen recording.
         leaked = done.stderr.replace(_key(), "<key>").strip()
@@ -180,11 +196,19 @@ async def register_image(
     path = Path(handle.name)
 
     try:
+        # Score through the same function `/verify` uses. `build_record`'s
+        # own scoring is the aligned path only, so a portrait frame raised a
+        # shape mismatch and returned 500 -- the fingerprint lives in sensor
+        # space, which is always landscape. Registration and verification
+        # disagreeing about one photograph is the failure worth engineering
+        # against, so there is one scorer and this is it.
+        measured = _score_against(holder, path)
         built = record.build_record(
             path,
             references / f"{holder['name']}.npz",
             hmac_key=_hmac_key(),
             owner=os.environ.get("ENS_PARENT_NAME"),
+            score=measured["pce"],
         )
         if built.pce_score < prnu.PCE_THRESHOLD:
             raise HTTPException(
@@ -290,6 +314,7 @@ async def register_session(
                     reference,
                     hmac_key=_hmac_key(),
                     owner=os.environ.get("ENS_PARENT_NAME"),
+                    score=_score_against(holder, path)["pce"],
                 )
             except Exception as error:      # a corrupt frame is not fatal to a shoot
                 refused.append({"name": upload.filename, "reason": str(error)[:160]})

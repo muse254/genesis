@@ -161,6 +161,8 @@ def test_register_image_refuses_below_threshold(client, monkeypatch):
 
     class Weak:
         pce_score = 41
+
+    monkeypatch.setattr(reg, "_score_against", lambda body, path: {"pce": 41.0})
     monkeypatch.setattr(reg.record, "build_record", lambda *a, **k: Weak())
 
     sent = []
@@ -269,6 +271,7 @@ def test_every_hash_field_is_padded_to_a_word(monkeypatch):
         reg, "_bodies",
         lambda: {"b1": {"name": "r10", "commitment": "cc", "planes": {}, "meta": {}}},
     )
+    monkeypatch.setattr(reg, "_score_against", lambda body, path: {"pce": 49310.0})
     monkeypatch.setattr(reg.record, "build_record", lambda *a, **k: Built())
     monkeypatch.setattr(reg.prnu, "PCE_THRESHOLD", 100.0)
 
@@ -334,6 +337,7 @@ def test_a_session_refuses_weak_frames_without_failing_the_shoot(client, monkeyp
             self.pce_score = pce
             self.image_hash = bytes([pce % 251]) * 32
 
+    monkeypatch.setattr(reg, "_score_against", lambda body, path: {"pce": 0.0})
     monkeypatch.setattr(reg.record, "build_record", lambda *a, **k: Built(next(scores)))
     monkeypatch.setattr(reg.prnu, "PCE_THRESHOLD", 100.0)
     monkeypatch.setattr(reg, "cast_send", lambda args: {"txHash": "0xabc", "blockNumber": 1,
@@ -362,6 +366,7 @@ def test_a_session_with_nothing_acceptable_signs_nothing(client, monkeypatch):
         pce_score = 12
         image_hash = b"\x01" * 32
 
+    monkeypatch.setattr(reg, "_score_against", lambda body, path: {"pce": 12.0})
     monkeypatch.setattr(reg.record, "build_record", lambda *a, **k: Weak())
     monkeypatch.setattr(reg.prnu, "PCE_THRESHOLD", 100.0)
     sent: list = []
@@ -426,3 +431,48 @@ def test_re_registering_the_same_pixels_keeps_the_newer_path(tmp_path, monkeypat
     assert len(rows) == 1
     assert rows[0]["file_path"] == "/new/a.CR3"
     assert rows[0]["description"] == "kept"            # the caption survives
+
+
+def test_registration_and_verification_use_one_scorer(monkeypatch):
+    """They diverged once and it cost a 500 on every portrait photograph.
+
+    build_record's own scoring is the aligned path only, and a fingerprint
+    lives in sensor space -- always landscape -- so a portrait frame raised
+    `image is (3000, 2000), fingerprint is (2000, 3000)`. /verify caught that
+    and fell through to the orientation search; registration did not.
+    """
+    from console import registry as reg
+    from scoring.app import _score_against
+
+    assert reg._score_against is _score_against
+
+    import inspect
+
+    source = inspect.getsource(reg.register_image)
+    assert "_score_against(holder, path)" in source, "registration must not score on its own"
+
+
+def test_a_duplicate_registration_says_so_plainly(monkeypatch):
+    """The contract has a word for it; a wall of revert hex is not that word."""
+    import subprocess
+
+    from fastapi import HTTPException
+
+    from console import registry as reg
+
+    class Done:
+        returncode = 1
+        stdout = ""
+        stderr = "execution reverted: image already registered, data: 0x08c379a0..."
+
+    monkeypatch.setattr(subprocess, "run", lambda *a, **k: Done())
+    monkeypatch.setenv("DEPLOYER_PRIVATE_KEY", "0x" + "11" * 32)
+    monkeypatch.setattr(reg.chain, "REGISTRY", "0xreg")
+
+    try:
+        reg.cast_send(["registerImage(...)", "(...)"])
+        raise AssertionError("should have raised")
+    except HTTPException as error:
+        assert error.status_code == 409
+        assert "already registered" in error.detail
+        assert "0x08c379a0" not in error.detail        # no revert hex
