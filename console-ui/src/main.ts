@@ -83,8 +83,15 @@ async function heartbeat() {
     set("scorer", state.bodies.length > 0);
     set("rpc", has("chain id") && has("block"));
     set("ens", has("ens"));
+    // Read the chain id rather than asserting it. The header said SEPOLIA
+    // whatever it was connected to, which on a demo about provenance is the
+    // wrong thing to be casual about -- an anvil run would have been captioned
+    // as a public testnet.
+    const chainId = state.chain?.chainId;
+    const network =
+      chainId === 11155111 ? "SEPOLIA" : chainId ? `CHAIN ${chainId}` : "NO CHAIN";
     app.querySelector(".meta")!.textContent =
-      `LOCALHOST:5173 · SEPOLIA · ${new Date().toISOString().slice(11, 19)} UTC`;
+      `LOCALHOST:5173 · ${network} · ${new Date().toISOString().slice(11, 19)} UTC`;
   } catch {
     set("scorer", false);
     set("rpc", false);

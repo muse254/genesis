@@ -212,37 +212,38 @@ Two candidates for that role here turned out to be the same camera.
 
 ## The console
 
-Six screens, driven by one presenter on localhost, built to
+Six screens driven by one presenter on localhost, built to
 `design_handoff_genesis_console/`. Registration and verification go through
 one scorer, so the two cannot disagree about the same photograph.
 
-![02 Register — a registered photograph](docs/screenshots/02-register.png)
+```
+00 PRE-FLIGHT   01 ENROL   02 REGISTER   03 NEGATIVE   04 SURVIVAL   05 VERDICT   06 ARCHIVE
+```
 
-*Registering: scored first at PCE 15,358, refused below the threshold before
-anything is signed, then included in block 11667252 with the transaction
-linked. The identity row resolves `cam.osoro.eth` to the address that owns the
-body.*
+**02 · Register**, exercised live: a photograph scored at **PCE 15,358**,
+refused below the threshold before anything is signed, then included in
+**block 11667252** with the transaction linked out to the explorer. The
+identity row resolves `cam.osoro.eth` to the address that owns the body, and
+the card's footer says what the green heading does not — *"this states where
+these pixels came from and who signed for them, when. It does not state what
+the photograph depicts, or that it is authentic."*
 
-![03 Negative — a different camera](docs/screenshots/03-negative.png)
+**03 · Negative**: a photograph from a different camera, **PCE 34.7** against
+a threshold of 100. It reads **no record**, on a neutral grey rule rather than
+an alarming one — absence is not a finding about the image, and `claims.md`
+is explicit it must never read as "fake".
 
-*A photograph from a different camera: PCE 34.7 against a threshold of 100.
-It reads **no record**, on a neutral rule rather than an alarming one —
-absence is not a finding about the image, and `docs/claims.md` is explicit
-that it must never read as "fake".*
+**Under every verdict, the stage strip.** Stage 1 decides only whether to look
+further. Stage 2 is labelled **advisory — decides nothing** and carries each
+signal's measured AUC beside its value, because a weak number read without its
+error bar becomes a strong one. Stage 3, the chain read, is the only stage
+that grants a claim and the only one drawn in a heavy rule.
 
-![05 Verdict — the stage strip](docs/screenshots/05-verdict.png)
-
-*The stage strip under every verdict. Stage 1 decides only whether to look
-further; stage 2 is marked **advisory — decides nothing** and carries each
-signal's measured AUC beside it, because a weak number read without its error
-bar becomes a strong one; stage 3, the chain read, is the only stage that
-grants a claim and is the only one drawn in a heavy rule.*
-
-Scores render in identical ink whatever their magnitude, and the rail is
-logarithmic from 1 to 100,000. Both are deliberate: a forged image scores
-82,190 and a genuine degraded photograph scores 37.3, so **no size, colour or
-bar length may imply trust**. The verdict word is the claim; the number beside
-it is a measurement.
+Two rules hold the whole grammar together. Scores render in identical ink
+whatever their magnitude, and the rail is logarithmic from 1 to 100,000 —
+because a forged image scores 82,190 and a genuine degraded photograph scores
+37.3, so **no size, colour or bar length may imply trust**. The verdict word
+is the claim; the number beside it is a measurement.
 
 ## The technologies, and what each one carries
 
