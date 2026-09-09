@@ -299,3 +299,46 @@ def test_web_jpeg_export_round_trips():
     out = stress.to_web_jpeg(source, longest_edge=300, quality=80)
     assert max(out.size) == 300
     assert stress.green_channel(out).shape == (200, 300)
+
+
+def test_a_uniform_border_is_stripped_back_to_the_photograph():
+    """Measured on a real file: a 200px margin took 90,846 to 37.9, and
+    cropping it back gave 86,097. The fingerprint was never damaged."""
+    import numpy as np
+    from PIL import Image
+
+    from fingerprint import stress
+
+    rng = np.random.default_rng(0)
+    photo = rng.integers(20, 200, (400, 600, 3), dtype=np.uint8)
+    canvas = np.full((440, 640, 3), 255, dtype=np.uint8)
+    canvas[20:420, 20:620] = photo
+
+    stripped = stress.strip_uniform_border(Image.fromarray(canvas))
+    assert stripped.size == (600, 400)
+
+
+def test_a_photograph_without_a_border_is_left_alone():
+    import numpy as np
+    from PIL import Image
+
+    from fingerprint import stress
+
+    rng = np.random.default_rng(1)
+    photo = Image.fromarray(rng.integers(20, 200, (400, 600, 3), dtype=np.uint8))
+    assert stress.strip_uniform_border(photo).size == photo.size
+
+
+def test_a_blown_sky_is_not_mistaken_for_a_border():
+    """Flat on one side only is scene content. Eating into it would crop a
+    real photograph to make a score look better."""
+    import numpy as np
+    from PIL import Image
+
+    from fingerprint import stress
+
+    rng = np.random.default_rng(2)
+    frame = rng.integers(20, 200, (400, 600, 3), dtype=np.uint8)
+    frame[:60, :] = 255                      # blown sky along the top only
+    image = Image.fromarray(frame)
+    assert stress.strip_uniform_border(image).size == image.size

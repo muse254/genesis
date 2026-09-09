@@ -173,6 +173,37 @@ them; ordinary photographs worked anyway), a second body, and a second body
 of the same model -- the case that matters most, since two R10s share every
 model-level artefact and differ only in the fingerprint itself.
 
+### A border defeats the search, not the fingerprint
+
+Found 9 September 2026 on a real pair of files, and worth its own note because
+the failure looks like the fingerprint being gone when it is entirely intact.
+
+| File | Size | PCE | Path |
+| --- | --- | --- | --- |
+| `ancestral-call.jpg` | 6000x4000 | **90,845.8** | aligned |
+| `ancestral-call_border.jpg` | 6400x4400 | **37.9** | scale search, "mirrored, 90 deg" |
+| the same, border cropped off | 6000x4000 | **86,096.7** | aligned |
+
+A 200px white margin, nothing else. The plain file is at native sensor
+resolution so it takes the aligned path, one output pixel per photosite. The
+bordered one is 6400x4400, which moves the aspect ratio from 1.5000 to 1.4545
+— and `crop_and_scale_search` searches a *uniform* scale, so no single factor
+maps that canvas back onto the lattice. It reported `mirrored, 90 deg`, which
+is the largest of eight orientations on noise: the signature of finding
+nothing rather than of a weak match.
+
+`stress.strip_uniform_border` now runs before the search, and the same file
+scores **31,676** — `fingerprint-only` rather than `no-record`. It is
+deliberately conservative: a side counts as border only if it is almost
+perfectly flat, at most a quarter of each side is removed, and **all four
+sides must agree**, so a blown sky or a studio backdrop cannot be cropped into
+to make a score look better. The scorer reports `borderStripped` when it
+fires, because a score that exists only after cropping is a different claim
+from one measured on the file as supplied.
+
+Bordered exports are ordinary — print margins, gallery frames, social
+templates — and every one of them read `no-record` before this.
+
 ## Gate B — does it survive the web?
 
 Export one enrolled frame at Flickr dimensions (~1800px, JPEG q80). Test it

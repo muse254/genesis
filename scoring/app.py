@@ -112,6 +112,15 @@ def _score_against(body: dict, path: Path) -> dict:
         with Image.open(path) as opened:
             image = opened.convert("RGB")
 
+    # A flat margin defeats the search rather than the fingerprint: padding
+    # changes the aspect ratio and `crop_and_scale_search` looks for a uniform
+    # scale, so no factor maps the canvas back onto the lattice. Measured on a
+    # real file, a 200px white border took 90,846 to 37.9 and cropping it back
+    # gave 86,097. Bordered exports are ordinary, so strip before searching.
+    bordered = image.size
+    image = stress.strip_uniform_border(image)
+    stripped = image.size != bordered
+
     residual = prnu.noise_residual(stress.green_channel(image))
     match = prnu.crop_and_scale_search(residual, prnu.sensor_field(planes))
     return {
@@ -119,6 +128,11 @@ def _score_against(body: dict, path: Path) -> dict:
         "path": "scale search",
         "orientation": match.orientation,
         "scale": match.scale,
+        # Reported, because a score that only exists after cropping is a
+        # different claim from one measured on the file as supplied.
+        "borderStripped": f"{bordered[0]}x{bordered[1]} to {image.size[0]}x{image.size[1]}"
+        if stripped
+        else None,
     }
 
 

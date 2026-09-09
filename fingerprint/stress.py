@@ -89,6 +89,63 @@ def to_web_jpeg(image, longest_edge: int = 1800, quality: int = 80, path=None):
         return reread.copy()
 
 
+def strip_uniform_border(image, tolerance: float = 2.0, max_fraction: float = 0.25):
+    """Remove a flat added margin, returning the photograph inside it.
+
+    A border is neither a crop nor a resize and `crop_and_scale_search` models
+    neither: it looks for a *uniform* scale, and padding changes the aspect
+    ratio, so no single factor maps the canvas back onto the photosite
+    lattice. Measured on a real file -- a 6000x4000 frame scores 90,846 and
+    the same frame inside a 200px white margin, 6400x4400, scores 37.9 and
+    reports "mirrored, 90 deg", which is the largest of eight orientations on
+    noise. Cropped back to 6000x4000 it scores 86,097. The fingerprint was
+    never damaged; the search could not find it.
+
+    So this runs before the search rather than trying to make the search
+    cleverer. Bordered exports are ordinary -- print margins, gallery frames,
+    social templates -- and every one of them currently reads `no-record`,
+    which is the wrong answer about a genuine photograph.
+
+    Deliberately conservative. A row or column counts as border only if it is
+    almost perfectly flat (`tolerance`, in 0-255 levels), and at most
+    `max_fraction` of each side is ever removed, so a photograph that happens
+    to open on sky or a studio backdrop cannot be eaten into. Nothing is
+    removed unless all four sides agree there is a margin.
+
+    Returns the image unchanged when there is no border to strip.
+    """
+    import numpy as np
+    from PIL import Image
+
+    grey = np.asarray(image.convert("L"), dtype=np.float32)
+    height, width = grey.shape
+    limit_v, limit_h = int(height * max_fraction), int(width * max_fraction)
+
+    def run(lines) -> int:
+        count = 0
+        for line in lines:
+            if line.std() > tolerance:
+                break
+            count += 1
+        return count
+
+    top = min(run(grey[i] for i in range(limit_v)), limit_v)
+    bottom = min(run(grey[height - 1 - i] for i in range(limit_v)), limit_v)
+    left = min(run(grey[:, i] for i in range(limit_h)), limit_h)
+    right = min(run(grey[:, width - 1 - i] for i in range(limit_h)), limit_h)
+
+    # All four sides, or it is scene content rather than a frame. A photograph
+    # with a blown sky has a flat top and nothing else.
+    if min(top, bottom, left, right) == 0:
+        return image
+
+    box = (left, top, width - right, height - bottom)
+    if box[2] - box[0] < width // 2 or box[3] - box[1] < height // 2:
+        return image
+
+    return image.crop(box)
+
+
 def green_channel(image):
     """The green channel of a delivered image, in [0, 1].
 
