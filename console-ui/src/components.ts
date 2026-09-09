@@ -112,10 +112,18 @@ export function verdictCard(result: VerifyResult): HTMLElement {
             : "")),
   );
 
+  // A measured reason beats a bare "no record", which reads as "not your
+  // camera" — and for a soft frame or an in-camera JPEG that is the wrong
+  // thing for a photographer to conclude.
+  const diagnosis = result.diagnosis
+    ? `<p class="diagnosis">${escape(result.diagnosis)}</p>`
+    : "";
+
   return el(`
     <section class="verdict ${result.verdict}">
       <div class="vhead">${word}</div>
       <div class="vbody">${rows.join("")}</div>
+      ${diagnosis}
       <p class="vfoot">${blurb}</p>
     </section>`);
 }

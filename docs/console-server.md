@@ -443,6 +443,24 @@ grep -oE '"POST [^"]+"' <the uvicorn log> | tail
 An absent request and a hung request look identical from the page, and only
 one of them is worth waiting on.
 
+## `no-record` says which kind of nothing
+
+A bare `no-record` is true and unhelpful: it reads as *not your camera*, and
+for two common cases that is the wrong conclusion. `_diagnose` adds a sentence
+when — and only when — there is a measurement behind it.
+
+- **Too soft to measure.** Median tile detail below 200 against 1,000–4,000
+  for files that verify. Says there was nothing to measure, which is not the
+  same as the camera not matching.
+- **Looks like an in-camera JPEG.** A camera Make in the EXIF and no desktop
+  software tag. `docs/gates.md` measured these as carrying no readable
+  fingerprint on this body, so the sentence names that and points at the RAW.
+
+It never guesses at a cause it cannot see: a RAW gets no note, and a file
+carrying a desktop software tag gets no note, because nothing was measured
+that would justify one. Four tests hold that line, including one asserting a
+desktop development is *not* blamed on the camera.
+
 ## Determinate progress, because the slow case looks broken
 
 `POST /verify/stream` returns a job id; `GET /verify/{id}/events` streams what

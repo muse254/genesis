@@ -577,3 +577,49 @@ def test_progress_reaches_the_caller_and_the_verdict_is_unchanged(client, monkey
 
 def test_an_unknown_job_is_not_a_silent_stream(client):
     assert client.get("/verify/nosuchjob/events").status_code == 404
+
+
+def test_a_soft_image_says_there_was_nothing_to_measure(tmp_path):
+    """"No record" reads as "not your camera". For a soft frame that is the
+    wrong thing for a photographer to conclude."""
+    from console.app import _diagnose
+
+    note = _diagnose(tmp_path / "x.jpg", {"tooSoftToMeasure": True, "detail": 7.7})
+    assert "high-frequency detail" in note
+    assert "not the same as the camera not matching" in note
+
+
+def test_an_in_camera_jpeg_is_named_as_the_likely_reason(tmp_path):
+    from PIL import Image
+
+    from console.app import _diagnose
+
+    path = tmp_path / "IMG_0007.JPG"
+    image = Image.new("RGB", (32, 32))
+    exif = image.getexif()
+    exif[271] = "Canon"                    # Make, and no desktop Software tag
+    image.save(path, exif=exif)
+
+    note = _diagnose(path, {})
+    assert note is not None and "camera itself" in note
+
+
+def test_a_desktop_development_is_not_blamed_on_the_camera(tmp_path):
+    from PIL import Image
+
+    from console.app import _diagnose
+
+    path = tmp_path / "game.jpg"
+    image = Image.new("RGB", (32, 32))
+    exif = image.getexif()
+    exif[271] = "Canon"
+    exif[305] = "ACD Systems Digital Imaging"
+    image.save(path, exif=exif)
+
+    assert _diagnose(path, {}) is None     # nothing measured, so nothing claimed
+
+
+def test_a_raw_gets_no_guess(tmp_path):
+    from console.app import _diagnose
+
+    assert _diagnose(tmp_path / "IMG_0001.CR3", {}) is None

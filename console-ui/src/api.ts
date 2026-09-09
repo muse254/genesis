@@ -69,6 +69,8 @@ export interface VerifyResult {
   derivedFrom: { imageHash: string; hammingDistance: number; matchedBy: string } | null;
   consistency: Record<string, number | boolean | null> | null;
   stages: Stage[];
+  /** On `no-record`: why there was nothing to find, when it can be measured. */
+  diagnosis?: string | null;
 }
 
 async function call<T>(path: string, init?: RequestInit): Promise<T> {

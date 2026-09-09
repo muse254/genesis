@@ -339,10 +339,66 @@ def _verify(path: Path, progress=None) -> dict:
             # Named, because the page has to say *which* body's fingerprint it
             # is -- and say in the same breath that nobody registered it.
             payload["body"] = {"bodyId": best["bodyId"], "name": best["body"]["name"]}
+        else:
+            payload["diagnosis"] = _diagnose(path, payload["consistency"] or {})
 
         return payload
     finally:
         path.unlink(missing_ok=True)
+
+
+#: Software tags a desktop development leaves behind. Anything with a camera
+#: Make and none of these looks like a JPEG straight out of the camera, which
+#: `docs/gates.md` measured as carrying no readable fingerprint.
+DESKTOP_SOFTWARE = (
+    "adobe", "photoshop", "lightroom", "acd", "capture one", "darktable",
+    "rawtherapee", "affinity", "dxo", "luminar", "gimp", "pixelmator",
+    "apple", "preview",
+)
+
+
+def _diagnose(path: Path, signals: dict) -> str | None:
+    """Why there was nothing to find — when we can say, from measurement.
+
+    A bare `no-record` is true and unhelpful. It reads as "not your camera",
+    and for two common cases that is the wrong thing to conclude: the image
+    may carry no measurable fingerprint at all. Saying which costs nothing and
+    stops a photographer distrusting a camera that is fine.
+
+    Only reports what was measured or read. It never guesses at a cause it
+    cannot see.
+    """
+    if signals.get("tooSoftToMeasure"):
+        return (
+            f"This image has almost no high-frequency detail (median tile "
+            f"{signals.get('detail')}, against roughly 1,000-4,000 for files that "
+            f"verify). A sensor fingerprint lives in high frequencies, so there is "
+            f"nothing here to measure — which is not the same as the camera not "
+            f"matching."
+        )
+
+    if path.suffix.lower() in record.hashing_raw_suffixes():
+        return None
+
+    try:
+        from PIL import Image
+
+        with Image.open(path) as opened:
+            exif = opened.getexif() or {}
+        make = str(exif.get(271, "") or "")
+        software = str(exif.get(305, "") or "").lower()
+    except Exception:
+        return None
+
+    if make and not any(tag in software for tag in DESKTOP_SOFTWARE):
+        return (
+            "This looks like a JPEG written by the camera itself. Measured on "
+            "this body, in-camera JPEGs carry no readable fingerprint — the "
+            "camera's noise reduction removes it, because to the camera a "
+            "sensor fingerprint is noise (docs/gates.md). Try the RAW, or a "
+            "development of it."
+        )
+    return None
 
 
 @app.post("/verify")
