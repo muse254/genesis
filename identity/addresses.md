@@ -101,13 +101,42 @@ registry `0x00000000000C2E074eC69A0dFb2997BA6C7d2e1e`,
 BaseRegistrar `0x57f1887a8bf19b14fc0df6fd9b2acc9af147ea85`,
 ETHRegistrarController `0xfb3cE5D01e0f33f41DbB39035dB9745962F1f968`.
 
-## What registration costs
+## What registration costs, and in what
 
-Nothing real. `app.ens.dev` is Sepolia-only, so the dollar figure it shows —
-about $8 for `osoro.eth`, ENS pricing by name length with 5+ characters the
-cheapest tier — is a display of a payment made in **Sepolia ETH**, which comes
-free from the faucet. There is no mainnet charge on that app to be confused
-about.
+Nothing real, but **not in ETH** — that was wrong here until 9 September 2026
+and it matters, because it sends you to the wrong faucet.
+
+Read off the contracts rather than the app: `ETHRegistrar.getRegisterPrice`
+reverts for `address(0)` with `PaymentTokenNotSupported`. The rent oracle at
+`0x8914b66260EB8C4fff795650c3AE8Cd335958987` accepts
+`0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238`, which is Circle's Sepolia
+**USDC** (a `FiatTokenProxy`, 6 decimals — real testnet USDC, not a mintable
+mock).
+
+| | |
+| --- | --- |
+| `osoro`, one year | **8,000,021 units = $8.000021 USDC** |
+| Deployer's USDC balance | **0** |
+| Sepolia ETH | still needed, for gas only |
+
+So the deployer needs about 8.01 test USDC from <https://faucet.circle.com>
+before the transaction will go through, in addition to the gas it already
+has. Nothing costs real money; it is simply a different token from a
+different faucet than this file used to claim.
+
+## Registering from the command line
+
+The whole flow is reachable with `cast` once the USDC is there —
+`makeCommitment`, `commit`, wait `MIN_COMMITMENT_AGE` (60s, and under
+`MAX_COMMITMENT_AGE` 86,400s), then `register`. `MIN_REGISTER_DURATION` is
+2,419,200s, twenty-eight days.
+
+One thing the CLI does not solve. `register` takes a `subregistry` address,
+and passing zero gives the name no subregistry — the state `raffy.eth` and
+`hello.eth` are in, where nothing can be registered underneath. Provisioning
+one means having a `PermissionedRegistry` instance to point at, which
+app.ens.dev creates for you when you add the first subname. That is the
+reason to use the app rather than a preference for it.
 
 What it does mean: the deployer address needs faucet ETH before the app will
 let the transaction through. As of 8 September 2026 it has 0.0484 Sepolia ETH,

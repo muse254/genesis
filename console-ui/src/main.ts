@@ -100,12 +100,24 @@ addEventListener("keydown", (event) => {
   if (!Number.isNaN(index) && SCREENS[index]) show(SCREENS[index].id);
 });
 
-// Scale the fixed stage into whatever window the presenter has.
+/**
+ * Scale the fixed stage to fill the presenter's window.
+ *
+ * Deliberately **not** capped at 1. The board is drawn at 1280x720 because
+ * that is the recording resolution, not because that is how big it should
+ * look -- capped, a 27-inch display shows the whole console in a corner and
+ * every measurement in it reads small. Scaling up keeps the handoff's
+ * proportions exact and makes the header the size it was drawn to be.
+ *
+ * Both axes use the same factor, so nothing stretches.
+ */
 function fit() {
   const stage = app.querySelector("#stage") as HTMLElement;
-  const scale = Math.min(innerWidth / 1282, innerHeight / 722, 1);
+  const scale = Math.min(innerWidth / 1288, innerHeight / 728);
   stage.style.transform = `scale(${scale})`;
-  app.style.height = `${722 * scale}px`;
+  app.style.width = `${1280 * scale}px`;
+  app.style.height = `${720 * scale}px`;
+  app.style.margin = "0 auto";
 }
 addEventListener("resize", fit);
 
