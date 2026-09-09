@@ -288,3 +288,31 @@ def test_every_hash_field_is_padded_to_a_word(monkeypatch):
     for word in tuple_arg.strip("()").split(",")[:3]:
         if word.startswith("0x"):
             assert len(word) == 66, f"{word} is not a full bytes32 word"
+
+
+def test_browse_refuses_to_escape_its_root(client, monkeypatch, tmp_path):
+    """A filesystem listing on a service that holds a signing key stays rooted."""
+    from console import app as ca
+
+    monkeypatch.setattr(ca, "BROWSE_ROOT", tmp_path.resolve())
+    assert client.get("/browse", params={"path": "/etc"}).status_code == 403
+    assert client.get("/browse", params={"path": str(tmp_path.parent)}).status_code == 403
+
+
+def test_browse_counts_raw_frames_per_folder(client, monkeypatch, tmp_path):
+    """The count is the point: Gate A wants 40-50, and a picker that does not
+    say which folders qualify makes the operator guess."""
+    from console import app as ca
+
+    (tmp_path / "shoot").mkdir()
+    for n in range(3):
+        (tmp_path / "shoot" / f"IMG_{n}.CR3").write_bytes(b"x")
+    (tmp_path / "shoot" / "notes.txt").write_bytes(b"x")
+    (tmp_path / "empty").mkdir()
+    (tmp_path / ".hidden").mkdir()
+
+    monkeypatch.setattr(ca, "BROWSE_ROOT", tmp_path.resolve())
+    body = client.get("/browse").json()
+    counts = {e["name"]: e["frames"] for e in body["entries"]}
+    assert counts == {"shoot": 3, "empty": 0}      # hidden folders are not listed
+    assert body["parent"] is None                   # cannot go above the root

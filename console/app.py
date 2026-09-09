@@ -392,6 +392,56 @@ async def degrade(
         path.unlink(missing_ok=True)
 
 
+#: Where folder browsing may look. The console is localhost-only and already
+#: holds a signing key, but a filesystem listing is still a disclosure
+#: surface, so it is rooted rather than open. Override for an archive that
+#: lives elsewhere -- an external drive, which is where a photographer's forty
+#: thousand frames usually are.
+BROWSE_ROOT = Path(os.environ.get("GENESIS_BROWSE_ROOT", str(Path.home()))).resolve()
+
+
+@app.get("/browse")
+async def browse(path: str | None = None) -> dict:
+    """List folders under `BROWSE_ROOT`, with how many RAW frames each holds.
+
+    A browser cannot give a server a filesystem path -- `webkitdirectory`
+    hands over file *contents*, which for forty 24-megapixel CR3s means
+    uploading well over a gigabyte to a service running on the same disk. So
+    the server browses its own filesystem and enrolment keeps taking a path.
+
+    The frame count is the point of the listing. Choosing an enrolment folder
+    means choosing one with 40-50 RAW frames in it (`docs/gates.md`), and a
+    folder picker that does not say which folders qualify has made the
+    operator guess.
+    """
+    here = Path(path).resolve() if path else BROWSE_ROOT
+    if not (here == BROWSE_ROOT or BROWSE_ROOT in here.parents):
+        raise HTTPException(403, f"outside the browse root ({BROWSE_ROOT})")
+    if not here.is_dir():
+        raise HTTPException(404, f"{here} is not a directory")
+
+    raw = record.hashing_raw_suffixes()
+    entries = []
+    try:
+        for child in sorted(here.iterdir()):
+            if not child.is_dir() or child.name.startswith("."):
+                continue
+            try:
+                frames = sum(1 for f in child.iterdir() if f.suffix.lower() in raw)
+            except PermissionError:
+                frames = -1        # listed, but we cannot count inside it
+            entries.append({"name": child.name, "path": str(child), "frames": frames})
+    except PermissionError:
+        raise HTTPException(403, f"cannot read {here}")
+
+    return {
+        "path": str(here),
+        "parent": None if here == BROWSE_ROOT else str(here.parent),
+        "frames": sum(1 for f in here.iterdir() if f.suffix.lower() in raw),
+        "entries": entries,
+    }
+
+
 @app.post("/preview")
 async def preview(file: UploadFile = File(...), longest_edge: int = Form(720)) -> StreamingResponse:
     """A browser-renderable thumbnail of any image the pipeline accepts.

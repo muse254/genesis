@@ -155,59 +155,125 @@ export const preflight: Render = (host) => {
     });
 };
 
-/** 01 · Enrol. Determinate: the server streams one event per frame. */
+/**
+ * 01 · Enrol. A folder picker, then a determinate per-frame progress grid.
+ *
+ * The picker browses the *server's* filesystem rather than the browser's. A
+ * browser cannot hand a server a path -- `webkitdirectory` gives file
+ * contents -- so a folder chooser in the page would mean uploading forty
+ * 24-megapixel RAWs, well over a gigabyte, to a service reading the same
+ * disk. The console runs on the photographer's machine; it can just look.
+ *
+ * The frame count beside each folder is the point. Gate A wants 40-50 frames
+ * and a picker that does not say which folders have them makes the operator
+ * guess at the one number that decides whether K is any good.
+ */
 export const enrol: Render = (host) => {
   host.innerHTML = `
     <h1 class="title">Enrol a camera body</h1>
     <p class="lede">Forty-odd RAW frames from an archive that already exists.
        K never leaves this machine; only its commitment goes on chain.</p>
-    <form class="enrol-form">
-      <input name="folder" placeholder="/path/to/frames" required />
-      <input name="name" placeholder="body name, e.g. r10" required />
-      <button>Enrol</button>
-    </form>
-    <div class="grid"></div>
-    <div class="enrol-side"></div>`;
+    <div class="two-col">
+      <div class="left">
+        <div class="browser"><p class="mono">loading…</p></div>
+      </div>
+      <div class="right"><div class="grid"></div><div class="enrol-side"></div></div>
+    </div>`;
 
-  host.querySelector("form")!.addEventListener("submit", async (event) => {
-    event.preventDefault();
-    const data = new FormData(event.target as HTMLFormElement);
-    const grid = host.querySelector(".grid")!;
-    const side = host.querySelector(".enrol-side")!;
-    let total = 0;
+  const browser = host.querySelector(".browser")!;
+  const grid = host.querySelector(".grid")!;
+  const side = host.querySelector(".enrol-side")!;
 
-    await api.enrol(String(data.get("folder")), String(data.get("name")), (e) => {
-      if (e.event === "start") {
-        total = Number(e.frames);
-        grid.innerHTML = Array.from({ length: total }, () => `<i class="cell"></i>`).join("");
-        if (!e.enough) {
-          side.innerHTML = `<p class="warn">${total} frames. Gate A asks for 40–50 —
-            K will be noisier than the procedure intends.</p>`;
+  const draw = async (path?: string) => {
+    browser.innerHTML = `<p class="mono">loading…</p>`;
+    let listing: Awaited<ReturnType<typeof api.browse>>;
+    try {
+      listing = await api.browse(path);
+    } catch (error) {
+      browser.innerHTML = "";
+      browser.append(failure("CANNOT BROWSE", (error as Error).message,
+                             "Set GENESIS_BROWSE_ROOT if the archive is on another volume."));
+      return;
+    }
+
+    const rows = listing.entries
+      .map(
+        (entry) => `
+        <li>
+          <button data-path="${escape(entry.path)}">${escape(entry.name)}</button>
+          <span class="count ${entry.frames > 0 ? "has" : ""}">${
+            entry.frames < 0 ? "—" : `${entry.frames} raw`
+          }</span>
+        </li>`,
+      )
+      .join("");
+
+    browser.innerHTML = `
+      <p class="here mono">${escape(listing.path)}</p>
+      ${listing.parent ? `<button class="up" data-path="${escape(listing.parent)}">↑ up</button>` : ""}
+      <ul class="folders">${rows || `<li class="empty">no subfolders</li>`}</ul>
+      <div class="chosen">
+        <span class="mono">${listing.frames} RAW frames here</span>
+        ${
+          listing.frames > 0
+            ? `<form class="enrol-form">
+                 <input name="name" placeholder="body name, e.g. r10" required />
+                 <button>Enrol this folder</button>
+               </form>
+               ${listing.frames < 40 ? `<p class="warn">Gate A asks for 40–50.</p>` : ""}`
+            : `<p class="warn">Pick a folder that holds the frames.</p>`
         }
-      }
-      if (e.event === "frame") {
-        const cells = grid.querySelectorAll(".cell");
-        cells.forEach((cell, index) => {
-          cell.className =
-            index < Number(e.index) ? "cell done" : index === Number(e.index) ? "cell live pulse" : "cell";
-        });
-        side.innerHTML = `<div class="display">${e.index} / ${total}</div>
-          <p class="label">frames</p><p class="mono">${escape(e.name)}</p>`;
-      }
-      if (e.event === "done") {
-        const result = e.result as Record<string, string> | null;
-        side.innerHTML = e.error
-          ? ""
-          : `<div class="commitment">
-               <p class="label">commitment</p>
-               <p class="mono hash">${escape(result?.commitment ?? "")}</p>
-               <p class="note">The fingerprint itself stays on this machine;
-                  only this commitment goes on chain.</p>
-             </div>`;
-        if (e.error) side.append(failure("ENROLMENT FAILED", String(e.error), "No fingerprint was written."));
-      }
-    }).catch((error) => side.append(failure("ENROLMENT FAILED", error.message, "No fingerprint was written.")));
-  });
+      </div>`;
+
+    browser.querySelectorAll("button[data-path]").forEach((button) =>
+      button.addEventListener("click", () => draw((button as HTMLElement).dataset.path)),
+    );
+
+    browser.querySelector("form")?.addEventListener("submit", (event) => {
+      event.preventDefault();
+      const name = String(new FormData(event.target as HTMLFormElement).get("name"));
+      run(listing.path, name);
+    });
+  };
+
+  const run = (folder: string, name: string) => {
+    let total = 0;
+    api
+      .enrol(folder, name, (e) => {
+        if (e.event === "start") {
+          total = Number(e.frames);
+          grid.innerHTML = Array.from({ length: total }, () => `<i class="cell"></i>`).join("");
+        }
+        if (e.event === "frame") {
+          grid.querySelectorAll(".cell").forEach((cell, index) => {
+            cell.className =
+              index < Number(e.index) ? "cell done"
+                : index === Number(e.index) ? "cell live pulse" : "cell";
+          });
+          side.innerHTML = `<div class="display">${e.index} / ${total}</div>
+            <p class="label">frames</p><p class="mono">${escape(e.name)}</p>`;
+        }
+        if (e.event === "done") {
+          const result = e.result as Record<string, string> | null;
+          side.innerHTML = "";
+          if (e.error) {
+            side.append(failure("ENROLMENT FAILED", String(e.error), "No fingerprint was written."));
+            return;
+          }
+          side.innerHTML = `<div class="commitment">
+              <p class="label">commitment</p>
+              <p class="mono hash">${escape(result?.commitment ?? "")}</p>
+              <p class="note">The fingerprint itself stays on this machine;
+                 only this commitment goes on chain.</p>
+            </div>`;
+        }
+      })
+      .catch((error) =>
+        side.append(failure("ENROLMENT FAILED", error.message, "No fingerprint was written.")),
+      );
+  };
+
+  draw();
 };
 
 /**

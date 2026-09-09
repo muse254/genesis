@@ -127,3 +127,22 @@
 
 .slot .developing { font-size: 12px; color: var(--tertiary); text-align: center; padding: 12px; }
 .slot .developing small { color: var(--mid); }
+
+/* --- folder picker -------------------------------------------------------- */
+.browser { border: 1px solid var(--hairline); padding: 14px; height: 100%;
+           display: flex; flex-direction: column; min-height: 0; }
+.browser .here { font-size: 11.5px; color: var(--secondary); word-break: break-all; margin: 0 0 8px; }
+.browser .up { font: 600 12px var(--ui); background: none; border: 1px solid var(--hairline);
+               padding: 4px 10px; cursor: pointer; align-self: flex-start; margin-bottom: 10px; }
+.folders { list-style: none; margin: 0; padding: 0; overflow-y: auto; flex: 1; min-height: 0; }
+.folders li { display: flex; align-items: baseline; gap: 10px; border-top: 1px solid var(--hairline); }
+.folders li:first-child { border-top: 0; }
+.folders button { flex: 1; text-align: left; background: none; border: 0; cursor: pointer;
+                  font: 13px var(--ui); color: var(--ink); padding: 7px 0; }
+.folders button:hover { text-decoration: underline; }
+.folders .count { font: 11.5px var(--mono); color: var(--tertiary); }
+.folders .count.has { color: var(--registered); }
+.folders .empty { font-size: 12px; color: var(--tertiary); padding: 7px 0; }
+.chosen { border-top: 1px solid var(--ink); padding-top: 12px; margin-top: 10px; }
+.chosen .warn { font-size: 12px; color: var(--pixels-text); margin: 8px 0 0; }
+.chosen .enrol-form { margin-top: 10px; }

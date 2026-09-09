@@ -106,6 +106,15 @@ export const api = {
     return new File([blob], "degraded.jpg", { type: "image/jpeg" });
   },
 
+  /** Folders on the machine running the console, with RAW counts. */
+  browse: (path?: string) =>
+    call<{
+      path: string;
+      parent: string | null;
+      frames: number;
+      entries: { name: string; path: string; frames: number }[];
+    }>(`/browse${path ? `?path=${encodeURIComponent(path)}` : ""}`),
+
   /** Display only — a browser cannot decode a CR3. Never feeds a verdict. */
   async preview(file: File, longestEdge = 720): Promise<string> {
     const form = new FormData();

@@ -370,6 +370,27 @@ the board again, exactly.
 refuses to shrink below its content, so a long verdict pushed the footer off
 screen instead of scrolling.
 
+## Choosing an enrolment folder
+
+`GET /browse` lists folders on the machine running the console, each with a
+count of the RAW frames inside, rooted at `$HOME` and overridable with
+`GENESIS_BROWSE_ROOT` for an archive on an external drive.
+
+It browses the *server's* filesystem rather than the browser's, because a
+browser cannot hand a server a path: `webkitdirectory` gives file contents,
+so a folder chooser in the page would mean uploading forty 24-megapixel RAWs
+— well over a gigabyte — to a service reading the same disk. The console runs
+on the photographer's machine and can simply look.
+
+The frame count is the reason the listing exists rather than a plain path
+field. Gate A wants 40–50 frames, and a picker that does not say which folders
+have them makes the operator guess at the one number that decides whether K is
+any good.
+
+Rooted rather than open: the console is localhost-only and already holds a
+signing key, but a filesystem listing is still a disclosure surface, and a
+test fails if it can be walked above its root.
+
 ## RAW does not render in a browser
 
 `/preview` develops any accepted file to a small JPEG. It exists because the
