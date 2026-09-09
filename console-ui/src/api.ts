@@ -106,6 +106,26 @@ export const api = {
     return new File([blob], "degraded.jpg", { type: "image/jpeg" });
   },
 
+  /** The local catalogue. Never leaves the machine — see console/catalogue.py. */
+  catalogue: () =>
+    call<{
+      statistics: {
+        images: number; sessions: number; bodies: number; described: number;
+        weakest: number | null; strongest: number | null; mean: number | null;
+        first_seen: number | null; last_seen: number | null;
+        perBody: { body_name: string; images: number }[];
+        catalogue: string;
+      };
+      images: Record<string, string | number | null>[];
+    }>("/catalogue"),
+
+  describe(imageHash: string, description: string) {
+    const form = new FormData();
+    form.append("image_hash", imageHash);
+    form.append("description", description);
+    return call<{ imageHash: string }>("/catalogue/describe", { method: "POST", body: form });
+  },
+
   /** Folders on the machine running the console, with RAW counts. */
   browse: (path?: string) =>
     call<{

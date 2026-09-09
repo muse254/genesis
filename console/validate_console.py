@@ -374,3 +374,55 @@ def test_a_session_with_nothing_acceptable_signs_nothing(client, monkeypatch):
     )
     assert response.status_code == 422
     assert sent == []
+
+
+def test_the_catalogue_never_leaves_the_machine(tmp_path, monkeypatch):
+    """It holds file paths and free text. Both are local-only by construction:
+    a path maps to a RAW and a RAW is a forgery kit; a caption is unbounded
+    personal data that would be permanent if published."""
+    import importlib
+
+    monkeypatch.setenv("GENESIS_CATALOGUE", str(tmp_path / "c.db"))
+    from console import catalogue as cat
+
+    importlib.reload(cat)
+
+    cat.record_image(image_hash="0xaa", body_name="r10", pce=1895.0, registered_at=10,
+                     file_name="IMG_0230.CR3", file_path="/archive/IMG_0230.CR3",
+                     description="")
+    cat.record_image(image_hash="0xbb", body_name="r10", pce=49310.0, registered_at=20,
+                     file_name="IMG_0217.CR3", file_path="/archive/IMG_0217.CR3",
+                     description="")
+
+    assert cat.describe("0xaa", "the weak frame") is True
+    assert cat.describe("0xmissing", "nope") is False   # unknown hash is not created
+
+    stats = cat.statistics()
+    assert stats["images"] == 2
+    assert stats["described"] == 1
+    assert stats["weakest"] == 1895.0 and stats["strongest"] == 49310.0
+    assert stats["perBody"] == [{"body_name": "r10", "images": 2}]
+
+    newest = cat.listing()[0]
+    assert newest["file_name"] == "IMG_0217.CR3"        # most recent first
+
+
+def test_re_registering_the_same_pixels_keeps_the_newer_path(tmp_path, monkeypatch):
+    """Registering the same photograph from a different folder should update
+    where it is, not create a second row for one on-chain record."""
+    import importlib
+
+    monkeypatch.setenv("GENESIS_CATALOGUE", str(tmp_path / "c.db"))
+    from console import catalogue as cat
+
+    importlib.reload(cat)
+    cat.record_image(image_hash="0xaa", file_path="/old/a.CR3", file_name="a.CR3",
+                     registered_at=1, description="")
+    cat.describe("0xaa", "kept")
+    cat.record_image(image_hash="0xaa", file_path="/new/a.CR3", file_name="a.CR3",
+                     registered_at=1, description="")
+
+    rows = cat.listing()
+    assert len(rows) == 1
+    assert rows[0]["file_path"] == "/new/a.CR3"
+    assert rows[0]["description"] == "kept"            # the caption survives

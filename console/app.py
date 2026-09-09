@@ -24,7 +24,7 @@ from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 
-from console import chain, jobs, registry, subgraph
+from console import catalogue, chain, jobs, registry, subgraph
 from fingerprint import consistency, prnu, stress
 from ingest import hashing, record
 from scoring.app import _bodies, _score_against
@@ -398,6 +398,31 @@ async def degrade(
 #: lives elsewhere -- an external drive, which is where a photographer's forty
 #: thousand frames usually are.
 BROWSE_ROOT = Path(os.environ.get("GENESIS_BROWSE_ROOT", str(Path.home()))).resolve()
+
+
+@app.get("/catalogue")
+async def catalogue_listing(limit: int = 500) -> dict:
+    """What this machine has registered, and how it scored.
+
+    Local only. It holds file paths and free-text descriptions, neither of
+    which may go near a network: a path is a map to a RAW file and a RAW file
+    is a forgery kit, and a caption is unbounded personal data that would be
+    permanent if published. `console/catalogue.py` has the reasoning.
+    """
+    return {"statistics": catalogue.statistics(), "images": catalogue.listing(limit)}
+
+
+@app.post("/catalogue/describe")
+async def catalogue_describe(image_hash: str = Form(...), description: str = Form(...)) -> dict:
+    """Attach a caption to something already registered.
+
+    Deliberately a separate call from registration. A photographer labels an
+    archive long after importing it, and making the description part of
+    registration would mean either writing it blind or not registering.
+    """
+    if not catalogue.describe(image_hash, description):
+        raise HTTPException(404, f"nothing registered under {image_hash}")
+    return {"imageHash": image_hash, "description": description}
 
 
 @app.get("/browse")

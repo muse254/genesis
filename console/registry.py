@@ -18,13 +18,14 @@ from __future__ import annotations
 
 import hashlib
 import os
+import time
 import subprocess
 import tempfile
 from pathlib import Path
 
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 
-from console import chain
+from console import catalogue, chain
 from fingerprint import prnu
 from ingest import merkle, record
 from scoring.app import _bodies
@@ -153,7 +154,11 @@ async def register_body(name: str = Form(...), ens_label: str = Form(...)) -> di
 
 
 @router.post("/register-image")
-async def register_image(file: UploadFile = File(...), body: str = Form(...)) -> dict:
+async def register_image(
+    file: UploadFile = File(...),
+    body: str = Form(...),
+    description: str = Form(""),
+) -> dict:
     """Demo step 2b: score, refuse if it does not clear, then register.
 
     The threshold check happens here and not only in the contract. A frame
@@ -206,6 +211,22 @@ async def register_image(file: UploadFile = File(...), body: str = Form(...)) ->
             "registerImage((bytes32,bytes32,bytes32,uint8,bytes32,bytes32,uint32,uint64))",
             tuple_arg,
         ])
+        # The chain gets the hash; the disk gets the meaning. Without this a
+        # photographer holding 0x2224a686... has no way to learn it was
+        # IMG_0230.CR3 -- see `console/catalogue.py`.
+        catalogue.record_image(
+            image_hash="0x" + built.image_hash.hex(),
+            perceptual_hash="0x" + built.perceptual_hash.hex(),
+            body_id="0x" + built.body_id.hex(),
+            body_name=holder["name"],
+            pce=built.pce_score,
+            registered_at=built.registered_at,
+            tx_hash=receipt.get("txHash"),
+            block_number=receipt.get("blockNumber"),
+            file_name=file.filename,
+            file_path=str(getattr(file, "_source_path", "") or ""),
+            description=description or "",
+        )
         return {
             "imageHash": "0x" + built.image_hash.hex(),
             "perceptualHash": "0x" + built.perceptual_hash.hex(),
@@ -307,6 +328,19 @@ async def register_session(
             "0x" + root.hex(),
             str(len(leaves)),
         ])
+
+        for index, entry in enumerate(accepted):
+            catalogue.record_image(
+                image_hash="0x" + entry["imageHash"].hex(),
+                body_name=holder["name"],
+                pce=entry["pce"],
+                registered_at=int(time.time()),
+                tx_hash=receipt.get("txHash"),
+                block_number=receipt.get("blockNumber"),
+                session_id="0x" + session_id.hex(),
+                file_name=entry["name"],
+                description="",
+            )
 
         return {
             "sessionId": "0x" + session_id.hex(),

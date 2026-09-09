@@ -62,3 +62,5 @@ mcp/dist/
 
 # Design handoff bundle — review board, not source. Kept locally.
 design_handoff_genesis_console/
+data/catalogue.db
+

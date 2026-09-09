@@ -456,6 +456,37 @@ It matters more than it sounds. A presenter runs each screen several times in
 a take, and a result left over from the previous attempt sitting beside a
 fresh photograph is exactly how a demo shows an audience the wrong number.
 
+## The local catalogue, and why it is local
+
+`console/catalogue.py`, a SQLite file beside the fingerprints and gitignored
+for the same reason they are.
+
+The chain holds a pixel hash and nothing else. That is correct and it is no
+use to a photographer: given `0x2224a686…` there is no way to learn it was
+`IMG_0230.CR3` from last April's shoot. That mapping has to live somewhere,
+and the only safe somewhere is this machine.
+
+**Descriptions do not go on chain.** A caption is unbounded personal data — a
+client, a location, a person — and anything published is permanent and
+unretractable. It also proves nothing: the chain already establishes the
+registration, and a caption says nothing about the pixels. So the network gets
+the hash and the disk gets the meaning.
+
+**File paths are the sharper case.** A path says where a RAW lives, and a RAW
+is a forgery kit (`docs/adversarial.md`) — a path is a map to one. It is
+recorded because a photographer needs it, and it is never returned anywhere
+but localhost.
+
+`GET /catalogue` returns the rows and the statistics: how many registered, how
+many sessions, weakest and strongest PCE, how many are described. Screen 06
+renders it, and captions save on blur rather than behind a button, because
+labelling an archive means typing in one field after another and a save button
+per row is a click per photograph.
+
+`POST /catalogue/describe` is deliberately separate from registration. A
+photographer labels an archive long after importing it, and folding the
+description into registration would mean writing it blind or not registering.
+
 ## Build order
 
 1. `/health`, `/state` — nothing else is debuggable without them.

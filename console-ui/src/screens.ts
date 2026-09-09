@@ -482,6 +482,88 @@ export const verdict: Render = (host) => {
   );
 };
 
+/**
+ * 06 · Archive. What this machine has registered, and what it scored.
+ *
+ * The chain holds a pixel hash and nothing else, which is right and no use to
+ * a photographer: given `0x2224a686…` there is no way to know that was
+ * `IMG_0230.CR3`. This screen is the other half of that, and it is local by
+ * construction — file paths and captions never go near the network.
+ */
+export const archive: Render = (host) => {
+  host.innerHTML = `
+    <h1 class="title">Archive</h1>
+    <p class="lede">Everything this machine has registered. Held locally: the chain
+       has the hashes, this has what they were.</p>
+    <div class="stats"></div>
+    <div class="catalogue">loading…</div>`;
+  host.querySelector(".title")!.append(clearButton(host, archive));
+
+  api
+    .catalogue()
+    .then(({ statistics: st, images }) => {
+      const figure = (value: number | null, digits = 0) =>
+        value === null ? "—" : value.toLocaleString(undefined, { maximumFractionDigits: digits });
+
+      host.querySelector(".stats")!.innerHTML = `
+        <div class="stat"><span class="display">${st.images}</span><span class="label">registered</span></div>
+        <div class="stat"><span class="display">${st.sessions ?? 0}</span><span class="label">sessions</span></div>
+        <div class="stat"><span class="display">${st.bodies ?? 0}</span><span class="label">bodies</span></div>
+        <div class="stat"><span class="display">${st.described}</span><span class="label">described</span></div>
+        <div class="stat wide">
+          <span class="label">PCE across the archive</span>
+          <span class="mono">${figure(st.weakest, 1)} weakest · ${figure(st.mean, 1)} mean · ${figure(st.strongest, 1)} strongest</span>
+        </div>`;
+
+      if (images.length === 0) {
+        host.querySelector(".catalogue")!.innerHTML =
+          `<p class="empty">Nothing registered yet. Screen 02 fills this.</p>`;
+        return;
+      }
+
+      host.querySelector(".catalogue")!.innerHTML = `
+        <table class="archive">
+          <thead><tr><th>FILE</th><th>PCE</th><th>IMAGE HASH</th><th>DESCRIPTION</th></tr></thead>
+          <tbody>${images
+            .map(
+              (row) => `
+              <tr>
+                <td>${escape(row.file_name ?? "—")}
+                  ${row.file_path ? `<br/><small class="mono">${escape(row.file_path)}</small>` : ""}</td>
+                <td class="mono num">${row.pce === null ? "—" : Number(row.pce).toLocaleString(undefined, { maximumFractionDigits: 1 })}</td>
+                <td class="mono">${escape(String(row.image_hash ?? "").slice(0, 14))}…</td>
+                <td><input class="desc" data-hash="${escape(row.image_hash)}"
+                     value="${escape(row.description ?? "")}"
+                     placeholder="add a note…" /></td>
+              </tr>`,
+            )
+            .join("")}</tbody>
+        </table>`;
+
+      // Captions save on blur rather than behind a button: a photographer
+      // labelling an archive types in one field after another, and a save
+      // button per row is a click per photograph.
+      host.querySelectorAll("input.desc").forEach((input) =>
+        input.addEventListener("blur", async () => {
+          const field = input as HTMLInputElement;
+          field.classList.remove("saved", "failed");
+          try {
+            await api.describe(field.dataset.hash!, field.value);
+            field.classList.add("saved");
+          } catch {
+            field.classList.add("failed");
+          }
+        }),
+      );
+    })
+    .catch((error) => {
+      host.querySelector(".catalogue")!.innerHTML = "";
+      host.querySelector(".catalogue")!.append(
+        failure("CATALOGUE UNAVAILABLE", error.message, "Registrations still work."),
+      );
+    });
+};
+
 export const SCREENS: { id: string; label: string; render: Render }[] = [
   { id: "preflight", label: "00 PRE-FLIGHT", render: preflight },
   { id: "enrol", label: "01 ENROL", render: enrol },
@@ -489,6 +571,7 @@ export const SCREENS: { id: string; label: string; render: Render }[] = [
   { id: "negative", label: "03 NEGATIVE", render: negative },
   { id: "survival", label: "04 SURVIVAL", render: survival },
   { id: "verdict", label: "05 VERDICT", render: verdict },
+  { id: "archive", label: "06 ARCHIVE", render: archive },
 ];
 
 export type { VerifyResult };
