@@ -173,6 +173,62 @@ them; ordinary photographs worked anyway), a second body, and a second body
 of the same model -- the case that matters most, since two R10s share every
 model-level artefact and differ only in the fingerprint itself.
 
+### In-camera JPEGs carry no usable fingerprint
+
+Found 9 September 2026, chasing a photograph that would not verify. It is the
+most consequential limitation in this document and it was never tested,
+because the delivered-JPEG result above used a **desktop** development and
+nobody had tried the camera's own.
+
+Same body throughout — `exiftool -SerialNumber` reads `473034005088`, the
+enrolled camera — and four in-camera JPEGs straight off the card:
+
+| File | Colour | Detail (median tile) | PCE |
+| --- | --- | --- | --- |
+| IMG_0007 | monochrome | 520.7 | 24.7 |
+| IMG_0013 | monochrome | 333.1 | 18.5 |
+| IMG_0009 | colour | 284.6 | -29.2 |
+| IMG_0011 | colour | 269.1 | 29.6 |
+
+Every one in the null band, colour and monochrome alike. Against
+`game.jpg` — the same sensor, developed from RAW on a desktop — at 1,148.
+
+**It is not geometry.** Distortion correction warps the edges most and the
+centre least, so a geometric failure shows the centre scoring well. It does
+not:
+
+| Region | IMG_0007, in-camera | `game.jpg`, desktop |
+| --- | --- | --- |
+| centre 25% | 24.4 | 78.1 |
+| centre 50% | -26.6 | 206.2 |
+| full frame | 30.4 | **1,293.0** |
+
+`game.jpg` grows with area, which is what PCE does when the fingerprint is
+present — more correlated samples, more peak. The in-camera file is flat at
+the null everywhere. The fingerprint is not displaced. It is **gone**.
+
+The likely cause is in-camera noise reduction, and the irony is exact: PRNU is
+a high-frequency, low-amplitude, spatially-random signal, which is precisely
+what a denoiser is built to remove. The camera deletes the fingerprint because
+to the camera it *is* noise.
+
+**What this means for the product.** Enrol from RAW, and register and verify
+from RAW or a desktop development. A camera's own JPEG does not carry a
+fingerprint this system can read, and that covers most casual output. It is a
+sharper limit than any of the degradation in Gate B, where a photograph at
+least started with a fingerprint to lose.
+
+Untested: whether enrolling *from* in-camera JPEGs produces a K that matches
+other in-camera JPEGs. Plausibly not much survives the denoiser either way,
+but it has not been measured and should not be assumed.
+
+### Monochrome is not the problem
+
+Worth stating because it was the first hypothesis and it was wrong. The same
+photograph desaturated the ordinary way scores **1,503** against **1,182** in
+colour — slightly *better*. In-camera monochrome files fail for the reason
+above, which they share with in-camera colour files.
+
 ### Portrait capture: RAW is unaffected, a delivered JPEG is not
 
 Measured 9 September 2026, after registration returned 500 on a portrait

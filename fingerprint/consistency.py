@@ -334,3 +334,49 @@ def likelihood_ratio(value: float, genuine: list, forged: list) -> dict:
         "reading": "ratios near 1 mean the evidence distinguishes nothing",
         "floor": lower,
     }
+
+
+#: Below this, a frame has too little high-frequency detail for PRNU to be
+#: measured in it. Not a tuned threshold -- an order-of-magnitude marker.
+#: Files that verify sit at 1,000-4,000 (`game.jpg` median 2,161); a
+#: motion-blurred frame from the *same enrolled body* measured 7.7 median with
+#: no tile above 92.5, and scored 44.9, inside the null band.
+DETAIL_FLOOR = 200.0
+
+
+def high_frequency_content(image) -> float:
+    """Median Laplacian variance over a grid of tiles.
+
+    PRNU lives in high spatial frequencies, so an image that has none carries
+    no measurable fingerprint however genuine it is. That is a different fact
+    from "this is not your camera", and a verifier that cannot tell them apart
+    will tell a photographer their own photograph is unrecognised.
+
+    Measured on a real failure: `gloria-dreamy.JPG`, EXIF serial matching the
+    enrolled body exactly, 1/60s at 300mm on a superzoom -- globally soft.
+    Median tile 7.7 against 2,161 for a frame that verifies, sharpest tile
+    92.5 against that same 2,161, and **not one tile of thirty-six** above
+    500. It scored 44.9.
+
+    Tiled and taken as a median rather than measured once over the frame,
+    because shallow depth of field is not blur: a portrait with a sharp face
+    and soft background should pass, and a single centre crop would call it
+    soft. Only a frame that is soft *everywhere* has nothing to correlate.
+    """
+    import numpy as np
+    from scipy import ndimage
+
+    grid, size = 6, 600
+    grey = np.asarray(image.convert("L") if hasattr(image, "convert") else image, dtype=np.float64)
+    if grey.ndim == 3:
+        grey = grey.mean(axis=2)
+
+    height, width = grey.shape
+    size = min(size, height, width)
+    values = []
+    for i in range(grid):
+        for j in range(grid):
+            y = int((height - size) * i / max(grid - 1, 1))
+            x = int((width - size) * j / max(grid - 1, 1))
+            values.append(ndimage.laplace(grey[y : y + size, x : x + size]).var())
+    return float(np.median(values))

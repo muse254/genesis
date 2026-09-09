@@ -196,6 +196,15 @@ def _signals(path: Path, body: dict, result: dict) -> dict:
                 signals["resamplingPeak"] = consistency.resampling_peak(
                     np.asarray(opened.convert("L"), dtype=float)
                 )
+                # Not advisory in the same sense as the others: this does not
+                # say a photograph is forged, it says whether there was
+                # anything to measure. A frame with no high-frequency detail
+                # carries no fingerprint however genuine it is, and telling a
+                # photographer their own soft photograph is "unrecognised"
+                # blames the camera for the exposure.
+                detail = consistency.high_frequency_content(opened)
+                signals["detail"] = round(detail, 1)
+                signals["tooSoftToMeasure"] = detail < consistency.DETAIL_FLOOR
     except (ValueError, KeyError, OSError):
         pass  # advisory: a signal that cannot be computed is absent, not fatal
     return signals
