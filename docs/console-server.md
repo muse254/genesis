@@ -402,6 +402,27 @@ Display only, and the docstring says so: `/verify` and `/register-image` read
 the uploaded file and never this. A preview that could influence a verdict
 would be a second decode path to disagree with the first.
 
+## Restarting the console kills whatever it was doing
+
+Obvious in hindsight and worth writing down, because it cost a confusing
+twenty minutes. `/register-image` and `/enrol` run for a long time — PRNU on a
+24-megapixel frame takes seconds, a transaction takes more, and enrolment
+takes minutes. Restarting `uvicorn` mid-request kills it, and the browser is
+left on a dead connection with no error: it looks exactly like the work is
+still going.
+
+There is nothing to fix in the code; the rule is procedural. Do not restart
+the API while a write is in flight, and if the console has been silent for
+longer than the job should take, check whether the request even arrived
+before assuming it is slow:
+
+```bash
+grep -oE '"POST [^"]+"' <the uvicorn log> | tail
+```
+
+An absent request and a hung request look identical from the page, and only
+one of them is worth waiting on.
+
 ## Build order
 
 1. `/health`, `/state` — nothing else is debuggable without them.
