@@ -268,3 +268,44 @@ async def lookup(file: UploadFile = File(...)) -> dict:
         }
     finally:
         path.unlink(missing_ok=True)
+
+
+@app.post("/score/confidential")
+async def score_confidential(
+    file: UploadFile = File(...), body: str | None = Query(default=None)
+) -> dict:
+    """Score without this service being the party you have to trust.
+
+    The same verdict as ``/score``, computed where nobody holds K. Which
+    backend runs is `GENESIS_CONFIDENTIAL_BACKEND` -- `cre` for a real
+    confidential workflow, `local` for the same arithmetic in this process
+    when the CRE path is unavailable. See `cre/backend.py` for why those are
+    not the same guarantee, and why the response says so in `trust`.
+
+    RAW only, and deliberately: the confidential path correlates on the
+    photosite lattice, and a developed JPEG has none left. The scale and
+    orientation search that rescues those needs the whole reference, which
+    is 89 MB and does not fit an enclave -- so `/score` remains the path for
+    delivered images and this one refuses rather than quietly scoring worse.
+    """
+    from cre import backend as confidential
+
+    bodies = _bodies()
+    if not bodies:
+        raise HTTPException(503, f"no enrolled fingerprints in {REFERENCES}")
+    if body is not None and body not in bodies:
+        raise HTTPException(404, f"unknown body {body}")
+
+    path = _save(file)
+    try:
+        if path.suffix.lower() not in record.hashing_raw_suffixes():
+            raise HTTPException(
+                415, "the confidential path needs a RAW file; use /score for delivered images"
+            )
+        target = body or next(iter(bodies))
+        chosen = bodies[target]
+        probe = prnu.load_raw_planes(path, crop=confidential.payload_mod.PLANE_SIZE * 2)
+        result = confidential.score(probe, chosen["planes"], target)
+        return {"bodyId": target, "body": chosen["name"], **result.to_json()}
+    finally:
+        path.unlink(missing_ok=True)

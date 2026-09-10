@@ -27,7 +27,7 @@ breaks without each.
 | --- | --- | --- |
 | `GRAPH_DEPLOY_KEY` | <https://thegraph.com/studio> — create a subgraph, copy the deploy key. Free, self-serve, minutes | §7, and §9 and §8's perceptual branch behind it |
 | `SUBGRAPH_URL` | Not a signup. `graph deploy` prints it once the key above exists | §9, the MCP server |
-| `CRE_WORKFLOW_OWNER` | <https://docs.chain.link/cre/getting-started/overview> for the CLI and account. **Confidential Workflows is private beta** and deploying needs enrolment through a Chainlink account team — see *Requesting Confidential Workflows Access* in <https://docs.chain.link/cre/concepts/confidential-workflows> | §10 |
+| `CRE_WORKFLOW_OWNER` | <https://docs.chain.link/cre/getting-started/overview> for the CLI and account. **Confidential Workflows is private beta** and deploying needs enrolment through a Chainlink account team — see *Requesting Confidential Workflows Access* in <https://docs.chain.link/cre/concepts/confidential-workflows> | Deployment only. §10 is built and runs on simulation without it |
 
 `ETHERSCAN_API_KEY` was the fourth and is done — the registry is verified on
 Etherscan as well as Blockscout.
@@ -185,9 +185,9 @@ false-positive rate, and a second enrolment so the test runs both ways.
       "Registered by the owner of body X" and states the two claims from
       `docs/claims.md`. A test fails if "exposed on" returns
 
-**10. Chainlink CRE — not started.** No code exists. This is the one
-sponsor track in `BUILD.md` §11 with nothing behind it, and until now nothing
-tracked that.
+**10. Chainlink CRE — built, on simulation.** `cre/`, 10 tests. Deployment
+still waits on private-beta enrolment, so the demo runs on simulation and
+treats deployment as a bonus, exactly as planned.
 
 What it would buy, precisely: `scoring/app.py` is the trust hole by design —
 it holds K and you take its word for a score. A confidential workflow makes
@@ -200,16 +200,36 @@ the forged DNG in `docs/adversarial.md` at 868 and sign it faithfully. The
 signature attests that the score was computed correctly, not that the pixels
 are honest. See `docs/security.md`.
 
-- [ ] `cre` CLI installed and an account — <https://docs.chain.link/cre/getting-started/overview>
-- [ ] A standard workflow running in simulation before anything confidential
-- [ ] Client-side residual extraction, so only a 512x512 crop leaves the
-      machine and never K
-- [ ] The correlation as a confidential workflow, reference as a Vault secret
-- [ ] Fallback if a ~1 MB reference will not ride as a secret: Confidential
-      HTTP, which now supports production workflows
+What it cost, measured: at the crop size that fits a Vault secret the weakest
+frame in the corpus falls into the null. `docs/cre.md` has the table.
+
+- [x] `cre` CLI installed (v1.32.0) and an account — fanosoro@gmail.com,
+      org `org_by3cdanb8BDALH8p`
+- [x] A confidential workflow running in simulation — `cre/workflow/genesis`,
+      an HTTP trigger into `cre.handlerInTee`, K from `runtime.getSecret`,
+      the score crossing back through `usingTheDons()`
+- [x] Client-side residual extraction, so only a crop leaves the machine and
+      never K. `cre/validate_cre.py` fails if K ever appears in a payload,
+      checked by correlation rather than byte equality
+- [x] The correlation as a confidential workflow, reference as a Vault secret.
+      The TypeScript kernel agrees with the Python to the thousandth the
+      attestation carries — both return 19,832,921 millis on the synthetic body
+- [x] **A second backend behind a flag.** `GENESIS_CONFIDENTIAL_BACKEND=local`
+      runs the same arithmetic in-process, so the demo survives the CRE path
+      failing on the day. It is not the same guarantee and the response says so
+- [x] The size question, measured: a ~1 MB reference was the wrong figure. It
+      is 89 MB, `WASMSecretsSizeLimit` is 1mb, and **Confidential HTTP is not
+      the fallback** — 125 kb request, 500 kb response. K is cropped instead
+- [ ] `CRE_WORKFLOW_OWNER` — `cre account list-key` still reports no linked
+      owners. `link-key` broadcasts a transaction and needs gas the deployer
+      does not have. Only read on deploy; simulation runs without it
 - [ ] **Deployment needs enrolment** — Confidential Workflows is private beta
-      and access goes through a Chainlink account team. Unknown turnaround, so
-      plan the demo on simulation and treat deployment as a bonus
+      and access goes through a Chainlink account team. `cre account access`
+      still reports deployment access not enabled, and it needs a TTY so it
+      has to be run by hand. Unknown turnaround, so the demo runs on simulation
+- [ ] Never run in a real enclave. The simulator is not a TEE and the CLI says
+      so; the report is built, not DON-signed. `attested` is False on every
+      path available today, and only a deployed workflow may set it True
 
 ## The whole stack, offline
 

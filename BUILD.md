@@ -274,6 +274,11 @@ genesis/
 ├── identity/             # ENSv2 on Sepolia — body subname registration
 ├── subgraph/             # The Graph — index registrations, resolve image → record
 ├── scoring/              # FastAPI — HTTP wrapper around the scorer
+├── cre/                  # Chainlink CRE — confidential scoring (BUILT, simulation)
+│   ├── payload.py        # client side: crop, residual, int8 — never K
+│   ├── enclave.py        # the correlation, mirrored in TypeScript
+│   ├── backend.py        # the flag: cre | local, and what each is worth
+│   └── workflow/genesis/ # the confidential workflow itself
 ├── verify/               # web page — upload, score, look up, verdict
 ├── mcp/                  # Subgraph MCP server (second Graph track)
 └── BUILD.md
@@ -475,9 +480,22 @@ work older than a few months as suspect.
 **Chainlink CRE — $2,500, Confidential Workflow.** The reference must stay
 private. Confidential workflows are public-code/private-data, which is exactly
 the shape: published algorithm, secret reference, signed score to a third party.
-Extract the residual client-side, send a 512² crop, correlate in the enclave.
-Their service-quotas page 404s — spike the limits early, fall back to
-Confidential HTTP if a ~1 MB reference won't ride as a Vault secret.
+Extract the residual client-side, correlate in the enclave.
+
+Built, and four things in the original sketch above turned out wrong once the
+limits were measured rather than guessed. `docs/cre.md` carries all of it.
+
+- **Not a ~1 MB reference — 89 MB.** `WASMSecretsSizeLimit` is 1mb, so K is
+  cropped to 256² per CFA plane and quantised to int8: 256 kB, and the
+  quantisation is free.
+- **Confidential HTTP is not the fallback**, because it is capped at 125 kb
+  request and 500 kb response. It does not rescue an 89 MB reference either.
+- **Not a 512² crop.** 512² is 1 MB of K before base64 and does not fit.
+- **Not just the residual.** `prnu.score` correlates the residual against
+  `plane * k`, so the image plane crosses too. Two arrays, not one.
+
+And the cost is real: at 256² the weakest frame in the corpus falls to the
+null. Documented rather than buried.
 
 **Skip:** 1inch, Uniswap, Privy, Arc, Hedera, World.
 

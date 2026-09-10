@@ -1,0 +1,4 @@
+{
+  "secretIds": ["K0", "K1", "K2", "K3"],
+  "thresholdMillis": 100000
+}

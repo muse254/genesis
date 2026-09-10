@@ -256,15 +256,20 @@ piece is not built, the table says so rather than implying it.
 | **ENS (ENSv2, Sepolia)** | The identity model *is* the hierarchy: `osoro.eth` is the photographer, `cam.osoro.eth` the fleet, `r10-4471.cam.osoro.eth` one enrolled body, with the fingerprint commitment, signer, revocation status and a keyed camera-serial commitment in its resolver records | **Live** — registered, and both subregistries deployed by hand because the beta app has no subname UI (`identity/addresses.md`) |
 | **The Graph** | The perceptual index. A degraded copy has a different pixel hash, so the only way back to the original's registration is a pHash lookup — the registry has no index on it, so the subgraph *is* that index. Demo step 4 depends on it | **Live** — `genesis` v0.0.1, indexing real Sepolia events, all four entity types populated |
 | **The Graph (MCP server)** | Three read-only tools so an agent can verify conversationally, with the claims discipline enforced in the wording an agent repeats | **Live** — answering from the deployed subgraph, 6 tests on the wording |
-| **Chainlink CRE** | Would replace the scoring service, which is the trust hole by design: today you take its word for a PCE. A confidential workflow makes the algorithm public, keeps the reference private and returns a *signed* score | **Not built.** Confidential Workflows is private beta and needs enrolment through a Chainlink account team — `docs/e2e-checklist.md` §10 |
+| **Chainlink CRE** | Takes the scoring service out of the trust path — it is the trust hole by design, since today you take its word for a PCE. The confidential workflow makes the algorithm public, keeps the reference private and returns a *signed* score | **Runs on simulation** — `cre/`, an HTTP trigger into a TEE handler, K from the Vault DON. Deploying needs private-beta enrolment, so a second backend behind a flag runs the same arithmetic locally. `docs/cre.md` |
 | **ERC-7053** | The commit log shape, so a record is portable rather than ours alone | **Live** — `commit()` fires on every registration |
 | **Foundry, viem, FastAPI, Vite** | Tooling: contracts and transactions, chain reads in the browser, the scorer and console, the two web surfaces | In use throughout |
 
-One honest note on CRE, because it is easy to oversell after a day of
-adversarial work: confidential compute removes the *scorer* as a trusted
-party. It does nothing about forgery — an enclave would score a planted
-fingerprint faithfully and sign it. `docs/security.md` says so where someone
-would look for it.
+Three honest notes on CRE, because it is easy to oversell after a day of
+adversarial work. Confidential compute removes the *scorer* as a trusted
+party; it does nothing about forgery — an enclave would score a planted
+fingerprint faithfully and sign it. **Nothing available today produces a real
+attestation**: the simulator is not an enclave and the local backend signs on
+the machine that holds K, so `attested` is False on every path that can be
+run. And the reference does not fit an enclave — 89 MB against a 1 MB secret
+limit — so K is cropped, and at that size the weakest frame in the corpus
+falls into the null. `docs/cre.md` measures all three; `docs/security.md` says
+the first where someone would look for it.
 
 ## Layout
 
@@ -275,6 +280,7 @@ contracts/     Solidity + Foundry — ERC-7053 commit() and the body registry
 identity/      ENSv2 on Sepolia — body subname registration
 subgraph/      The Graph — index registrations, resolve image → record
 scoring/       FastAPI — HTTP wrapper around the scorer
+cre/           Chainlink CRE — confidential scoring, two backends behind a flag
 verify/        web page — upload, score, look up, verdict
 mcp/           Subgraph MCP server
 docs/          the sensor physics, claims discipline, gate results, demo script
@@ -341,8 +347,8 @@ flowchart TB
     C8 -->|no| C10["no-record<br/>absence means nothing"]
   end
 
-  CRE["CHAINLINK CRE · not built<br/>confidential workflow would replace the<br/>scoring service: public algorithm, secret<br/>reference, signed score"]
-  C7 -.->|"planned · docs/e2e-checklist.md §10"| CRE
+  CRE["CHAINLINK CRE · simulation only<br/>confidential workflow takes the scoring<br/>service out of the trust path: public algorithm,<br/>secret reference, signed score<br/>deploying needs private-beta enrolment"]
+  C7 -.->|"runs · docs/cre.md"| CRE
 
   A5 -.->|K stays local| B3
   A7 -.->|events indexed| C4
@@ -431,9 +437,9 @@ stripped), portrait capture costs a delivered file the aligned path (282 →
 | ██████████ | `console/` — demo orchestration API | all six screens wired; registration, sessions and the catalogue exercised live on Sepolia |
 | █████████░ | `console-ui/` — the presenter console | six screens built to the handoff; never checked in a browser by anyone but the operator |
 | ██████████ | `docs/adversarial.md` — red team | the fingerprint forged three ways against our own reference |
-| ░░░░░░░░░░ | Chainlink CRE | not started — private beta, needs enrolment |
+| ███████░░░ | `cre/` — confidential scoring | runs on `cre workflow simulate`; both backends agree to the tenth. Deployment needs private-beta enrolment |
 
-106 tests. The imaging core works on real files: `enroll`, `test` and `pair`
+115 tests. The imaging core works on real files: `enroll`, `test` and `pair`
 run against RAW and delivered JPEGs, `demo` runs without a camera.
 
 **What a day of attacking it changed.** The fingerprint can be planted in an

@@ -1,0 +1,9 @@
+# K is written here for the length of one simulation run. Never commit it.
+*.env
+.env
+node_modules/
+dist/
+binary.wasm.br.b64
+
+# CLI build scratch, regenerated on every simulate.
+.cre_build_tmp.js

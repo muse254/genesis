@@ -105,8 +105,9 @@ fails if that ordering is broken.
 
 ## Chainlink CRE, and what confidential compute does not do
 
-Not built — `docs/e2e-checklist.md` §10. Recorded here because it is easy to
-mistake for a defence against what this document describes, and it is not one.
+Built on simulation — `cre/`, and `docs/cre.md` has the measurements.
+Recorded here because it is easy to mistake for a defence against what this
+document describes, and it is not one.
 
 Confidential compute removes the **scorer** as a trusted party: published
 algorithm, private reference, signed score, so a third party gets a verdict
@@ -119,6 +120,14 @@ It does nothing about forgery. An enclave would score the forged DNG above at
 performed correctly on the pixels it was given; it says nothing about where
 those pixels came from. Confidential compute protects the reference from the
 verifier. The attack happens before the pixels arrive.
+
+Two further honesties, since the code now exists. The reference does not fit
+an enclave — 89 MB against a 1 MB secret limit — so K is cropped to 256² per
+plane, and at that size the weakest genuine frame in the corpus scores −25.5
+where a different camera body scores −22.4. And nothing available today
+produces a real attestation: the local backend signs with a key on the machine
+that holds K, and the CRE simulator is not an enclave. `attested` is False on
+every path that can be run, and only a deployed workflow may set it True.
 
 ## Binding a body to a physical camera
 
