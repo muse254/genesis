@@ -395,3 +395,23 @@ input.desc.failed { border-color: var(--error); }
   cursor: pointer;
 }
 .enrol-form button:hover { background: rgba(128, 128, 128, 0.12); }
+
+/* --- Enrol: the upload, before the estimator has anything to report -------
+   Forty RAW frames is half a gigabyte and the server is silent until the last
+   byte lands. Determinate because the length is known, and a spinner over a
+   wait this long tells the operator nothing about whether to intervene. */
+.uploading .up-note { font-size: 0.8rem; opacity: 0.75; margin: 0.2rem 0 0.7rem; }
+.up-bar {
+  height: 3px;
+  background: rgba(128, 128, 128, 0.25);
+  overflow: hidden;
+  margin-bottom: 0.7rem;
+}
+.up-bar span {
+  display: block;
+  height: 100%;
+  width: 0;
+  background: currentColor;
+  transition: width 0.15s linear;
+}
+.uploading .note { font-size: 0.78rem; opacity: 0.6; margin: 0; }

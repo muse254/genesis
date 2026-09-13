@@ -600,11 +600,42 @@ export const enrol: Render = (host) => {
 
   const run = (from: File[] | string, name: string) => {
     let total = 0;
+
+    // Said before anything else, and synchronously. Uploading forty RAW
+    // frames takes long enough that a screen which waits for the first
+    // server event reads as a hang -- the operator has clicked and been
+    // shown nothing, which is the moment they click again.
+    const bytes = typeof from === "string" ? 0 : from.reduce((sum, f) => sum + f.size, 0);
+    const frameCount = typeof from === "string" ? 0 : from.length;
+    grid.innerHTML = "";
+    side.innerHTML = `
+      <div class="uploading">
+        <p class="label">sending</p>
+        <div class="display up-count">${frameCount || "…"}</div>
+        <p class="mono up-note">${
+          bytes
+            ? `reading ${(bytes / 1e9).toFixed(2)} GB from disk…`
+            : "reading frames from the server’s disk…"
+        }</p>
+        <div class="up-bar"><span></span></div>
+        <p class="note">Nothing is estimated until every frame has arrived.</p>
+      </div>`;
+
+    const bar = side.querySelector(".up-bar span") as HTMLElement | null;
+    const note = side.querySelector(".up-note") as HTMLElement | null;
+
     api
-      .enrol(from, name, (e) => {
+      .enrol(
+        from,
+        name,
+        (e) => {
         if (e.event === "start") {
           total = Number(e.frames);
+          // The upload is done and the estimator has the frames; the per-frame
+          // grid takes over from the byte counter.
           grid.innerHTML = Array.from({ length: total }, () => `<i class="cell"></i>`).join("");
+          side.innerHTML = `<div class="display">0 / ${total}</div>
+            <p class="label">frames</p><p class="mono">starting…</p>`;
         }
         if (e.event === "frame") {
           grid.querySelectorAll(".cell").forEach((cell, index) => {
@@ -629,10 +660,25 @@ export const enrol: Render = (host) => {
                  only this commitment goes on chain.</p>
             </div>`;
         }
-      })
-      .catch((error) =>
-        side.append(failure("ENROLMENT FAILED", error.message, "No fingerprint was written.")),
-      );
+        },
+        (loaded, totalBytes) => {
+          // Determinate, because the length is known and a spinner over a
+          // half-gigabyte upload tells the operator nothing about whether to
+          // wait or intervene.
+          const share = totalBytes ? loaded / totalBytes : 0;
+          if (bar) bar.style.width = `${Math.round(share * 100)}%`;
+          if (note) {
+            note.textContent =
+              share >= 1
+                ? "all frames received — starting the estimator…"
+                : `${(loaded / 1e9).toFixed(2)} of ${(totalBytes / 1e9).toFixed(2)} GB sent`;
+          }
+        },
+      )
+      .catch((error) => {
+        side.innerHTML = "";
+        side.append(failure("ENROLMENT FAILED", error.message, "No fingerprint was written."));
+      });
   };
 
 };

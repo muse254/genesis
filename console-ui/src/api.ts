@@ -330,20 +330,52 @@ export const api = {
     from: File[] | string,
     name: string,
     onEvent: (event: Record<string, unknown>) => void,
+    onUpload?: (loaded: number, total: number) => void,
   ) {
     const form = new FormData();
     if (typeof from === "string") form.append("folder", from);
     else for (const file of from) form.append("files", file);
     form.append("name", name);
-    return call<{ jobId: string; frames: number }>("/enrol", { method: "POST", body: form })
-      .then((job) => {
-        const stream = new EventSource(`${BASE}/enrol/${job.jobId}/events`);
-        stream.onmessage = (message) => {
-          const event = JSON.parse(message.data);
-          onEvent(event);
-          if (event.event === "done") stream.close();
-        };
-        return job;
+
+    // XHR rather than fetch, for the one thing fetch cannot do: report how
+    // far an upload has got. Forty RAW frames is half a gigabyte, and the
+    // server says nothing at all until the last byte has arrived and the job
+    // starts -- so with fetch the screen sits silent through the longest part
+    // of the operation and looks hung. `docs/console-server.md` already had
+    // to learn this once about verification.
+    const upload = new Promise<{ jobId: string; frames: number }>((resolve, reject) => {
+      const request = new XMLHttpRequest();
+      request.open("POST", `${BASE}/enrol`);
+      request.upload.addEventListener("progress", (event) => {
+        if (event.lengthComputable) onUpload?.(event.loaded, event.total);
       });
+      request.addEventListener("load", () => {
+        let body: Record<string, unknown> = {};
+        try {
+          body = JSON.parse(request.responseText);
+        } catch {
+          /* a non-JSON body is still a failure; the status carries it */
+        }
+        if (request.status >= 200 && request.status < 300) {
+          resolve(body as unknown as { jobId: string; frames: number });
+        } else {
+          reject(new Error(String(body.detail ?? `${request.status} ${request.statusText}`)));
+        }
+      });
+      request.addEventListener("error", () =>
+        reject(new Error("the console did not answer — is it still running?")),
+      );
+      request.send(form);
+    });
+
+    return upload.then((job) => {
+      const stream = new EventSource(`${BASE}/enrol/${job.jobId}/events`);
+      stream.onmessage = (message) => {
+        const event = JSON.parse(message.data);
+        onEvent(event);
+        if (event.event === "done") stream.close();
+      };
+      return job;
+    });
   },
 };

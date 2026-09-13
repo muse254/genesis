@@ -38,6 +38,34 @@ def _isolated_catalogue(tmp_path, monkeypatch):
     importlib.reload(cat)
 
 
+@pytest.fixture(autouse=True)
+def _isolated_references(tmp_path, monkeypatch):
+    """Point `GENESIS_REFERENCES` at a temp directory for every test here.
+
+    The same lesson as `_isolated_catalogue`, learned the same way and one
+    step worse. `/reset` deletes enrolled fingerprints, `clear_enrolments`
+    defaults to true, and one test drove that endpoint without isolating the
+    directory -- so running the suite deleted the operator's real `.npz`. A
+    catalogue row can be re-registered; a reference cannot be recreated
+    identically, because `save_fingerprint` does not record which frames went
+    into it.
+
+    Autouse, and covering every test rather than the reset ones, because the
+    next endpoint to touch that directory should not have to remember.
+    """
+    # Dot-prefixed so it cannot show up in a `/browse` listing, which is
+    # rooted at a temp directory in its own tests.
+    references = tmp_path / ".genesis-references"
+    references.mkdir()
+    # The env var covers anything reading it at call time -- `/reset`'s
+    # deletion, and `/enrol`'s output path.
+    monkeypatch.setenv("GENESIS_REFERENCES", str(references))
+    # And the module constant, which `scoring.app._bodies` resolved at import
+    # and would otherwise still glob the operator's real directory.
+    monkeypatch.setattr("scoring.app.REFERENCES", references)
+    yield
+
+
 @pytest.fixture
 def client(monkeypatch):
     monkeypatch.setattr(
@@ -996,3 +1024,19 @@ def test_enrol_refuses_a_selection_with_no_raw(client, monkeypatch, tmp_path):
 def test_enrol_needs_either_files_or_a_folder(client):
     response = client.post("/enrol", data={"name": "r10"})
     assert response.status_code == 422
+
+
+def test_the_suite_cannot_touch_the_operators_references():
+    """A canary for the fixture above.
+
+    This suite deleted a real enrolled fingerprint once. `_isolated_references`
+    is what stops it; this is what notices if that fixture is removed, renamed
+    or stops applying.
+    """
+    import os
+    from pathlib import Path
+
+    live = Path("data/references").resolve()
+    used = Path(os.environ["GENESIS_REFERENCES"]).resolve()
+    assert used != live, "GENESIS_REFERENCES points at the real references directory"
+    assert not str(used).startswith(str(live)), f"{used} is inside {live}"
