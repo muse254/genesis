@@ -60,6 +60,30 @@ def _key() -> str:
     return key
 
 
+def ens_namehash(name: str) -> str:
+    """EIP-137 namehash, which is NOT keccak256 of the name.
+
+    This was `cast keccak` until 13 September 2026, and the difference is the
+    expensive kind of silent: a record written against the wrong node
+    succeeds, costs gas, and resolves to nothing. `identity/scripts/ens.ts`
+    had it right the whole time and has eight tests on this arithmetic; this
+    path shelled out to the wrong subcommand and had none, so the registry
+    and the resolver disagreed about what a node is.
+
+    Namehash is recursive -- keccak256(namehash(parent) || keccak256(label))
+    down to the empty root -- so no amount of hashing the whole string gets
+    there. `cast namehash` implements it and agrees with viem's, which is
+    what `identity/` uses.
+    """
+    done = subprocess.run(["cast", "namehash", name], capture_output=True, text=True)
+    node = done.stdout.strip()
+    # Checked rather than assumed: the previous version took `.stdout` from an
+    # unchecked run, so a missing `cast` wrote the zero node instead of failing.
+    if done.returncode != 0 or not node.startswith("0x") or len(node) != 66:
+        raise HTTPException(502, f"cast namehash {name} failed: {done.stderr.strip()[:200]}")
+    return node
+
+
 def cast_send(args: list[str]) -> dict:
     """One transaction, and the receipt fields the console reports.
 
@@ -156,9 +180,7 @@ async def register_body(name: str = Form(...), ens_label: str = Form(...)) -> di
         )
 
     parent = os.environ.get("ENS_PARENT_NAME", "cam.osoro.eth")
-    ens_node = subprocess.run(
-        ["cast", "keccak", f"{ens_label}.{parent}"], capture_output=True, text=True
-    ).stdout.strip()
+    ens_node = ens_namehash(f"{ens_label}.{parent}")
 
     receipt = cast_send([
         "registerBody(bytes32,bytes32,bytes32)",

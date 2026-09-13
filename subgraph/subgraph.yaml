@@ -9,11 +9,11 @@ dataSources:
     name: Registry
     network: sepolia
     source:
-      address: "0xDf71e9350B4cA587eb3Bd01F2e7D710F3Fc25CF3"
+      address: "0xA6f0fE1C5d5cF1380e7C7Fe5384795E46166280D"
       abi: Registry
       # The deploy block. Zero here means indexing from genesis:
       # hours of work to find nothing.
-      startBlock: 11659977
+      startBlock: 11694329
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.7

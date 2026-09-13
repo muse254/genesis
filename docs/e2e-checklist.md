@@ -86,9 +86,10 @@ false-positive rate, and a second enrolment so the test runs both ways.
       against a bare `anvil`. A frame from another body is refused before it
       reaches the chain
 
-**6. Testnet and ENS.** Chain done; ENS outstanding.
+**6. Testnet and ENS.** Both done. Redeployed 13 September 2026 — see the
+`ensNode` note below.
 
-- [x] `Registry` deployed to Sepolia at `0xDf71e9350B4cA587eb3Bd01F2e7D710F3Fc25CF3`, block 11659977
+- [x] `Registry` deployed to Sepolia at `0xA6f0fE1C5d5cF1380e7C7Fe5384795E46166280D`, block 11694329
 - [x] Source verified on Blockscout — the Read Contract tab lets anyone check
       a claim without taking the demo's word for it
 - [x] Body, image and session registered live, and they read back
@@ -96,11 +97,26 @@ false-positive rate, and a second enrolment so the test runs both ways.
 - [x] Verified on Etherscan too — `Registry`, solc 0.8.24, optimizer 200.
       Blockscout and Etherscan now both serve the ABI, so a reader who
       distrusts one explorer has a second
-- [ ] Register `osoro.eth` at <https://app.ens.dev/> from the deployer
-      address, then `cam.osoro.eth` — which is the step that provisions the
-      subregistry, not a nicety. Names there get reset by redeployments, so
-      do it near the recording, and re-run the `--dry-run` on the day.
-      Needs faucet ETH in the deployer address, which it does not have yet
+- [x] `osoro.eth` registered and `cam.osoro.eth` created, 9 September 2026.
+      Both subregistries deployed by hand because the beta app has no subname
+      UI — `identity/addresses.md`. Re-checked 13 September: both still resolve
+      to the pinned addresses, so they survived the last ENS redeployment.
+      **Still re-check on the day** — names there get reset without notice
+- [x] Deployer funded: 0.0394 ETH at 13 September, enough for the live subname
+- [x] **The `ensNode` bug, found in the 13 September audit and fixed.** The
+      console wrote `keccak256("r10-4471.cam.osoro.eth")` where EIP-137 wants
+      the recursive namehash, so the first deployment's body record pointed at
+      a name that resolves to nothing — `identity/scripts/ens.ts` had it right
+      all along and had eight tests; the console shelled out to `cast keccak`
+      and had none. `ensNode` has no setter and `registerBody` reverts on a
+      duplicate `bodyId`, so the registry was redeployed rather than documented
+      around. Two tests in `console/validate_console.py` now pin it against the
+      value viem computes, so the two halves cannot drift apart again
+- [ ] `r10-4471.cam.osoro.eth` does not exist yet — by design, the demo creates
+      it live. Which means `setBodyRecords` has never run against anything: the
+      dry-run cannot simulate it, because the resolver authorises per node and
+      the node has no owner until registration lands. **The one step in the
+      demo that has never been executed**
 - [x] `identity/scripts/register-body.ts` — the four stubs implemented
       against the real ENSv2 ABIs, read from the verified sources on
       Blockscout rather than guessed. 8 tests on the name arithmetic, which
@@ -124,11 +140,12 @@ false-positive rate, and a second enrolment so the test runs both ways.
 - [x] Deployed to a local graph-node against anvil and queried: body, image,
       session and commit log all indexed, with the record fields read back
       from storage
-- [x] Address and `startBlock` filled: `0xDf71e9350B4cA587eb3Bd01F2e7D710F3Fc25CF3`, block 11659977
-- [x] All four entity types populated from live Sepolia, checked 9 September
-      2026: `Body`, `Image`, `Session` (root and frameCount 2) and the
-      ERC-7053 `CommitLog` with its `genesis:` asset CID. Four of the five
-      handlers are therefore exercised against real events
+- [x] Address and `startBlock` filled: `0xA6f0fE1C5d5cF1380e7C7Fe5384795E46166280D`, block 11694329
+- [x] All four entity types populated from live Sepolia. Re-checked against
+      the new registry on 13 September 2026, `genesis` v0.0.2: `Body` (with the
+      correct namehash in `ensNode`), `Image` x2, `Session` (root and
+      frameCount 2) and the ERC-7053 `CommitLog`, `hasIndexingErrors: false`.
+      Four of the five handlers are therefore exercised against real events
 - [ ] `BodyRevoked` has never fired on chain — nothing has been revoked, so
       that handler rests on matchstick alone. Not a defect, but not evidence
       either
@@ -140,7 +157,7 @@ false-positive rate, and a second enrolment so the test runs both ways.
       early: written, and not wired
 - [x] `graph test` — 5 matchstick tests still green after the deployment
 - [x] Deployed to Subgraph Studio, 8 September 2026 — `genesis` v0.0.1,
-      queries at `api.studio.thegraph.com/query/1758974/genesis/v0.0.1`.
+      queries at `api.studio.thegraph.com/query/1758974/genesis/v0.0.2`.
       Synced past the registration blocks with `hasIndexingErrors: false`,
       and the body and image read back with the same owner, commitment and
       PCE the chain returns directly

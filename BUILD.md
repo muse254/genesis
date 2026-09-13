@@ -249,7 +249,11 @@ Everything is scaffolding for this.
 4. **The money shot:** take the registered photograph, strip every byte of
    metadata, resize it, re-encode as a web JPEG — and it *still resolves*, via
    the pHash-plus-PRNU branch. Birthmark's exact-hash scheme cannot do this.
-5. Verify page: exposed on `r10-4471.cam.osoro.eth`, registered 14:02 UTC.
+5. Verify page: **registered by the owner of** `r10-4471.cam.osoro.eth` at
+   14:02 UTC. Not "exposed on" — that is the sentence `docs/adversarial.md`
+   falsifies, and the MCP wording was already corrected away from it. A
+   registration establishes who claimed the image and when, not where the
+   light fell.
 
 If step 4 works, the pitch writes itself. If it doesn't, see Gate B.
 

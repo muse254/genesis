@@ -146,19 +146,28 @@ Method, numbers and the rest of the findings are in `docs/gates.md`.
 The registry is deployed, source-verified, and carries a real body and a real
 photograph — not a local chain:
 
-**[`0xDf71e9350B4cA587eb3Bd01F2e7D710F3Fc25CF3`](https://eth-sepolia.blockscout.com/address/0xDf71e9350B4cA587eb3Bd01F2e7D710F3Fc25CF3)**
-· [transactions](https://eth-sepolia.blockscout.com/address/0xDf71e9350B4cA587eb3Bd01F2e7D710F3Fc25CF3?tab=txs)
-· [Etherscan](https://sepolia.etherscan.io/address/0xDf71e9350B4cA587eb3Bd01F2e7D710F3Fc25CF3)
+**[`0xA6f0fE1C5d5cF1380e7C7Fe5384795E46166280D`](https://eth-sepolia.blockscout.com/address/0xA6f0fE1C5d5cF1380e7C7Fe5384795E46166280D)**
+· [transactions](https://eth-sepolia.blockscout.com/address/0xA6f0fE1C5d5cF1380e7C7Fe5384795E46166280D?tab=txs)
+· [Etherscan](https://sepolia.etherscan.io/address/0xA6f0fE1C5d5cF1380e7C7Fe5384795E46166280D)
 
 | Block | Call | Transaction |
 | --- | --- | --- |
-| 11659977 | deploy | [`0xb83e420b…`](https://eth-sepolia.blockscout.com/tx/0xb83e420b4b30dd317368fd50020459053d5a8d5df796865fcd4069ce6544454a) |
-| 11660058 | `registerBody` | [`0x14d09e01…`](https://eth-sepolia.blockscout.com/tx/0x14d09e012a1b38752d5747185f834d1a1b119aa50fc1604274117d8bc95c46ad) |
-| 11660059 | `registerImage` | [`0x1ed19fe6…`](https://eth-sepolia.blockscout.com/tx/0x1ed19fe69ffa448dbc2f15a098883ae2605141361c42fe71423e0773d53acd3a) |
-| 11660060 | `commitSession` | [`0x2d580e61…`](https://eth-sepolia.blockscout.com/tx/0x2d580e61fcc0071a15511e266214f96f1b7ecf5bbea9d6453e0390e53a074511) |
+| 11694329 | deploy | [`0x28ab5832…`](https://eth-sepolia.blockscout.com/tx/0x28ab5832561e433ed1565ed2db848ea32dadeb8e753c4b14e4bd1fd815a6f68d) |
+| 11694345 | `registerBody` | [`0xfbaf54cf…`](https://eth-sepolia.blockscout.com/tx/0xfbaf54cfbd1f8d77f4bcf81cc946312dee13cbb0b7235a9d7f918b0d14e43022) |
+| 11694350 | `registerImage` | [`0xb3fb6b1a…`](https://eth-sepolia.blockscout.com/tx/0xb3fb6b1ae9740d61810a527cd53bf4c92d89882390a886dcc4b4d5d5f232aa41) |
+| 11694354 | `commitSession` | [`0x1a030707…`](https://eth-sepolia.blockscout.com/tx/0x1a03070783e94c8232dd42d882d3fadfbe30d36ba1d3f60445c0170380b5fd3e) |
+
+This is the **second** deployment. The first, at `0xDf71e935…`, stored the
+body's `ensNode` as `keccak256("r10-4471.cam.osoro.eth")` where EIP-137 wants
+the recursive *namehash* — so the on-chain record pointed at a name that
+resolves to nothing, and the registry and the resolver disagreed about what a
+node is. `ensNode` has no setter and `registerBody` reverts on a duplicate
+`bodyId`, so the record could not be corrected in place. Redeployed rather
+than documented around, because "body X is registered to identity Y" is one
+of the two claims and it has to survive being checked.
 
 `registerImage` emits two events: `ImageRegistered`, and an ERC-7053 `Commit`
-under `genesis:2224a686…` so an indexer that knows only the standard sees it
+under `genesis:1675d734…` so an indexer that knows only the standard sees it
 too.
 
 **Check it yourself without trusting this page.** The source is verified, so
@@ -252,7 +261,7 @@ piece is not built, the table says so rather than implying it.
 
 | Technology | What it carries here | Status |
 | --- | --- | --- |
-| **Ethereum (Sepolia)** | `Registry.sol` — the body registry, image records, session roots and the ERC-7053 commit log. `registerImage`'s `require(body.owner == msg.sender)` is the system's only real security boundary | **Live** — `0xDf71e935…`, block 11659977, verified on Blockscout *and* Etherscan |
+| **Ethereum (Sepolia)** | `Registry.sol` — the body registry, image records, session roots and the ERC-7053 commit log. `registerImage`'s `require(body.owner == msg.sender)` is the system's only real security boundary | **Live** — `0xA6f0fE1C…`, block 11694329, verified on Blockscout *and* Etherscan |
 | **ENS (ENSv2, Sepolia)** | The identity model *is* the hierarchy: `osoro.eth` is the photographer, `cam.osoro.eth` the fleet, `r10-4471.cam.osoro.eth` one enrolled body, with the fingerprint commitment, signer, revocation status and a keyed camera-serial commitment in its resolver records | **Live** — registered, and both subregistries deployed by hand because the beta app has no subname UI (`identity/addresses.md`) |
 | **The Graph** | The perceptual index. A degraded copy has a different pixel hash, so the only way back to the original's registration is a pHash lookup — the registry has no index on it, so the subgraph *is* that index. Demo step 4 depends on it | **Live** — `genesis` v0.0.1, indexing real Sepolia events, all four entity types populated |
 | **The Graph (MCP server)** | Three read-only tools so an agent can verify conversationally, with the claims discipline enforced in the wording an agent repeats | **Live** — answering from the deployed subgraph, 6 tests on the wording |

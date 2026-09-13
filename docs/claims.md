@@ -10,7 +10,7 @@ discipline — not modesty.
 
 **1. Record integrity.** A registration for this image exists on chain, signed
 by the body's owner, at time T. Verifiable by anyone against
-`0xDf71e9350B4cA587eb3Bd01F2e7D710F3Fc25CF3` without taking our word for it.
+`0xA6f0fE1C5d5cF1380e7C7Fe5384795E46166280D` without taking our word for it.
 This is the claim that survived every attack in `docs/adversarial.md`.
 
 **2. Pixel linkage.** These pixels correlate with body X's fingerprint at
