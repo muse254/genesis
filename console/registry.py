@@ -463,3 +463,57 @@ async def reset_registry(confirm: str = Form(...)) -> dict:
         "epochAfter": chain.registry_epoch(),
         **receipt,
     }
+
+
+@router.post("/score-confidential")
+async def score_confidential(file: UploadFile = File(...), body: str = Form(...)) -> dict:
+    """Score where nobody holds K, so the console can show the CRE path.
+
+    The scoring service has the same endpoint; this one exists because the
+    console frontend talks only to the console, and because a presenter needs
+    the two things the raw score does not carry: how long it took, and which
+    backend produced it. Sixteen seconds of WASM compilation looks like a hang
+    unless the screen says what it is doing.
+
+    RAW only, and the refusal is the honest one: the confidential path
+    correlates on the photosite lattice and a developed JPEG has none left.
+    The scale search that rescues those needs the whole 89 MB reference, which
+    is the one thing that does not fit an enclave.
+    """
+    import time
+
+    from cre import backend as confidential
+
+    bodies = {name: (bid, b) for bid, b in _bodies().items() for name in (b["name"], bid)}
+    if body not in bodies:
+        raise HTTPException(404, f"unknown body {body}")
+    _, holder = bodies[body]
+
+    # The same inline handling the other signing endpoints use; `_save` lives
+    # in console/app.py and importing it here would make the module cycle.
+    suffix = Path(file.filename or "upload").suffix or ".bin"
+    handle = tempfile.NamedTemporaryFile(suffix=suffix, delete=False)
+    handle.write(file.file.read())
+    handle.close()
+    path = Path(handle.name)
+
+    try:
+        if path.suffix.lower() not in record.hashing_raw_suffixes():
+            raise HTTPException(
+                415,
+                "the confidential path needs a RAW frame. A developed JPEG has no "
+                "photosite lattice left, and the search that rescues it needs the "
+                "whole reference -- which is what does not fit an enclave.",
+            )
+
+        started = time.time()
+        probe = prnu.load_raw_planes(path, crop=confidential.payload_mod.PLANE_SIZE * 2)
+        result = confidential.score(probe, holder["planes"], body)
+        return {
+            "body": holder["name"],
+            "seconds": round(time.time() - started, 1),
+            "planeSize": confidential.payload_mod.PLANE_SIZE,
+            **result.to_json(),
+        }
+    finally:
+        path.unlink(missing_ok=True)

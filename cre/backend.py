@@ -236,7 +236,20 @@ def _parse_simulation(completed: subprocess.CompletedProcess) -> dict:
     silently wrong score.
     """
     if completed.returncode != 0:
-        raise RuntimeError(f"cre workflow simulate failed:\n{completed.stdout}\n{completed.stderr}")
+        combined = f"{completed.stdout}\n{completed.stderr}"
+        # The one failure worth naming, because it is the one that arrives
+        # mid-demo and looks like a broken workflow rather than an expired
+        # login. The CLI's stored token lasts 900 seconds; `CRE_API_KEY` does
+        # not expire, and without either the simulator refuses before doing
+        # any work.
+        if "not logged in" in combined or "authentication required" in combined.lower():
+            raise RuntimeError(
+                "the CRE CLI is not authenticated, so the confidential workflow could "
+                "not be simulated. Set CRE_API_KEY (app.chain.link -> Account Settings) "
+                "or run `cre login`. GENESIS_CONFIDENTIAL_BACKEND=local needs neither "
+                "and returns the same number."
+            )
+        raise RuntimeError(f"cre workflow simulate failed:\n{combined}")
 
     marker = "Workflow Simulation Result:"
     if marker not in completed.stdout:

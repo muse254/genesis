@@ -259,3 +259,41 @@ input.desc.failed { border-color: var(--error); }
 }
 .reset-out .ok { color: #6ea86e; }
 .reset-out .bad { color: #c05b5b; }
+
+/* --- 07 Confidential -----------------------------------------------------
+   The run is ~16s, nearly all of it compiling TypeScript to WASM. Silence
+   for that long reads as a crash, so the stages are narrated and the bar is
+   paced off the measured timings in docs/cre.md rather than faked. */
+.conf-run { padding: 1.5rem 0; }
+.conf-stage { font-size: 0.85rem; opacity: 0.8; margin-bottom: 0.6rem; min-height: 1.2em; }
+.conf-bar {
+  height: 3px;
+  background: rgba(128, 128, 128, 0.25);
+  overflow: hidden;
+}
+.conf-bar span {
+  display: block;
+  height: 100%;
+  width: 0;
+  background: currentColor;
+  transition: width 0.1s linear;
+}
+
+.conf-card h2 { margin: 0; font-size: 2.4rem; font-variant-numeric: tabular-nums; }
+.conf-card h2 small { font-size: 0.9rem; opacity: 0.55; font-weight: normal; }
+.conf-verdict { margin: 0.2rem 0 1.1rem; font-size: 0.9rem; }
+.conf-card.ok .conf-verdict { color: #6ea86e; }
+.conf-card.no .conf-verdict { color: #c05b5b; }
+.conf-card dl { margin: 0 0 1rem; }
+.conf-card .row { display: flex; gap: 1rem; padding: 0.3rem 0; font-size: 0.85rem; }
+.conf-card dt { flex: 0 0 11rem; opacity: 0.6; }
+.conf-card dd { margin: 0; }
+/* The caveats are the point of the screen, not the small print. */
+.conf-card .caveat {
+  font-size: 0.8rem;
+  line-height: 1.55;
+  opacity: 0.75;
+  border-left: 2px solid rgba(128, 128, 128, 0.35);
+  padding-left: 0.8rem;
+  margin: 0.8rem 0 0;
+}

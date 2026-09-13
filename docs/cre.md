@@ -149,6 +149,28 @@ that showed the first and described the third would be the same drift
 - **A run takes about 16 seconds**, nearly all of it compiling TypeScript to
   WASM. The correlation itself is milliseconds.
 
+## Driving it from the console
+
+Screen **07 CONFIDENTIAL** in the presenter console. Drop a RAW frame, and it
+runs the real thing: residual extracted locally, a 256² int8 crop sent, the
+workflow compiled to WASM and executed in the CRE simulator, the score back.
+
+The screen narrates the stages because the run takes about sixteen seconds and
+silence for that long reads as a crash. The bar is paced off the timings
+measured here rather than invented: extraction is about a second, compilation
+is most of the rest.
+
+It shows `Attested: no`, and that is the point of showing it rather than a
+thing to apologise for. The Chainlink CRE criteria accept **either** a
+Confidential Workflow simulation via the CRE CLI **or** a live deployment, and
+this is the first — a real simulation, honestly labelled, rather than a
+deployment we do not have.
+
+Evidence for a submission is the terminal transcript of
+`cre workflow simulate`, which names the TEE constraint it resolved
+(AWS Nitro, us-west-2), the binary and config hashes, the enforced simulation
+limits, and the returned score. Nothing in that output contains K.
+
 ## Running it
 
 ```bash

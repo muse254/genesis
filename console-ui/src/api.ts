@@ -36,6 +36,25 @@ export interface State {
   registry?: { resettable: boolean; epoch: number };
 }
 
+export interface ConfidentialScore {
+  body: string;
+  /** Wall-clock for the whole run. ~16s on the CRE path, almost all of it
+   *  compiling TypeScript to WASM; milliseconds on the local one. */
+  seconds: number;
+  planeSize: number;
+  pce: number;
+  match: boolean;
+  threshold: number;
+  backend: "cre" | "local";
+  /** False on every path available today. Only a deployed confidential
+   *  workflow may set it true -- see `cre/backend.py`. */
+  attested: boolean;
+  trust: string;
+  payload_digest: string;
+  signature: string | null;
+  signer: string | null;
+}
+
 export interface ResetResult {
   registry: string;
   epochBefore: number;
@@ -123,6 +142,20 @@ export const api = {
     const form = new FormData();
     form.append("file", file);
     return call<VerifyResult>("/verify", { method: "POST", body: form });
+  },
+
+  /**
+   * Screen 07. Scores the frame where nobody holds K.
+   *
+   * Slow on purpose: the CRE backend compiles the workflow to WASM and runs
+   * it in the simulator, which takes about sixteen seconds. The caller must
+   * say so on screen or it reads as a hang.
+   */
+  scoreConfidential(file: File, body: string) {
+    const form = new FormData();
+    form.append("file", file);
+    form.append("body", body);
+    return call<ConfidentialScore>("/score-confidential", { method: "POST", body: form });
   },
 
   /** Screen 04. Quality has no default here either -- see `/degrade`'s docstring. */

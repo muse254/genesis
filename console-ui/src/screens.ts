@@ -9,7 +9,7 @@
  * typical figure and no fake sub-steps (`docs/console-server.md`).
  */
 
-import { api, type Check, type State, type VerifyResult } from "./api";
+import { api, type Check, type ConfidentialScore, type State, type VerifyResult } from "./api";
 import { el, escape, rail, stageStrip, verdictCard } from "./components";
 
 type Render = (host: HTMLElement) => void;
@@ -225,6 +225,118 @@ function drawReset(host: HTMLElement, state: State): void {
       button.textContent = "Wipe every record";
     }
   });
+}
+
+/**
+ * 07 · Confidential. The same score, computed where nobody holds K.
+ *
+ * `scoring/app.py` is the trust hole by design -- it holds the reference and
+ * you take its word for a PCE. This screen is the answer: published
+ * algorithm, private reference, and a score that crosses back out of the
+ * enclave on its own.
+ *
+ * The screen exists to be honest about three things at once, and losing any
+ * of them would make it a worse demo rather than a shorter one:
+ *   - it really runs, through the CRE CLI, compiling to WASM on every run;
+ *   - it takes about sixteen seconds, which is why the stages are narrated;
+ *   - it is **not attested**, because the simulator is not a real enclave.
+ */
+export const confidential: Render = (host) => {
+  host.innerHTML = `
+    <h1 class="title">Scored where nobody holds K</h1>
+    <p class="lede">The reference never leaves the enclave. Only a residual crop goes in,
+       and only a score comes out. RAW only — a developed JPEG has no lattice left.</p>
+    <div class="two-col"><div class="left"></div><div class="right result-area"></div></div>`;
+  host.querySelector(".title")!.append(clearButton(host, confidential));
+
+  const left = host.querySelector(".left")!;
+  const right = host.querySelector(".right")! as HTMLElement;
+
+  left.append(
+    dropSlot("Drop a RAW frame", async (file) => {
+      await showImage(left.querySelector(".slot")!, file);
+      await runConfidential(right, file);
+    }),
+  );
+};
+
+/**
+ * Sixteen seconds with no output is indistinguishable from a crash, and this
+ * repository has already been bitten by that once on the verify path. The
+ * stages are real and in order; the timings are what `docs/cre.md` measured,
+ * so the bar is honest rather than decorative.
+ */
+async function runConfidential(right: HTMLElement, file: File): Promise<void> {
+  const stages = [
+    ["extracting the noise residual", 1200],
+    ["cropping to 256² and quantising to int8", 600],
+    ["compiling the workflow to WASM", 11000],
+    ["running the handler in the enclave", 3000],
+  ] as const;
+
+  right.innerHTML = `<div class="conf-run"><div class="conf-stage mono"></div>
+    <div class="conf-bar"><span></span></div></div>`;
+  const label = right.querySelector(".conf-stage")!;
+  const bar = right.querySelector(".conf-bar span") as HTMLElement;
+
+  let cancelled = false;
+  void (async () => {
+    let elapsed = 0;
+    const total = stages.reduce((sum, [, ms]) => sum + ms, 0);
+    for (const [text, ms] of stages) {
+      if (cancelled) return;
+      label.textContent = `${text}…`;
+      const start = elapsed;
+      const step = 100;
+      for (let t = 0; t < ms && !cancelled; t += step) {
+        await new Promise((r) => setTimeout(r, step));
+        bar.style.width = `${Math.min(99, ((start + t) / total) * 100)}%`;
+      }
+      elapsed += ms;
+    }
+  })();
+
+  try {
+    const result = await api.scoreConfidential(file, "r10");
+    cancelled = true;
+    bar.style.width = "100%";
+    right.innerHTML = confidentialCard(result);
+  } catch (error) {
+    cancelled = true;
+    right.innerHTML = "";
+    right.append(
+      failure(
+        "The confidential path did not run",
+        (error as Error).message,
+        "Nothing is claimed and nothing was sent. `GENESIS_CONFIDENTIAL_BACKEND=local` " +
+          "computes the same number without the CLI.",
+      ),
+    );
+  }
+}
+
+function confidentialCard(r: ConfidentialScore): string {
+  const verdict = r.match ? "clears the threshold" : "does not clear the threshold";
+  return `
+    <div class="conf-card ${r.match ? "ok" : "no"}">
+      <h2>${escape(r.pce.toFixed(1))} <small>(threshold ${escape(r.threshold)})</small></h2>
+      <p class="conf-verdict">${escape(verdict)}</p>
+      <dl>
+        <div class="row"><dt>Computed by</dt><dd>${escape(r.backend)}${
+          r.backend === "cre" ? " — CRE simulator" : " — in this process"
+        }</dd></div>
+        <div class="row"><dt>Took</dt><dd>${escape(r.seconds)}s</dd></div>
+        <div class="row"><dt>Sent</dt><dd>${escape(r.planeSize)}² per CFA plane, int8 — never K</dd></div>
+        <div class="row"><dt>Payload digest</dt><dd class="mono">${escape(
+          r.payload_digest.slice(0, 24),
+        )}…</dd></div>
+        <div class="row"><dt>Attested</dt><dd><b>${r.attested ? "yes" : "no"}</b></dd></div>
+      </dl>
+      <p class="caveat">${escape(r.trust)}</p>
+      <p class="caveat">This does nothing about forgery. An enclave would score a planted
+         fingerprint faithfully and sign it — confidential compute protects the reference
+         from the verifier, and the attack happens before the pixels arrive.</p>
+    </div>`;
 }
 
 /** 00 · Pre-flight. The go/no-go gate, checked before recording starts. */
@@ -682,6 +794,7 @@ export const SCREENS: { id: string; label: string; render: Render }[] = [
   { id: "survival", label: "04 SURVIVAL", render: survival },
   { id: "verdict", label: "05 VERDICT", render: verdict },
   { id: "archive", label: "06 ARCHIVE", render: archive },
+  { id: "confidential", label: "07 CONFIDENTIAL", render: confidential },
 ];
 
 export type { VerifyResult };
