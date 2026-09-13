@@ -10,7 +10,30 @@
  * ink, and colour lives only on the verdict block.
  */
 
+import { ETHERSCAN, readContractUrl, registryAddress } from "./api";
 import type { Signal, Stage, Verdict, VerifyResult } from "./api";
+
+/**
+ * A value the registry holds, rendered so it can be checked rather than
+ * merely read.
+ *
+ * Only for values that are actually on chain. A commitment computed at
+ * enrolment is not one -- it goes on chain when the body is registered, and
+ * linking it before then would tell the reader to look somewhere it is not.
+ *
+ * The link is the contract's verified Read Contract tab, because Etherscan
+ * cannot deep-link a mapping read with its argument. The value is beside it
+ * to paste in, and the title says which function to call.
+ */
+function onChain(value: string, call: string, display?: string): string {
+  const url = readContractUrl();
+  const text = escape(display ?? value);
+  if (!url) return `<span class="mono">${text}</span>`;
+  return (
+    `<a class="mono onchain" href="${escape(url)}" target="_blank" rel="noreferrer" ` +
+    `title="Read ${escape(call)} on the verified contract — no wallet needed">${text} ↗</a>`
+  );
+}
 
 export const el = (html: string): HTMLElement => {
   const wrap = document.createElement("div");
@@ -73,7 +96,10 @@ export function verdictCard(result: VerifyResult): HTMLElement {
     );
 
   if (result.derivedFrom) {
-    row("Descends from", `<span class="mono">${escape(short(result.derivedFrom.imageHash))}</span>`);
+    row(
+      "Descends from",
+      onChain(result.derivedFrom.imageHash, "images(bytes32)", short(result.derivedFrom.imageHash)),
+    );
     row(
       "Perceptual distance",
       `${result.derivedFrom.hammingDistance} of 64 bits${
@@ -83,6 +109,15 @@ export function verdictCard(result: VerifyResult): HTMLElement {
   }
   if (result.body) {
     row("Camera body", `<b>${escape(result.body.name ?? short(result.body.bodyId))}</b>`);
+    row("Body id", onChain(result.body.bodyId, "bodies(bytes32)", short(result.body.bodyId)));
+    if (result.body.commitment) {
+      // On chain because the body is registered -- this row only renders
+      // inside `result.body`, which is read from the registry.
+      row(
+        "Fingerprint commitment",
+        onChain(result.body.commitment, "bodies(bytes32)", short(result.body.commitment)),
+      );
+    }
     if (result.body.ensName && result.body.owner) {
       row(
         "Identity",
@@ -93,10 +128,15 @@ export function verdictCard(result: VerifyResult): HTMLElement {
   }
   if (result.registration) {
     row("First registered", utc(result.registration.registeredAt));
+    const registry = registryAddress();
     row(
-      "Transaction",
-      `<a class="mono" href="${escape(result.registration.explorerUrl)}" target="_blank" ` +
-        `rel="noreferrer">view on the explorer ↗</a>`,
+      "On chain",
+      (registry
+        ? `<a class="mono" href="${escape(`${ETHERSCAN}/address/${registry}`)}" target="_blank" ` +
+          `rel="noreferrer">Etherscan ↗</a> · `
+        : "") +
+        `<a class="mono" href="${escape(result.registration.explorerUrl)}" target="_blank" ` +
+        `rel="noreferrer">Blockscout ↗</a>`,
     );
   }
 

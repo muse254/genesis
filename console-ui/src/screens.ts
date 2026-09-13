@@ -11,6 +11,7 @@
 
 import {
   api,
+  ETHERSCAN,
   type Check,
   type ConfidentialScore,
   type ReferenceLink,
@@ -656,8 +657,10 @@ export const enrol: Render = (host) => {
           side.innerHTML = `<div class="commitment">
               <p class="label">commitment</p>
               <p class="mono hash">${escape(result?.commitment ?? "")}</p>
-              <p class="note">The fingerprint itself stays on this machine;
-                 only this commitment goes on chain.</p>
+              <p class="note">The fingerprint itself stays on this machine; only this
+                 commitment goes on chain — and it is <b>not there yet</b>. Registering
+                 the body on step 02 is what puts it in the registry, and from then on
+                 it can be read back by anyone.</p>
             </div>`;
         }
         },
@@ -931,7 +934,17 @@ export const archive: Render = (host) => {
                 <td>${escape(row.file_name ?? "—")}
                   ${row.file_path ? `<br/><small class="mono">${escape(row.file_path)}</small>` : ""}</td>
                 <td class="mono num">${row.pce === null ? "—" : Number(row.pce).toLocaleString(undefined, { maximumFractionDigits: 1 })}</td>
-                <td class="mono">${escape(String(row.image_hash ?? "").slice(0, 14))}…</td>
+                <td>${
+                  row.tx_hash
+                    ? // Registered, so the transaction that put it there is the
+                      // precise place to check -- better than the contract tab,
+                      // which would need the hash pasted back in.
+                      `<a class="mono" href="${escape(`${ETHERSCAN}/tx/${row.tx_hash}`)}"
+                          target="_blank" rel="noreferrer"
+                          title="the transaction that registered this image"
+                       >${escape(String(row.image_hash ?? "").slice(0, 14))}… ↗</a>`
+                    : `<span class="mono">${escape(String(row.image_hash ?? "").slice(0, 14))}…</span>`
+                }</td>
                 <td><input class="desc" data-hash="${escape(row.image_hash)}"
                      value="${escape(row.description ?? "")}"
                      placeholder="add a note…" /></td>

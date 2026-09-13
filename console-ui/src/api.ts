@@ -145,8 +145,40 @@ async function call<T>(path: string, init?: RequestInit): Promise<T> {
   return response.json() as Promise<T>;
 }
 
+/**
+ * The registry the console is pointed at, remembered from the last `/state`.
+ *
+ * The verdict card renders on-chain values and should say where to check
+ * them, but it is a pure render function with no access to the server. This
+ * is the smallest way to give it one, and it is deliberately null until a
+ * state call has happened -- a link built from a guessed address is worse
+ * than no link.
+ */
+let seenRegistry: string | null = null;
+
+export const registryAddress = (): string | null => seenRegistry;
+
+/** Sepolia, matching `console/chain.py`. */
+export const ETHERSCAN = "https://sepolia.etherscan.io";
+
+/**
+ * Where a bytes32 the registry holds can be read back by anyone.
+ *
+ * Etherscan cannot deep-link a mapping read with its argument, so this points
+ * at the verified contract's Read Contract tab -- which needs no wallet, and
+ * is where `bodies(bytes32)` and `images(bytes32)` can be called with the
+ * value beside it. `docs/claims.md` says a registration is verifiable by
+ * anyone without taking our word for it; this is the "how".
+ */
+export const readContractUrl = (): string | null =>
+  seenRegistry ? `${ETHERSCAN}/address/${seenRegistry}#readContract` : null;
+
 export const api = {
-  state: () => call<State>("/state"),
+  state: async () => {
+    const state = await call<State>("/state");
+    seenRegistry = state.chain?.registry ?? null;
+    return state;
+  },
 
   /**
    * Wipe the registry so the demo can be run again. Testnet only; the server
