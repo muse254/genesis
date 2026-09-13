@@ -321,6 +321,59 @@ export const api = {
     return URL.createObjectURL(await response.blob());
   },
 
+  /**
+   * Demo step 2b, streamed.
+   *
+   * The blocking version says nothing between the upload and the receipt, and
+   * the wait is dominated by the PRNU scale search rather than by the chain.
+   * Every phase arrives as an event carrying the server's own timestamp and
+   * an elapsed figure, so the screen reports telemetry rather than guesses.
+   */
+  registerImageStreaming(
+    file: File,
+    body: string,
+    onStep: (step: { phase?: string; label: string; at: string; elapsed: number }) => void,
+  ) {
+    const form = new FormData();
+    form.append("file", file);
+    form.append("body", body);
+    return call<{ jobId: string }>("/register-image/stream", { method: "POST", body: form })
+      .then(
+        (job) =>
+          new Promise<{
+            imageHash: string; perceptualHash: string; bodyId: string; pce: number;
+            registeredAt: number; txHash: string; blockNumber: number;
+            explorerUrl: string; links?: ReferenceLink[];
+          }>((resolve, reject) => {
+            const stream = new EventSource(`${BASE}/register-image/${job.jobId}/events`);
+            // An EventSource reports the server ending the response as an
+            // error and then tries to reconnect, so `onerror` fires on a
+            // perfectly normal finish and raced the resolve -- the screen
+            // wiped a completed registration and reported a broken stream.
+            // Only a drop *before* the job reports done is a real failure.
+            let settled = false;
+            stream.onmessage = (message) => {
+              const event = JSON.parse(message.data);
+              if (event.event === "step") {
+                onStep(event);
+                return;
+              }
+              if (event.event === "done") {
+                settled = true;
+                stream.close();
+                if (event.error) reject(new Error(String(event.error)));
+                else resolve(event.result);
+              }
+            };
+            stream.onerror = () => {
+              if (settled) return;
+              stream.close();
+              reject(new Error("the progress stream dropped before the job finished"));
+            };
+          }),
+      );
+  },
+
   registerImage(file: File, body: string) {
     const form = new FormData();
     form.append("file", file);

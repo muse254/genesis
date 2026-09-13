@@ -71,6 +71,20 @@ MIN_BODIES = 1
 MAX_BLOCK_AGE = 60                # seconds; Sepolia blocks are ~12s
 
 
+#: `/state` is polled, and every call makes roughly eight sequential
+#: `eth_call`s against a public RPC -- which is the slowest thing the console
+#: touches and gets slower the more it is asked. Measured: 4.5s, 21.5s and
+#: 8.5s on three consecutive calls. Every screen awaits this before doing
+#: anything, so that latency was being paid before a registration could even
+#: start, and the frontend read it as the registration being slow.
+#:
+#: Three seconds, because a Sepolia block is twelve and this is a go/no-go
+#: gate: stale enough to be cheap, fresh enough that nothing it reports can
+#: have changed underneath it unnoticed.
+_STATE_TTL = 3.0
+_STATE_CACHE: dict = {"at": 0.0, "payload": None}
+
+
 @app.get("/state")
 async def state() -> dict:
     """The go/no-go gate, as rows a table renders without deciding anything.
@@ -80,6 +94,12 @@ async def state() -> dict:
     every check carries what was measured, what was expected, and whether it
     passes. The frontend renders; it does not evaluate.
     """
+    import time as _time
+
+    fresh = _time.time() - _STATE_CACHE["at"] < _STATE_TTL
+    if fresh and _STATE_CACHE["payload"] is not None:
+        return _STATE_CACHE["payload"]
+
     checks: list[dict] = []
 
     def record(name, measured, expected, ok, remedy=None):
@@ -170,7 +190,7 @@ async def state() -> dict:
     except Exception:
         resettable, epoch = False, 0
 
-    return {
+    payload = {
         "ready": all(c["go"] for c in checks),
         "checks": checks,
         "bodies": [b["name"] for b in bodies.values()],
@@ -180,6 +200,15 @@ async def state() -> dict:
         "ensParent": parent or None,
         "registry": {"resettable": resettable, "epoch": epoch},
     }
+    _STATE_CACHE["at"], _STATE_CACHE["payload"] = _time.time(), payload
+    return payload
+
+
+def invalidate_state() -> None:
+    """Drop the cached gate. Called by anything that changes what it reports,
+    so a registration or a wipe shows up at once rather than up to three
+    seconds later."""
+    _STATE_CACHE["at"], _STATE_CACHE["payload"] = 0.0, None
 
 
 def _save(upload: UploadFile) -> Path:

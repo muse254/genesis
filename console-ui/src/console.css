@@ -453,3 +453,26 @@ input.desc.failed { border-color: var(--error); }
 .ledger .waiting { color: var(--tertiary); }
 .ledger .hint { display: block; margin-top: 2px; }
 .ledger + .elapsed { color: var(--tertiary); font-size: 11.5px; margin: 8px 0 0; }
+
+/* --- Registration telemetry ----------------------------------------------
+   A timestamped log of the real phases. The wait is dominated by the PRNU
+   scale search, not by the chain, and the operator has to be able to see
+   that -- a screen that named the transaction while running the search
+   taught people to distrust a chain that was not the problem. */
+.steps { list-style: none; margin: 0; padding: 0; }
+.steps .step {
+  display: grid;
+  grid-template-columns: 92px 52px 1fr;
+  gap: 10px;
+  align-items: baseline;
+  padding: 4px 0;
+  border-top: 1px solid var(--hairline);
+  font-size: 12.5px;
+}
+.steps .step:first-child { border-top: 0; }
+.steps .stamp { color: var(--tertiary); font-size: 11px; }
+.steps .took { color: var(--secondary); font-size: 11px; text-align: right; }
+/* Only the running step is emphasised; everything above it is history. */
+.steps .step .what { color: var(--secondary); }
+.steps .step.live .what { color: var(--ink); font-weight: 600; }
+.steps .step.live .stamp { color: var(--secondary); }

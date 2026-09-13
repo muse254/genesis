@@ -55,6 +55,14 @@ def _isolated_references(tmp_path, monkeypatch):
     """
     # Dot-prefixed so it cannot show up in a `/browse` listing, which is
     # rooted at a temp directory in its own tests.
+    # `/state` is cached for a few seconds and the cache is module-level, so
+    # one test's gate would answer for the next one's. Dropped on both sides:
+    # a stale gate is exactly the bug the cache could introduce, and a suite
+    # that tolerated it here would not catch it in the product.
+    from console.app import invalidate_state
+
+    invalidate_state()
+
     references = tmp_path / ".genesis-references"
     references.mkdir()
     # The env var covers anything reading it at call time -- `/reset`'s
@@ -64,6 +72,7 @@ def _isolated_references(tmp_path, monkeypatch):
     # and would otherwise still glob the operator's real directory.
     monkeypatch.setattr("scoring.app.REFERENCES", references)
     yield
+    invalidate_state()
 
 
 @pytest.fixture

@@ -127,6 +127,13 @@ def body(body_id: str) -> BodyRecord | None:
     )
 
 
+#: `testMode` is `immutable` in the contract, so for a given registry the
+#: answer can never change. Asking once per process rather than once per
+#: `/state` poll matters: the public RPC is the slowest thing the console
+#: touches, and `/state` is polled.
+_TEST_MODE: dict[str, bool] = {}
+
+
 def test_mode() -> bool:
     """`testMode()`. True on a registry whose records can be wiped.
 
@@ -134,12 +141,20 @@ def test_mode() -> bool:
     contract's answer that matters: a console that believed a `.env` flag
     could offer a reset button on a registry that has no reset, or hide one
     that does.
+
+    Memoised per registry address. The value is immutable on chain, so a
+    cached answer cannot go stale -- only a redeployment changes it, and that
+    changes the address too.
     """
+    if REGISTRY in _TEST_MODE:
+        return _TEST_MODE[REGISTRY]
     try:
         raw = _call("testMode()")
+        answer = bool(_uint(raw, 0)) if len(raw) >= 32 else False
     except Exception:
         return False  # a registry predating the flag cannot be reset
-    return bool(_uint(raw, 0)) if len(raw) >= 32 else False
+    _TEST_MODE[REGISTRY] = answer
+    return answer
 
 
 def registry_epoch() -> int:

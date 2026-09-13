@@ -17,6 +17,7 @@ argument would put it in `ps` output for every process on the machine.
 from __future__ import annotations
 
 import hashlib
+import json
 import os
 import time
 import subprocess
@@ -25,7 +26,7 @@ from pathlib import Path
 
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 
-from console import catalogue, chain
+from console import catalogue, chain, jobs
 from fingerprint import prnu
 from ingest import merkle, record
 from scoring.app import _bodies, _score_against
@@ -58,6 +59,20 @@ def _key() -> str:
     if not key:
         raise HTTPException(503, "DEPLOYER_PRIVATE_KEY is not set; the console cannot sign")
     return key
+
+
+def _invalidate_state() -> None:
+    """Drop the cached pre-flight gate after anything that changes it.
+
+    `/state` is cached for a few seconds because it is polled and each call
+    costs about eight `eth_call`s. That is fine for a gate nobody is changing
+    and wrong the moment something is: a body that has just been registered
+    should not still read "not registered" for another three seconds, because
+    the next screen tells the operator to go and register it.
+    """
+    from console.app import invalidate_state
+
+    invalidate_state()
 
 
 def ens_namehash(name: str) -> str:
@@ -196,6 +211,7 @@ async def register_body(name: str = Form(...), ens_label: str = Form(...)) -> di
         "0x" + body["commitment"],
         ens_node,
     ])
+    _invalidate_state()
     return {"bodyId": "0x" + body_id, "ensName": f"{ens_label}.{parent}", **receipt}
 
 
@@ -483,6 +499,7 @@ async def reset_registry(confirm: str = Form(...), clear_enrolments: bool = Form
 
     before = chain.registry_epoch()
     receipt = cast_send(["resetAll()"])
+    _invalidate_state()
 
     # The chain is only half of a clean slate. `resetAll` clears records; the
     # enrolled references are files on this machine and the wipe never touched
@@ -577,3 +594,142 @@ async def score_confidential(file: UploadFile = File(...), body: str = Form(...)
         }
     finally:
         path.unlink(missing_ok=True)
+
+
+@router.post("/register-image/stream")
+async def register_image_stream(
+    file: UploadFile = File(...), body: str = Form(...), description: str = Form("")
+) -> dict:
+    """Demo step 2b, as a job you can watch.
+
+    The blocking version reports nothing between the upload and the receipt,
+    and the wait is dominated by a part nobody would guess: registering runs
+    the full PRNU scale and orientation search, twenty-one correlations on an
+    unfamiliar frame, which is most of the wall clock. The transaction at the
+    end is seconds. A screen that named the transaction while running the
+    search taught operators to distrust a chain that was not the problem.
+
+    So every phase is an event with a timestamp and an elapsed figure, and the
+    phases are the real ones rather than a tidy fiction:
+
+        reading · hashing · scoring (with the search's own progress) ·
+        building the record · threshold · signing · broadcasting · receipt
+
+    `jobs.Job.emit` stamps them; nothing here has to remember to.
+    """
+    bodies = {name: (bid, b) for bid, b in _bodies().items() for name in (b["name"], bid)}
+    if body not in bodies:
+        raise HTTPException(404, f"unknown body {body}")
+    body_id, holder = bodies[body]
+
+    try:
+        registered = chain.body("0x" + body_id)
+    except chain.ChainError as error:
+        raise HTTPException(503, f"cannot read the registry: {error}")
+    if registered is None:
+        raise HTTPException(
+            409,
+            f"body {holder['name']} is enrolled on this machine but not registered on "
+            f"{chain.REGISTRY}. Register the body first -- that is demo step 2a.",
+        )
+
+    suffix = Path(file.filename or "upload").suffix or ".bin"
+    handle = tempfile.NamedTemporaryFile(suffix=suffix, delete=False)
+    handle.write(file.file.read())
+    handle.close()
+    path = Path(handle.name)
+
+    references = Path(os.environ.get("GENESIS_REFERENCES", "data/references"))
+
+    def work(job: jobs.Job) -> None:
+        try:
+            job.emit(event="step", phase="reading", label=f"reading {file.filename}")
+
+            def searching(label: str) -> None:
+                # The scorer's own progress, passed through rather than
+                # summarised: "searching scale and orientation — 7 of 21" is
+                # the only line that tells an operator the wait is finite.
+                job.emit(event="step", phase="scoring", label=label)
+
+            measured = _score_against(holder, path, progress=searching)
+
+            job.emit(event="step", phase="record",
+                     label=f"building the record — PCE {measured['pce']:.1f}")
+            built = record.build_record(
+                path, references / f"{holder['name']}.npz", hmac_key=_hmac_key(),
+                owner=os.environ.get("ENS_PARENT_NAME"), score=measured["pce"],
+            )
+
+            if built.pce_score < prnu.PCE_THRESHOLD:
+                job.finish(error=(
+                    f"PCE {built.pce_score} is below {prnu.PCE_THRESHOLD}; refused "
+                    "before the chain. The pixels do not support the claim."
+                ))
+                return
+
+            job.emit(event="step", phase="signing",
+                     label="signing with the body owner's key")
+            job.emit(event="step", phase="broadcasting",
+                     label="broadcasting and waiting for the receipt")
+
+            def word(value: bytes) -> str:
+                return "0x" + value.rjust(32, b"\x00").hex()
+
+            tuple_arg = (
+                f"({word(built.image_hash)},{word(built.perceptual_hash)},"
+                f"{word(built.body_id)},{built.modification_level},"
+                f"{word(built.parent_image_hash)},{word(built.metadata_hmac)},"
+                f"{built.pce_score},{built.registered_at})"
+            )
+            receipt = cast_send([
+                "registerImage((bytes32,bytes32,bytes32,uint8,bytes32,bytes32,uint32,uint64))",
+                tuple_arg,
+            ])
+
+            job.emit(event="step", phase="receipt",
+                     label=f"included in block {receipt['blockNumber']}")
+            _invalidate_state()
+            catalogue.record_image(
+                image_hash="0x" + built.image_hash.hex(),
+                perceptual_hash="0x" + built.perceptual_hash.hex(),
+                body_id="0x" + built.body_id.hex(), body_name=holder["name"],
+                pce=float(built.pce_score), registered_at=built.registered_at,
+                tx_hash=receipt["txHash"], block_number=receipt["blockNumber"],
+                session_id=None, file_name=file.filename, file_path="",
+                description=description, noted_at=int(time.time()),
+            )
+            job.finish({
+                "imageHash": "0x" + built.image_hash.hex(),
+                "perceptualHash": "0x" + built.perceptual_hash.hex(),
+                "bodyId": "0x" + built.body_id.hex(),
+                "pce": built.pce_score,
+                "registeredAt": built.registered_at,
+                **receipt,
+            })
+        except HTTPException as error:
+            job.finish(error=str(error.detail))
+        except Exception as error:  # noqa: BLE001 -- the job carries it to the screen
+            job.finish(error=f"{type(error).__name__}: {error}")
+        finally:
+            path.unlink(missing_ok=True)
+
+    job = jobs.start(work)
+    return {"jobId": job.id}
+
+
+@router.get("/register-image/{job_id}/events")
+async def register_image_events(job_id: str):
+    from fastapi.responses import StreamingResponse
+
+    job = jobs.get(job_id)
+    if job is None:
+        raise HTTPException(404, f"no job {job_id}")
+
+    def stream():
+        while True:
+            event = job.events.get()
+            yield f"data: {json.dumps(event)}\n\n"
+            if event.get("event") == "done":
+                return
+
+    return StreamingResponse(stream(), media_type="text/event-stream")

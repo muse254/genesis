@@ -14,8 +14,10 @@ from __future__ import annotations
 
 import queue
 import threading
+import time
 import uuid
 from dataclasses import dataclass, field
+from datetime import datetime, timezone
 
 
 @dataclass
@@ -26,12 +28,22 @@ class Job:
     result: dict | None = None
     error: str | None = None
 
+    #: When the job started, so every event can carry how far into the work it
+    #: happened. A label alone says what is running; a label with a clock says
+    #: whether it is progressing, which is the question an operator watching a
+    #: slow step is actually asking.
+    started: float = field(default_factory=time.time)
+
     def emit(self, **event) -> None:
+        now = time.time()
+        event.setdefault("at", datetime.fromtimestamp(now, tz=timezone.utc)
+                         .isoformat(timespec="milliseconds"))
+        event.setdefault("elapsed", round(now - self.started, 2))
         self.events.put(event)
 
     def finish(self, result: dict | None = None, error: str | None = None) -> None:
         self.result, self.error, self.done = result, error, True
-        self.events.put({"event": "done", "result": result, "error": error})
+        self.emit(event="done", result=result, error=error)
 
 
 _JOBS: dict[str, Job] = {}

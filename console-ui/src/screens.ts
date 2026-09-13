@@ -59,6 +59,13 @@ const NATIVE = /\.(jpe?g|png|webp|gif|avif|bmp)$/i;
 /**
  * Show the photograph being worked on.
  *
+ * **Never awaited before the work it illustrates.** Developing a 24-megapixel
+ * CR3 server-side takes about ninety seconds, and it is display-only: the
+ * scorer reads the original file, not this. Awaiting it meant a registration
+ * could not begin until a picture the operator does not need yet had been
+ * rendered, and the screen sat on "developing…" while nothing was happening
+ * to their photograph. Started and left to land on its own.
+ *
  * RAW is the whole difficulty: a browser cannot decode a CR3, so an `<img>`
  * pointing at one renders nothing and reports nothing -- the slot just stays
  * empty, which is how the register screen came to show no image at all. The
@@ -289,7 +296,7 @@ export const confidential: Render = (host) => {
 
   left.append(
     dropSlot("Drop a RAW frame", async (file) => {
-      await showImage(left.querySelector(".slot")!, file);
+      void showImage(left.querySelector(".slot")!, file);
       await runConfidential(right, file);
     }),
   );
@@ -332,7 +339,19 @@ async function runConfidential(right: HTMLElement, file: File): Promise<void> {
   })();
 
   try {
-    const result = await api.scoreConfidential(file, "r10");
+    // The body name was hardcoded to "r10", so the screen broke the moment
+    // anyone enrolled under a different name -- which is every rehearsal
+    // after a wipe. Asked, not assumed.
+    const enrolled = (await api.state().catch(() => null))?.bodies[0] ?? "";
+    if (!enrolled) {
+      cancelled = true;
+      right.innerHTML = "";
+      right.append(
+        failure("NO ENROLLED BODY", "The scorer holds no fingerprint.", "Run step 01 first."),
+      );
+      return;
+    }
+    const result = await api.scoreConfidential(file, enrolled);
     cancelled = true;
     bar.style.width = "100%";
     right.innerHTML = confidentialCard(result);
@@ -779,7 +798,7 @@ export const register: Render = (host) => {
 
   left.append(
     dropSlot("Drop the RAW to register", async (file) => {
-      await showImage(left.querySelector(".slot")!, file);
+      void showImage(left.querySelector(".slot")!, file);
 
       let bodyName = "";
       try {
@@ -794,36 +813,58 @@ export const register: Render = (host) => {
         return;
       }
 
-      // Both lines used to be drawn at once, with "signing and broadcasting"
-      // pulsing for the whole call -- so the screen named the fast step while
-      // it was doing the slow one. Registering runs the full PRNU scale
-      // search first, which is tens of seconds on a RAW, and an operator
-      // watching "broadcasting" pulse for a minute reasonably concludes the
-      // chain has swallowed their transaction.
-      ledger.innerHTML = `<ol class="ledger">
-        <li class="pulse">scoring against <b>${escape(bodyName)}</b>
-          <small class="hint">the slow part — a full scale and orientation
-          search over the frame</small></li>
-        <li class="waiting">then signing and broadcasting</li></ol>
-        <p class="elapsed mono"></p>`;
-
-      const clock = ledger.querySelector(".elapsed") as HTMLElement | null;
-      const startedAt = Date.now();
+      // A timestamped log of the real phases, rather than two static lines
+      // that named the fast step while the slow one ran. Registering spends
+      // most of its wall clock in the PRNU scale search -- twenty-one
+      // correlations on an unfamiliar frame -- and the transaction at the end
+      // is seconds. An operator watching a wait needs to know which part they
+      // are in and that it is still moving.
+      ledger.innerHTML = `<ol class="steps"></ol><p class="elapsed mono"></p>`;
+      const steps = ledger.querySelector(".steps") as HTMLElement;
+      const clock = ledger.querySelector(".elapsed") as HTMLElement;
+      const began = Date.now();
       const ticking = setInterval(() => {
-        if (clock) clock.textContent = `${((Date.now() - startedAt) / 1000).toFixed(1)}s elapsed`;
+        clock.textContent = `${((Date.now() - began) / 1000).toFixed(1)}s elapsed · this is PRNU scoring, not the chain`;
       }, 100);
 
+      // The search reports "7 of 21" on every correlation; those replace each
+      // other rather than stacking, or the log becomes a wall.
+      let searchRow: HTMLElement | null = null;
+
       try {
-        const receipt = await api.registerImage(file, bodyName);
+        const receipt = await api.registerImageStreaming(file, bodyName, (step) => {
+          const time = step.at.slice(11, 23);
+          const line =
+            `<span class="stamp mono">${escape(time)}</span>` +
+            `<span class="took mono">+${escape(step.elapsed.toFixed(1))}s</span>` +
+            `<span class="what">${escape(step.label)}</span>`;
+
+          if (step.phase === "scoring" && /\bof\b/.test(step.label)) {
+            if (!searchRow) {
+              searchRow = document.createElement("li");
+              searchRow.className = "step live";
+              steps.append(searchRow);
+            }
+            searchRow.innerHTML = line;
+            return;
+          }
+          steps.querySelectorAll(".step.live").forEach((el) => el.classList.remove("live"));
+          const row = document.createElement("li");
+          row.className = "step live";
+          row.innerHTML = line;
+          steps.append(row);
+          if (step.phase !== "scoring") searchRow = null;
+        });
         clearInterval(ticking);
-        ledger.innerHTML = `<ol class="ledger">
-          <li>scored — PCE ${Number(receipt.pce).toLocaleString()}</li>
-          <li>signed by the body's owner</li>
-          <li>included in block ${escape(receipt.blockNumber)}</li>
-        </ol>
-        <p class="mono txlink"><a href="${escape(receipt.explorerUrl)}" target="_blank"
-           rel="noreferrer">view transaction ↗</a></p>
-        ${referenceLinks(receipt.links)}`;
+        clock.textContent = `${((Date.now() - began) / 1000).toFixed(1)}s total`;
+        steps.querySelectorAll(".step.live").forEach((el) => el.classList.remove("live"));
+
+        ledger.insertAdjacentHTML(
+          "beforeend",
+          `<p class="mono txlink"><a href="${escape(receipt.explorerUrl)}" target="_blank"
+             rel="noreferrer">view transaction ↗</a></p>
+           ${referenceLinks(receipt.links)}`,
+        );
 
         // Read it back the way a verifier would, rather than trusting the
         // receipt. If the chain does not agree, the demo should show that.
@@ -855,7 +896,7 @@ export const negative: Render = (host) => {
   const left = host.querySelector(".left")!;
   left.append(
     dropSlot("Drop a frame from another camera", async (file) => {
-      await showImage(left.querySelector(".slot")!, file);
+      void showImage(left.querySelector(".slot")!, file);
       await scored(host, file);
     }),
   );
@@ -877,7 +918,7 @@ export const survival: Render = (host) => {
   const orig = host.querySelector(".orig")!;
   orig.append(
     dropSlot("Drop the registered photograph", async (file) => {
-      await showImage(orig.querySelector(".slot")!, file);
+      void showImage(orig.querySelector(".slot")!, file);
       const mid = host.querySelector(".mid")!;
       mid.innerHTML = `<ol class="ledger">
         <li>strip metadata</li><li>resize to 1800px</li><li>re-encode q95</li>
@@ -886,7 +927,7 @@ export const survival: Render = (host) => {
         const degraded = await api.degrade(file, 1800, 95);
         const copy = host.querySelector(".copy")!;
         copy.innerHTML = `<div class="slot filled"></div>`;
-        await showImage(copy.querySelector(".slot")!, degraded, true);
+        void showImage(copy.querySelector(".slot")!, degraded, true);
         mid.querySelector(".pulse")?.classList.remove("pulse");
         await scored(host, degraded);
       } catch (error) {
@@ -910,7 +951,7 @@ export const verdict: Render = (host) => {
   const left = host.querySelector(".left")!;
   left.append(
     dropSlot("Drop any image", async (file) => {
-      await showImage(left.querySelector(".slot")!, file);
+      void showImage(left.querySelector(".slot")!, file);
       await scored(host, file);
     }),
   );
