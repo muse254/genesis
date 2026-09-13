@@ -12,6 +12,7 @@
 import {
   api,
   ETHERSCAN,
+  SOURCE,
   type Check,
   type ConfidentialScore,
   type ReferenceLink,
@@ -365,8 +366,21 @@ function confidentialCard(r: ConfidentialScore): string {
           r.payload_digest.slice(0, 24),
         )}…</dd></div>
         <div class="row"><dt>Attested</dt><dd><b>${r.attested ? "yes" : "no"}</b></dd></div>
+        <div class="row"><dt>Algorithm</dt><dd><a href="${escape(SOURCE)}" target="_blank"
+          rel="noreferrer">published source ↗</a> <small class="hint">the half of the
+          claim that is real either way</small></dd></div>
       </dl>
       <p class="caveat">${escape(r.trust)}</p>
+      ${
+        r.attested
+          ? ""
+          : `<p class="caveat"><b>There is nothing on chain to link to.</b> A simulation
+             computes the score and writes no record — no transaction, no report, no
+             index entry. The digest above is the only handle on this run, and it
+             identifies what was scored rather than proving who scored it. A
+             <i>deployed</i> confidential workflow is what produces a DON-signed report
+             worth linking, and that needs private-beta enrolment.</p>`
+      }
       <p class="caveat">This does nothing about forgery. An enclave would score a planted
          fingerprint faithfully and sign it — confidential compute protects the reference
          from the verifier, and the attack happens before the pixels arrive.</p>

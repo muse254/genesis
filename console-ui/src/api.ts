@@ -161,6 +161,19 @@ export const registryAddress = (): string | null => seenRegistry;
 /** Sepolia, matching `console/chain.py`. */
 export const ETHERSCAN = "https://sepolia.etherscan.io";
 
+/** Where the indexed events can be queried. `console/chain.py` agrees. */
+export const GRAPH_STUDIO = "https://thegraph.com/studio/subgraph/genesis";
+
+/**
+ * ENSv2's beta app. Not `sepolia.app.ens.domains` -- the beta moved, the old
+ * host still answers, and that is exactly how a name gets looked up in the
+ * wrong place (`identity/addresses.md`).
+ */
+export const ENS_APP = "https://app.ens.dev";
+
+/** The published algorithm, which is the half of the CRE claim that is real. */
+export const SOURCE = "https://github.com/muse254/genesis/tree/main/cre";
+
 /**
  * Where a bytes32 the registry holds can be read back by anyone.
  *

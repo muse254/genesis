@@ -10,7 +10,7 @@
  * ink, and colour lives only on the verdict block.
  */
 
-import { ETHERSCAN, readContractUrl, registryAddress } from "./api";
+import { ENS_APP, ETHERSCAN, GRAPH_STUDIO, readContractUrl, registryAddress } from "./api";
 import type { Signal, Stage, Verdict, VerifyResult } from "./api";
 
 /**
@@ -118,11 +118,22 @@ export function verdictCard(result: VerifyResult): HTMLElement {
         onChain(result.body.commitment, "bodies(bytes32)", short(result.body.commitment)),
       );
     }
-    if (result.body.ensName && result.body.owner) {
+    if (result.body.owner) {
       row(
-        "Identity",
-        `<span class="mono">${escape(result.body.ensName)}</span> → ` +
-          `<span class="mono">${escape(short(result.body.owner, 8))}</span>`,
+        "Registered by",
+        `<a class="mono" href="${escape(`${ETHERSCAN}/address/${result.body.owner}`)}" ` +
+          `target="_blank" rel="noreferrer">${escape(short(result.body.owner, 8))} ↗</a>`,
+      );
+    }
+    if (result.body.ensName) {
+      // The operator's parent, not this body's name. The registry stores an
+      // `ensNode` and a namehash is one-way, so nothing on chain turns back
+      // into the body's own subname -- calling this "Identity" implied it did.
+      row(
+        "Fleet namespace",
+        `<a class="mono" href="${escape(`${ENS_APP}/${result.body.ensName}`)}" ` +
+          `target="_blank" rel="noreferrer">${escape(result.body.ensName)} ↗</a>` +
+          ` <small class="hint">bodies are subnames of this</small>`,
       );
     }
   }
@@ -137,6 +148,17 @@ export function verdictCard(result: VerifyResult): HTMLElement {
         : "") +
         `<a class="mono" href="${escape(result.registration.explorerUrl)}" target="_blank" ` +
         `rel="noreferrer">Blockscout ↗</a>`,
+    );
+  }
+
+  if (result.verdict === "derived" || result.verdict === "registered") {
+    row(
+      "Indexed by",
+      `<a class="mono" href="${escape(GRAPH_STUDIO)}" target="_blank" rel="noreferrer">` +
+        `The Graph ↗</a>` +
+        (result.verdict === "derived"
+          ? ` <small class="hint">the perceptual lookup that found the original</small>`
+          : ""),
     );
   }
 
