@@ -297,3 +297,18 @@ input.desc.failed { border-color: var(--error); }
   padding-left: 0.8rem;
   margin: 0.8rem 0 0;
 }
+
+/* The enrolment checkbox sits with the reset because it is the other half of
+   a clean slate, and because it deletes something that cannot be recreated
+   identically -- it should be read, not skipped past. */
+.reset-also {
+  display: flex;
+  gap: 0.55rem;
+  align-items: flex-start;
+  font-size: 0.8rem;
+  line-height: 1.5;
+  opacity: 0.85;
+  margin: 0 0 0.9rem;
+  cursor: pointer;
+}
+.reset-also input { margin-top: 0.25rem; flex: 0 0 auto; }

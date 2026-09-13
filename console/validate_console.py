@@ -746,3 +746,81 @@ def test_reset_sends_one_transaction_when_confirmed(client, monkeypatch):
     assert response.status_code == 200
     assert sent == [["resetAll()"]]
     assert response.json()["epochAfter"] == 7
+
+
+def test_reset_clears_enrolments_when_asked(client, monkeypatch, tmp_path):
+    """A wipe that leaves the references behind is not a clean slate.
+
+    `resetAll` clears the chain; the enrolled fingerprints are files on this
+    machine and it never touched them, so the console went on reporting a body
+    with nothing on chain behind it — and demo step 1 had nothing to do.
+    """
+    from console import registry as registry_module
+
+    (tmp_path / "r10.npz").write_bytes(b"not a real reference")
+    monkeypatch.setenv("GENESIS_REFERENCES", str(tmp_path))
+    monkeypatch.setattr(chain, "REGISTRY", "0x" + "11" * 20)
+    monkeypatch.setattr(chain, "test_mode", lambda: True)
+    monkeypatch.setattr(chain, "registry_epoch", lambda: 1)
+    monkeypatch.setattr(
+        registry_module, "cast_send",
+        lambda args: {"txHash": "0xabc", "blockNumber": 1, "explorerUrl": "u"},
+    )
+
+    response = client.post(
+        "/reset", data={"confirm": "0x" + "11" * 20, "clear_enrolments": "true"}
+    )
+    assert response.status_code == 200
+    assert response.json()["enrolmentsCleared"] == ["r10"]
+    assert list(tmp_path.glob("*.npz")) == []
+
+
+def test_reset_leaves_enrolments_alone_when_not_asked(client, monkeypatch, tmp_path):
+    """The chain wipe and the local wipe are separable, because one is
+    reversible by re-registering and the other is not."""
+    from console import registry as registry_module
+
+    (tmp_path / "r10.npz").write_bytes(b"not a real reference")
+    monkeypatch.setenv("GENESIS_REFERENCES", str(tmp_path))
+    monkeypatch.setattr(chain, "REGISTRY", "0x" + "11" * 20)
+    monkeypatch.setattr(chain, "test_mode", lambda: True)
+    monkeypatch.setattr(chain, "registry_epoch", lambda: 1)
+    monkeypatch.setattr(
+        registry_module, "cast_send",
+        lambda args: {"txHash": "0xabc", "blockNumber": 1, "explorerUrl": "u"},
+    )
+
+    response = client.post(
+        "/reset", data={"confirm": "0x" + "11" * 20, "clear_enrolments": "false"}
+    )
+    assert response.json()["enrolmentsCleared"] == []
+    assert [p.name for p in tmp_path.glob("*.npz")] == ["r10.npz"]
+
+
+def test_the_scorer_notices_a_reference_disappearing(tmp_path, monkeypatch):
+    """The cross-process half of the same bug.
+
+    The console and the scorer are separate processes. The cache used to say
+    "restart to pick up a new enrolment", so clearing through one left the
+    other scoring against a fingerprint that no longer existed on disk.
+    """
+    import numpy as np
+
+    from fingerprint import prnu
+    from fingerprint import validate_synthetic as sim
+    from scoring import app as service
+
+    body = {c: sim.simulate_sensor(seed=40 + c) for c in range(4)}
+    frames = [{c: sim.simulate_exposure(k, seed=300 + 10 * n) for c, k in body.items()}
+              for n in range(sim.FRAMES)]
+    k = prnu.postprocess(prnu.estimate_fingerprint(frames))
+    prnu.save_fingerprint(tmp_path / "one.npz", k, {"frames": len(frames),
+                                                    "cfa_pattern": [[0, 1], [3, 2]]})
+
+    monkeypatch.setattr(service, "REFERENCES", tmp_path)
+    service._bodies.cache_clear()
+    assert len(service._bodies()) == 1
+
+    (tmp_path / "one.npz").unlink()
+    # No cache_clear, no restart: the directory changed and that is enough.
+    assert len(service._bodies()) == 0

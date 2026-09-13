@@ -59,6 +59,8 @@ export interface ResetResult {
   registry: string;
   epochBefore: number;
   epochAfter: number;
+  /** Names of the enrolled references deleted, if any were. */
+  enrolmentsCleared: string[];
   txHash: string;
   blockNumber: number;
   explorerUrl: string;
@@ -132,9 +134,12 @@ export const api = {
    * `confirm` is the registry address, which the server checks. It is not
    * ceremony: this is the one control in the console that destroys work.
    */
-  reset(registryAddress: string) {
+  reset(registryAddress: string, clearEnrolments: boolean) {
     const form = new FormData();
     form.append("confirm", registryAddress);
+    // The chain is half a clean slate; the enrolled references are the other
+    // half and they live on disk, untouched by `resetAll`.
+    form.append("clear_enrolments", String(clearEnrolments));
     return call<ResetResult>("/reset", { method: "POST", body: form });
   },
 

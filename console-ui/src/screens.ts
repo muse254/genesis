@@ -172,6 +172,17 @@ function drawReset(host: HTMLElement, state: State): void {
       <p>This deployment can be wiped, which is how the demo is rehearsed more
          than once. Registration dates here mean nothing and the verify page
          says so. A production registry has no such control.</p>
+      ${
+        state.bodies.length
+          ? `<label class="reset-also">
+        <input type="checkbox" class="reset-enrolments" checked />
+        <span>also clear the ${state.bodies.length} enrolled
+          ${state.bodies.length === 1 ? "reference" : "references"} on this machine
+          — needed to rehearse from step 1, and <b>not reversible</b>: the frames
+          survive, but the same K only comes back from the same frames</span>
+      </label>`
+          : ""
+      }
       <button class="reset-go">Wipe every record</button>
       <div class="reset-out"></div>
     </div>`;
@@ -209,9 +220,16 @@ function drawReset(host: HTMLElement, state: State): void {
     button.textContent = "wiping…";
     button.classList.remove("armed");
     try {
-      const result = await api.reset(address);
+      const alsoEnrolments =
+        (zone.querySelector(".reset-enrolments") as HTMLInputElement | null)?.checked ?? false;
+      const result = await api.reset(address, alsoEnrolments);
       out.innerHTML = `<span class="ok">Wiped.</span> epoch ${result.epochBefore} → ${result.epochAfter} ·
         <a href="${escape(result.explorerUrl)}" target="_blank" rel="noreferrer">${escape(result.txHash.slice(0, 12))}…</a>
+        ${
+          result.enrolmentsCleared.length
+            ? `<br>Cleared ${escape(result.enrolmentsCleared.join(", "))} — enrol again to continue.`
+            : ""
+        }
         <br>The index follows within a block or two. Nothing is registered now.`;
       // Updated in place rather than by redrawing the panel: a redraw would
       // replace this element and take the transaction hash with it, which is

@@ -54,14 +54,41 @@ async def health() -> dict:
     return {"status": "ok", "bodies": len(_bodies())}
 
 
-@lru_cache(maxsize=1)
+#: The loaded references, and the directory signature they were loaded from.
+_BODY_CACHE: dict = {"signature": None, "bodies": {}}
+
+
+def _signature() -> tuple:
+    """What the references directory looks like right now.
+
+    Name, size and mtime of every `.npz`. Cheap -- a handful of `stat` calls
+    against ~90 MB of loading -- and enough to notice an enrolment appearing
+    or being cleared.
+    """
+    return tuple(
+        (p.name, p.stat().st_size, p.stat().st_mtime_ns)
+        for p in sorted(REFERENCES.glob("*.npz"))
+    )
+
+
 def _bodies() -> dict:
     """Every enrolled body this service can score against.
 
-    Cached: loading a fingerprint is ~90 MB off disk, and doing it per
-    request would make the service unusable. Restart to pick up a new
-    enrolment.
+    Cached, because loading a fingerprint is ~90 MB off disk and doing it per
+    request would make the service unusable. The cache used to say "restart to
+    pick up a new enrolment", which was true and was a trap: the console and
+    the scorer are separate processes, so clearing enrolments through one left
+    the other answering from memory for a body that no longer exists on disk.
+    A stale *reference* is worse than a slow load -- it scores against a
+    fingerprint nobody can point to any more.
+
+    So it re-checks the directory signature instead. The reload cost is paid
+    only when the directory has actually changed.
     """
+    signature = _signature()
+    if _BODY_CACHE["signature"] == signature:
+        return _BODY_CACHE["bodies"]
+
     found = {}
     for path in sorted(REFERENCES.glob("*.npz")):
         planes, meta = prnu.load_fingerprint(path)
@@ -72,7 +99,20 @@ def _bodies() -> dict:
             "meta": meta,
             "commitment": commitment.hex(),
         }
+    _BODY_CACHE["signature"] = signature
+    _BODY_CACHE["bodies"] = found
     return found
+
+
+def _bodies_cache_clear() -> None:
+    """Drop the cache outright. Kept because the tests call it, and because a
+    caller that has just changed the directory should not have to guess."""
+    _BODY_CACHE["signature"] = None
+    _BODY_CACHE["bodies"] = {}
+
+
+#: `lru_cache` used to provide this and the tests still call it.
+_bodies.cache_clear = _bodies_cache_clear
 
 
 def _save(upload: UploadFile) -> Path:

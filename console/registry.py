@@ -415,7 +415,7 @@ async def register_session(
 
 
 @router.post("/reset")
-async def reset_registry(confirm: str = Form(...)) -> dict:
+async def reset_registry(confirm: str = Form(...), clear_enrolments: bool = Form(True)) -> dict:
     """Wipe every record, so the demo can be run again.
 
     `bodyId` derives from `SHA-256(K)`, so the same camera always reaches the
@@ -454,13 +454,34 @@ async def reset_registry(confirm: str = Form(...)) -> dict:
     before = chain.registry_epoch()
     receipt = cast_send(["resetAll()"])
 
-    # The scorer caches enrolled bodies and the console caches nothing from
-    # chain, so there is no local state to invalidate -- the next read simply
-    # finds a zeroed struct, exactly as it would for a body nobody registered.
+    # The chain is only half of a clean slate. `resetAll` clears records; the
+    # enrolled references are files on this machine and the wipe never touched
+    # them, so the console kept reporting a body that had nothing on chain
+    # behind it. For a rehearsal that reads as a bug, and for demo step 1 --
+    # enrol from an archive folder -- it is one, because the screen has
+    # nothing left to do.
+    #
+    # Deleted rather than moved aside: these are 89 MB each and a rehearsal
+    # loop would accumulate them. The frames they were estimated from are
+    # untouched, so an enrolment can always be run again -- but **not** to the
+    # same K unless the same frames are chosen, because `save_fingerprint`
+    # does not record which ones were used (`docs/adversarial.md`). The UI
+    # says so before this runs.
+    cleared: list[str] = []
+    if clear_enrolments:
+        references = Path(os.environ.get("GENESIS_REFERENCES", "data/references"))
+        for reference in sorted(references.glob("*.npz")):
+            cleared.append(reference.stem)
+            reference.unlink()
+        _bodies.cache_clear()
+
+    # The scorer is a separate process with its own cache, and it notices the
+    # references directory changing on its own -- see `scoring.app._bodies`.
     return {
         "registry": chain.REGISTRY,
         "epochBefore": before,
         "epochAfter": chain.registry_epoch(),
+        "enrolmentsCleared": cleared,
         **receipt,
     }
 
