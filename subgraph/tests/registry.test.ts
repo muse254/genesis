@@ -23,11 +23,13 @@ import {
   handleBodyRevoked,
   handleCommit,
   handleImageRegistered,
+  handleRegistryReset,
   handleSessionCommitted,
 } from "../src/registry";
 import {
   BodyRegistered,
   BodyRevoked,
+  RegistryReset,
   Commit,
   ImageRegistered,
   SessionCommitted,
@@ -104,6 +106,43 @@ function imageRegistered(hash: Bytes): ImageRegistered {
     new ethereum.EventParam("imageHash", ethereum.Value.fromFixedBytes(hash)),
     new ethereum.EventParam("bodyId", ethereum.Value.fromFixedBytes(BODY)),
     new ethereum.EventParam("pceScore", ethereum.Value.fromUnsignedBigInt(BigInt.fromI32(1895))),
+  ];
+  return event;
+}
+
+function sessionCommitted(): SessionCommitted {
+  let event = changetype<SessionCommitted>(newMockEvent());
+  event.address = REGISTRY;
+  event.parameters = [
+    new ethereum.EventParam(
+      "sessionId",
+      ethereum.Value.fromFixedBytes(Bytes.fromHexString("0x" + "77".repeat(32))),
+    ),
+    new ethereum.EventParam(
+      "merkleRoot",
+      ethereum.Value.fromFixedBytes(Bytes.fromHexString("0x" + "12".repeat(32))),
+    ),
+    new ethereum.EventParam("frameCount", ethereum.Value.fromUnsignedBigInt(BigInt.fromI32(2))),
+  ];
+  return event;
+}
+
+function registryReset(newEpoch: i32): RegistryReset {
+  let event = changetype<RegistryReset>(newMockEvent());
+  event.address = REGISTRY;
+  event.parameters = [
+    new ethereum.EventParam(
+      "previousEpoch",
+      ethereum.Value.fromUnsignedBigInt(BigInt.fromI32(newEpoch - 1)),
+    ),
+    new ethereum.EventParam(
+      "newEpoch",
+      ethereum.Value.fromUnsignedBigInt(BigInt.fromI32(newEpoch)),
+    ),
+    new ethereum.EventParam(
+      "by",
+      ethereum.Value.fromAddress(Address.fromString("0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266")),
+    ),
   ];
   return event;
 }
@@ -188,5 +227,51 @@ describe("Registry mappings", () => {
     handleSessionCommitted(event);
 
     assert.fieldEquals("Session", sessionId.toHexString(), "frameCount", "2000");
+  });
+
+  test("a reset clears the index, because it cleared the chain", () => {
+    mockBody();
+    mockImage(IMAGE, ZERO, 0);
+    handleBodyRegistered(bodyRegistered());
+    handleImageRegistered(imageRegistered(IMAGE));
+    handleSessionCommitted(sessionCommitted());
+    assert.entityCount("Body", 1);
+    assert.entityCount("Image", 1);
+    assert.entityCount("Session", 1);
+
+    handleRegistryReset(registryReset(1));
+
+    // An index that outlived the chain would answer for records that no
+    // longer exist, which is worse than having no index at all.
+    assert.entityCount("Body", 0);
+    assert.entityCount("Image", 0);
+    assert.entityCount("Session", 0);
+    assert.fieldEquals("RegistryState", "genesis", "epoch", "1");
+  });
+
+  test("a registry that has been reset once says so forever", () => {
+    mockBody();
+    handleBodyRegistered(bodyRegistered());
+    handleRegistryReset(registryReset(1));
+
+    // Never unset: a reader deciding what a registration date is worth needs
+    // to know the registry can withdraw one.
+    assert.fieldEquals("RegistryState", "genesis", "resettable", "true");
+
+    handleBodyRegistered(bodyRegistered());
+    assert.fieldEquals("RegistryState", "genesis", "resettable", "true");
+  });
+
+  test("the same body re-registers cleanly after a reset", () => {
+    mockBody();
+    handleBodyRegistered(bodyRegistered());
+    handleRegistryReset(registryReset(1));
+    assert.entityCount("Body", 0);
+
+    // bodyId derives from SHA-256(K), so a rehearsal always re-registers the
+    // same id. That has to land rather than collide with a ghost.
+    handleBodyRegistered(bodyRegistered());
+    assert.entityCount("Body", 1);
+    assert.fieldEquals("Body", BODY.toHexString(), "revoked", "false");
   });
 });

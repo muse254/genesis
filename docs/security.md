@@ -27,6 +27,18 @@ forgery fabricated later cannot claim to predate a registration that is
 already on chain. This is why registering early is the security model and not
 hygiene.
 
+**And why the testnet deployment is not the product.** The registry currently
+on Sepolia is built with `testMode` true, which gives its administrator
+`resetAll` — one call that makes every record unreachable so the demo can be
+rehearsed without a fresh deployment. That is the second boundary switched
+off. It is confined three ways and each is deliberate: the flag is `immutable`
+so no upgrade or admin action can turn it on later, the constructor refuses it
+on any chain not in an explicit testnet list so it fails closed on a chain
+nobody considered, and it is readable on chain so the verify page can warn on
+every verdict rather than leaving a reader to find out. A mainnet deployment
+passes false and has no such function. Anyone assessing this system should
+read `testMode()` before reading a registration date.
+
 ## What is not a control
 
 Each of these looks like one and is not. All measured.

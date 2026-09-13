@@ -38,23 +38,123 @@ contract Registry {
         uint64 registeredAt;
     }
 
-    /// @notice ERC-7053 commit log: asset CID -> commit indices.
-    mapping(string => uint256[]) public commitLogs;
+    /// @notice True only on a registry that can be wiped. See `resetAll`.
+    /// @dev Immutable and refused outright off a testnet, so no upgrade, no
+    ///      admin action and no mistake can turn it on for a mainnet
+    ///      deployment. A verifier should read this before believing a
+    ///      registration date: on a resettable registry, "first registered
+    ///      at T" is not a claim anyone can rely on.
+    bool public immutable testMode;
 
-    mapping(bytes32 => BodyRecord) public bodies;
-    mapping(bytes32 => ImageRecord) public images;
+    /// @notice Who may call `resetAll`. Zero when `testMode` is false.
+    address public immutable admin;
+
+    /// @notice Bumped by `resetAll`. Every record is scoped to the epoch it
+    ///         was written in, so a reset is one storage write rather than an
+    ///         unbounded loop over records nothing on chain can enumerate.
+    uint64 public epoch;
+
+    /// @notice ERC-7053 commit log: asset CID -> commit indices.
+    mapping(uint64 => mapping(string => uint256[])) private _commitLogs;
+
+    mapping(uint64 => mapping(bytes32 => BodyRecord)) private _bodies;
+    mapping(uint64 => mapping(bytes32 => ImageRecord)) private _images;
     /// @notice Session batching: one Merkle root per import, not one write
     ///         per photograph. A shoot is 2,000 frames.
-    mapping(bytes32 => bytes32) public sessionRoots;
+    mapping(uint64 => mapping(bytes32 => bytes32)) private _sessionRoots;
 
     /// @notice Running count of commits, which is what commitLogs indexes.
+    /// @dev Deliberately NOT reset: a commit that happened, happened, and
+    ///      reusing an index across epochs would make the event log ambiguous.
     uint256 public commitCount;
+
+    /// @notice The same reads the auto-generated getters used to provide, so
+    ///         the ABI is unchanged for the verify page, the console and the
+    ///         subgraph. Records from a previous epoch read as absent, which
+    ///         is exactly how an unregistered hash has always read.
+    function bodies(bytes32 bodyId) external view returns (
+        bytes32 fingerprintCommitment, address owner, bytes32 ensNode, bool revoked
+    ) {
+        BodyRecord storage body = _bodies[epoch][bodyId];
+        return (body.fingerprintCommitment, body.owner, body.ensNode, body.revoked);
+    }
+
+    function images(bytes32 imageHash) external view returns (
+        bytes32 imageHash_,
+        bytes32 perceptualHash,
+        bytes32 bodyId,
+        uint8 modificationLevel,
+        bytes32 parentImageHash,
+        bytes32 metadataHmac,
+        uint32 pceScore,
+        uint64 registeredAt
+    ) {
+        ImageRecord storage r = _images[epoch][imageHash];
+        return (
+            r.imageHash, r.perceptualHash, r.bodyId, r.modificationLevel,
+            r.parentImageHash, r.metadataHmac, r.pceScore, r.registeredAt
+        );
+    }
+
+    function sessionRoots(bytes32 sessionId) external view returns (bytes32) {
+        return _sessionRoots[epoch][sessionId];
+    }
+
+    function commitLogs(string calldata assetCid, uint256 index) external view returns (uint256) {
+        return _commitLogs[epoch][assetCid][index];
+    }
 
     event Commit(address indexed recorder, string assetCid, string commitData);
     event BodyRegistered(bytes32 indexed bodyId, address indexed owner, bytes32 ensNode);
     event BodyRevoked(bytes32 indexed bodyId);
     event ImageRegistered(bytes32 indexed imageHash, bytes32 indexed bodyId, uint32 pceScore);
     event SessionCommitted(bytes32 indexed sessionId, bytes32 merkleRoot, uint32 frameCount);
+    /// @notice Every record written before `newEpoch` is now unreachable.
+    event RegistryReset(uint64 indexed previousEpoch, uint64 indexed newEpoch, address indexed by);
+
+    /// @param enableTestMode Allow `resetAll`. **Pass false for mainnet.**
+    /// @dev Refused outright off a known testnet, so this cannot be switched
+    ///      on by accident where it would matter. The list is explicit rather
+    ///      than "anything but mainnet", so it fails closed on a chain nobody
+    ///      thought about.
+    constructor(bool enableTestMode) {
+        if (enableTestMode) {
+            require(
+                block.chainid == 11155111 // Sepolia
+                    || block.chainid == 17000 // Holesky
+                    || block.chainid == 31337 // anvil
+                    || block.chainid == 1337, // ganache
+                "test mode is testnet-only"
+            );
+            admin = msg.sender;
+        }
+        testMode = enableTestMode;
+    }
+
+    /// @notice Wipe every body, image, session and commit log in one call.
+    /// @dev Exists so the demo can be rehearsed end to end without a fresh
+    ///      deployment each time: `bodyId` derives from SHA-256(K), so the
+    ///      same camera always reaches the same id and `registerBody` would
+    ///      otherwise refuse forever after the first run.
+    ///
+    ///      **This is not revocation, and it is not a feature.** `revokeBody`
+    ///      says "no more from here" and leaves written records standing,
+    ///      because rewriting history would make every past record
+    ///      unfalsifiable. This does precisely that rewriting, which is why it
+    ///      cannot exist on mainnet: `docs/security.md` counts
+    ///      first-registration time as one of only two boundaries the system
+    ///      has, and a registry whose dates can be withdrawn has one.
+    ///
+    ///      Records are made unreachable rather than deleted, and the reset is
+    ///      an event, so the wipe is itself part of the permanent history.
+    function resetAll() external {
+        require(testMode, "not a test registry");
+        require(msg.sender == admin, "not the admin");
+
+        uint64 previous = epoch;
+        epoch = previous + 1;
+        emit RegistryReset(previous, epoch, msg.sender);
+    }
 
     // --- ERC-7053 ---------------------------------------------------------
 
@@ -68,14 +168,14 @@ contract Registry {
     }
 
     function _commit(string memory assetCid, string memory commitData) internal {
-        commitLogs[assetCid].push(commitCount);
+        _commitLogs[epoch][assetCid].push(commitCount);
         commitCount += 1;
         emit Commit(msg.sender, assetCid, commitData);
     }
 
     /// @notice How many commits an asset CID carries.
     function commitCountFor(string calldata assetCid) external view returns (uint256) {
-        return commitLogs[assetCid].length;
+        return _commitLogs[epoch][assetCid].length;
     }
 
     // --- body registry ----------------------------------------------------
@@ -91,9 +191,9 @@ contract Registry {
     function registerBody(bytes32 bodyId, bytes32 fingerprintCommitment, bytes32 ensNode) external {
         require(fingerprintCommitment != bytes32(0), "empty commitment");
         require(bodyId == deriveBodyId(fingerprintCommitment), "bodyId must derive from commitment");
-        require(bodies[bodyId].fingerprintCommitment == bytes32(0), "body already registered");
+        require(_bodies[epoch][bodyId].fingerprintCommitment == bytes32(0), "body already registered");
 
-        bodies[bodyId] = BodyRecord({
+        _bodies[epoch][bodyId] = BodyRecord({
             fingerprintCommitment: fingerprintCommitment,
             owner: msg.sender,
             ensNode: ensNode,
@@ -109,7 +209,7 @@ contract Registry {
     ///      from here", not "none of that happened" -- rewriting history
     ///      would make every past record unfalsifiable.
     function revokeBody(bytes32 bodyId) external {
-        BodyRecord storage body = bodies[bodyId];
+        BodyRecord storage body = _bodies[epoch][bodyId];
         require(body.fingerprintCommitment != bytes32(0), "unknown body");
         require(body.owner == msg.sender, "not the body owner");
         require(!body.revoked, "already revoked");
@@ -125,20 +225,20 @@ contract Registry {
     ///      that check anyone could point a record at someone else's
     ///      camera, which is the claim the whole system exists to make.
     function registerImage(ImageRecord calldata record) external {
-        BodyRecord storage body = bodies[record.bodyId];
+        BodyRecord storage body = _bodies[epoch][record.bodyId];
         require(body.fingerprintCommitment != bytes32(0), "unknown body");
         require(!body.revoked, "body revoked");
         require(body.owner == msg.sender, "not the body owner");
         require(record.imageHash != bytes32(0), "empty image hash");
-        require(images[record.imageHash].imageHash == bytes32(0), "image already registered");
+        require(_images[epoch][record.imageHash].imageHash == bytes32(0), "image already registered");
         require(record.modificationLevel <= 2, "modification level out of range");
         require(
             record.parentImageHash == bytes32(0)
-                || images[record.parentImageHash].imageHash != bytes32(0),
+                || _images[epoch][record.parentImageHash].imageHash != bytes32(0),
             "unknown parent image"
         );
 
-        images[record.imageHash] = record;
+        _images[epoch][record.imageHash] = record;
         emit ImageRegistered(record.imageHash, record.bodyId, record.pceScore);
 
         // An ERC-7053 entry as well, so an indexer following the standard
@@ -162,9 +262,9 @@ contract Registry {
     function commitSession(bytes32 sessionId, bytes32 merkleRoot, uint32 frameCount) external {
         require(merkleRoot != bytes32(0), "empty root");
         require(frameCount > 0, "empty session");
-        require(sessionRoots[sessionId] == bytes32(0), "session already committed");
+        require(_sessionRoots[epoch][sessionId] == bytes32(0), "session already committed");
 
-        sessionRoots[sessionId] = merkleRoot;
+        _sessionRoots[epoch][sessionId] = merkleRoot;
         emit SessionCommitted(sessionId, merkleRoot, frameCount);
     }
 
@@ -178,7 +278,7 @@ contract Registry {
         view
         returns (bool)
     {
-        bytes32 root = sessionRoots[sessionId];
+        bytes32 root = _sessionRoots[epoch][sessionId];
         if (root == bytes32(0)) return false;
         return MerkleProof.verify(proof, root, leaf);
     }

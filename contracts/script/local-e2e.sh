@@ -39,12 +39,16 @@ g() { printf '%s' "$REC" | "$PYTHON" -c "import json,sys; print(json.load(sys.st
 echo "   PCE $(g pceScore) against a threshold of $(g threshold)"
 
 echo "== deploying the registry"
+# true: anvil is chainid 31337, so this gets a registry `resetAll` can wipe,
+# which is what makes re-running this script on a live anvil possible at all.
 ADDRESS=$(forge create "$ROOT/contracts/src/Registry.sol:Registry" \
   --root "$ROOT/contracts" --rpc-url "$RPC" --private-key "$PK" --broadcast \
+  --constructor-args true \
   | awk '/Deployed to:/ {print $3}')
 echo "   $ADDRESS"
 
-BODY=$(g bodyId); ENS=$(cast keccak "r10-4471.cam.osoro.eth")
+BODY=$(g bodyId); # namehash, not keccak of the string -- EIP-137 is recursive.
+ENS=$(cast namehash "r10-4471.cam.osoro.eth")
 echo "== registering the body"
 cast send "$ADDRESS" "registerBody(bytes32,bytes32,bytes32)" \
   "$BODY" "$(g commitment)" "$ENS" --rpc-url "$RPC" --private-key "$PK" >/dev/null

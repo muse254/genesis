@@ -9,11 +9,11 @@ dataSources:
     name: Registry
     network: sepolia
     source:
-      address: "0xA6f0fE1C5d5cF1380e7C7Fe5384795E46166280D"
+      address: "0xd1bbDB8A6BfD25563d2e6444fA41E4C5230Ed3C9"
       abi: Registry
       # The deploy block. Zero here means indexing from genesis:
       # hours of work to find nothing.
-      startBlock: 11694329
+      startBlock: 11694580
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.7
@@ -23,6 +23,7 @@ dataSources:
         - Body
         - Image
         - Session
+        - RegistryState
       abis:
         - name: Registry
           file: ./abis/Registry.json
@@ -37,3 +38,5 @@ dataSources:
           handler: handleSessionCommitted
         - event: Commit(indexed address,string,string)
           handler: handleCommit
+        - event: RegistryReset(indexed uint64,indexed uint64,indexed address)
+          handler: handleRegistryReset

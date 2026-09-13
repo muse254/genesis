@@ -48,3 +48,24 @@ type Session @entity {
   frameCount: Int!
   committedAt: BigInt!
 }
+
+"""
+What a reset has to clear.
+
+The registry can be wiped on a testnet (`Registry.resetAll`), and an index
+that outlived the chain would answer for records that no longer exist. Graph
+mappings cannot enumerate entities, so the ids are tracked as they are written
+and walked on reset. Singleton, id "genesis".
+"""
+type RegistryState @entity {
+  id: String!
+  "Bumped by every RegistryReset. Matches Registry.epoch()."
+  epoch: BigInt!
+  "True when the registry admits it can be wiped, so a reader can discount its dates."
+  resettable: Boolean!
+  bodyIds: [Bytes!]!
+  imageIds: [Bytes!]!
+  sessionIds: [Bytes!]!
+  commitIds: [Bytes!]!
+  lastResetAt: BigInt
+}

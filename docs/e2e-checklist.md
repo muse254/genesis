@@ -89,7 +89,7 @@ false-positive rate, and a second enrolment so the test runs both ways.
 **6. Testnet and ENS.** Both done. Redeployed 13 September 2026 — see the
 `ensNode` note below.
 
-- [x] `Registry` deployed to Sepolia at `0xA6f0fE1C5d5cF1380e7C7Fe5384795E46166280D`, block 11694329
+- [x] `Registry` deployed to Sepolia at `0xd1bbDB8A6BfD25563d2e6444fA41E4C5230Ed3C9`, block 11694580
 - [x] Source verified on Blockscout — the Read Contract tab lets anyone check
       a claim without taking the demo's word for it
 - [x] Body, image and session registered live, and they read back
@@ -148,7 +148,7 @@ false-positive rate, and a second enrolment so the test runs both ways.
 - [x] Deployed to a local graph-node against anvil and queried: body, image,
       session and commit log all indexed, with the record fields read back
       from storage
-- [x] Address and `startBlock` filled: `0xA6f0fE1C5d5cF1380e7C7Fe5384795E46166280D`, block 11694329
+- [x] Address and `startBlock` filled: `0xd1bbDB8A6BfD25563d2e6444fA41E4C5230Ed3C9`, block 11694580
 - [x] All four entity types populated from live Sepolia. Re-checked against
       the new registry on 13 September 2026, `genesis` v0.0.2: `Body` (with the
       correct namehash in `ensNode`), `Image` x2, `Session` (root and
@@ -166,7 +166,7 @@ false-positive rate, and a second enrolment so the test runs both ways.
       re-run does not
 - [x] `graph test` — 5 matchstick tests still green after the deployment
 - [x] Deployed to Subgraph Studio, 8 September 2026 — `genesis` v0.0.1,
-      queries at `api.studio.thegraph.com/query/1758974/genesis/v0.0.2`.
+      queries at `api.studio.thegraph.com/query/1758974/genesis/v0.0.3`.
       Synced past the registration blocks with `hasIndexingErrors: false`,
       and the body and image read back with the same owner, commitment and
       PCE the chain returns directly

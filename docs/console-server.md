@@ -147,7 +147,7 @@ a demo tells a comfortable lie.
 ## Chain target
 
 Sepolia, against the live deployment: `Registry` at
-`0xA6f0fE1C5d5cF1380e7C7Fe5384795E46166280D`, block 11694329, verified on
+`0xd1bbDB8A6BfD25563d2e6444fA41E4C5230Ed3C9`, block 11694580, verified on
 Blockscout and Etherscan. `docs/e2e-checklist.md` §6 is the state of it.
 
 ENSv2 names on Sepolia reset on redeployment, so `/state` resolves the parent

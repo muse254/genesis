@@ -21,7 +21,8 @@ contract RegistryTest is Test {
     event ImageRegistered(bytes32 indexed imageHash, bytes32 indexed bodyId, uint32 pceScore);
 
     function setUp() public {
-        registry = new Registry();
+        // chainid 31337 is anvil, which the constructor accepts for test mode.
+        registry = new Registry(true);
         bodyId = registry.deriveBodyId(COMMITMENT);
     }
 
@@ -214,5 +215,136 @@ contract RegistryTest is Test {
             out[i * 2 + 1] = alphabet[uint8(value[i]) & 0x0f];
         }
         return out;
+    }
+}
+
+/// @notice The testnet-only reset, and the promises it must not break.
+contract RegistryResetTest is Test {
+    address internal photographer = address(0xA11CE);
+    address internal stranger = address(0xB0B);
+
+    bytes32 internal constant COMMITMENT = keccak256("K for body one");
+    bytes32 internal constant ENS_NODE = keccak256("r10-4471.cam.osoro.eth");
+
+    event RegistryReset(uint64 indexed previousEpoch, uint64 indexed newEpoch, address indexed by);
+
+    function _registered() internal returns (Registry registry, bytes32 bodyId) {
+        registry = new Registry(true);
+        bodyId = registry.deriveBodyId(COMMITMENT);
+        vm.prank(photographer);
+        registry.registerBody(bodyId, COMMITMENT, ENS_NODE);
+    }
+
+    /// The reason it exists: `bodyId` derives from SHA-256(K), so the same
+    /// camera always reaches the same id and a second rehearsal would be
+    /// refused forever.
+    function test_resetAll_frees_a_body_id_for_re_registration() public {
+        (Registry registry, bytes32 bodyId) = _registered();
+
+        vm.prank(photographer);
+        vm.expectRevert("body already registered");
+        registry.registerBody(bodyId, COMMITMENT, ENS_NODE);
+
+        registry.resetAll();
+
+        vm.prank(photographer);
+        registry.registerBody(bodyId, COMMITMENT, ENS_NODE);
+        (, address owner,,) = registry.bodies(bodyId);
+        assertEq(owner, photographer);
+    }
+
+    /// A wiped record must read exactly like one that was never written --
+    /// the zeroed struct every consumer already treats as "no record".
+    function test_a_reset_record_reads_as_absent() public {
+        (Registry registry, bytes32 bodyId) = _registered();
+
+        registry.resetAll();
+
+        (bytes32 commitment, address owner, bytes32 node, bool revoked) = registry.bodies(bodyId);
+        assertEq(commitment, bytes32(0));
+        assertEq(owner, address(0));
+        assertEq(node, bytes32(0));
+        assertEq(revoked, false);
+    }
+
+    function test_resetAll_clears_images_and_sessions() public {
+        (Registry registry, bytes32 bodyId) = _registered();
+
+        Registry.ImageRecord memory record = Registry.ImageRecord({
+            imageHash: keccak256("pixels"),
+            perceptualHash: bytes32(uint256(0x1234)),
+            bodyId: bodyId,
+            modificationLevel: 0,
+            parentImageHash: bytes32(0),
+            metadataHmac: keccak256("meta"),
+            pceScore: 1895,
+            registeredAt: uint64(block.timestamp)
+        });
+        vm.prank(photographer);
+        registry.registerImage(record);
+        registry.commitSession(keccak256("session"), keccak256("root"), 2);
+
+        registry.resetAll();
+
+        (bytes32 imageHash,,,,,,,) = registry.images(keccak256("pixels"));
+        assertEq(imageHash, bytes32(0));
+        assertEq(registry.sessionRoots(keccak256("session")), bytes32(0));
+        assertEq(registry.commitCountFor("genesis:whatever"), 0);
+    }
+
+    /// The commits happened. Reusing an index across epochs would make the
+    /// event log ambiguous, so the counter is deliberately not rewound.
+    function test_commitCount_is_not_rewound() public {
+        (Registry registry,) = _registered();
+        registry.commit("genesis:one", "");
+        uint256 before = registry.commitCount();
+
+        registry.resetAll();
+        registry.commit("genesis:two", "");
+
+        assertEq(registry.commitCount(), before + 1);
+    }
+
+    function test_only_the_admin_may_reset() public {
+        (Registry registry,) = _registered();
+        vm.prank(stranger);
+        vm.expectRevert("not the admin");
+        registry.resetAll();
+    }
+
+    function test_a_production_registry_cannot_be_reset() public {
+        Registry registry = new Registry(false);
+        assertEq(registry.testMode(), false);
+        assertEq(registry.admin(), address(0));
+        vm.expectRevert("not a test registry");
+        registry.resetAll();
+    }
+
+    /// The guard that matters. If this ever passes on a mainnet chainid, the
+    /// registry can withdraw its own registration dates and `docs/claims.md`
+    /// claim 1 stops being true.
+    function test_test_mode_is_refused_off_a_testnet() public {
+        vm.chainId(1); // Ethereum mainnet
+        vm.expectRevert("test mode is testnet-only");
+        new Registry(true);
+
+        vm.chainId(8453); // Base, and any other chain nobody listed
+        vm.expectRevert("test mode is testnet-only");
+        new Registry(true);
+    }
+
+    /// A production registry deploys anywhere, including mainnet.
+    function test_production_mode_deploys_on_mainnet() public {
+        vm.chainId(1);
+        Registry registry = new Registry(false);
+        assertEq(registry.testMode(), false);
+    }
+
+    function test_reset_is_announced() public {
+        (Registry registry,) = _registered();
+        vm.expectEmit(true, true, true, true);
+        emit RegistryReset(0, 1, address(this));
+        registry.resetAll();
+        assertEq(registry.epoch(), 1);
     }
 }

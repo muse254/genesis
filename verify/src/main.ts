@@ -62,6 +62,17 @@ export interface VerifyResult {
   owner?: `0x${string}`;
   ownerName?: string;
   revoked?: boolean;
+  /**
+   * True when the registry admits it can be wiped (`Registry.resetAll`).
+   *
+   * It changes what a registration is worth, so it is carried all the way to
+   * the page rather than being a deployment detail. `docs/claims.md` claim 1
+   * is that a registration exists *at time T*, and `docs/security.md` counts
+   * first-registration time as one of two boundaries the system has. A
+   * registry that can withdraw a date has neither, and a reader is owed that
+   * before they rely on one.
+   */
+  resettableRegistry?: boolean;
 }
 
 const SCORING = import.meta.env.VITE_SCORING_URL ?? "http://127.0.0.1:8000";
@@ -96,6 +107,13 @@ const REGISTRY_ABI = [
       { name: "pceScore", type: "uint32" },
       { name: "registeredAt", type: "uint64" },
     ],
+  },
+  {
+    type: "function",
+    name: "testMode",
+    stateMutability: "view",
+    inputs: [],
+    outputs: [{ name: "", type: "bool" }],
   },
   {
     type: "function",
@@ -151,6 +169,7 @@ export async function verifyImage(file: File): Promise<VerifyResult> {
     const identity = best ? await identityOf(best.bodyId) : undefined;
     return {
       verdict: "registered",
+      resettableRegistry: await registryIsResettable(),
       registered: true,
       bodyName: best?.body,
       ...identity,
@@ -173,6 +192,7 @@ export async function verifyImage(file: File): Promise<VerifyResult> {
       const identity = best ? await identityOf(best.bodyId) : undefined;
       return {
         verdict: "derived",
+        resettableRegistry: await registryIsResettable(),
         registered: true,
         bodyName: best?.body,
         ...identity,
@@ -247,6 +267,24 @@ async function lookupByPixelHash(hash: `0x${string}`) {
  * rather than shown. Same rule as the subgraph branch below -- a claim from an
  * index is a lookup, never an authority.
  */
+let resettable: boolean | undefined;
+
+async function registryIsResettable(): Promise<boolean> {
+  if (resettable !== undefined) return resettable;
+  if (!client || !REGISTRY) return false;
+  try {
+    resettable = (await client.readContract({
+      address: REGISTRY,
+      abi: REGISTRY_ABI,
+      functionName: "testMode",
+    })) as boolean;
+  } catch {
+    // A registry predating the flag cannot be reset, so absence means false.
+    resettable = false;
+  }
+  return resettable;
+}
+
 async function identityOf(rawBodyId: string) {
   if (!client || !REGISTRY) return undefined;
 
@@ -402,6 +440,7 @@ function render(result: VerifyResult): void {
       );
     }
     if (result.registeredAt) say("Original registered", result.registeredAt);
+    sayTestRegistry(result, rows);
     rows.push(
       "<p class=\"caveat\">The original was registered by its owner at the time " +
         "shown, and this image matches it perceptually. That is a weaker link " +
@@ -424,6 +463,7 @@ function render(result: VerifyResult): void {
     if (result.modificationLevel !== undefined) {
       say("Modification level", ["unedited raw", "adjusted", "generative edit"][result.modificationLevel]);
     }
+    sayTestRegistry(result, rows);
     rows.push(
       "<p class=\"caveat\">Origin, not truth. The owner of this body signed for " +
         "this image at the time shown. That does not say the scene was real.</p>",
@@ -442,6 +482,20 @@ function render(result: VerifyResult): void {
  * An address is a perfectly good identity; it is only a less readable one, and
  * substituting a name that does not check out would be worse than showing hex.
  */
+function sayTestRegistry(result: VerifyResult, rows: string[]): void {
+  if (!result.resettableRegistry) return;
+  // Loud, and above the caveat rather than below it: on this registry the
+  // date is the part that stops being true, and the date is what a reader
+  // came for.
+  rows.push(
+    "<p class=\"caveat\"><strong>Test registry.</strong> This deployment can be " +
+      "wiped by its administrator, so the registration time above is not a " +
+      "date anyone should rely on. Registrations here are for rehearsal. A " +
+      "production registry cannot do this \u2014 the contract refuses the " +
+      "setting outside a testnet.</p>",
+  );
+}
+
 function sayIdentity(result: VerifyResult, say: (label: string, value: string) => void): void {
   if (result.ownerName) {
     say("Registered by", `${result.ownerName} (${result.owner?.slice(0, 10)}\u2026)`);

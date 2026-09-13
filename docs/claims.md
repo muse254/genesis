@@ -10,8 +10,17 @@ discipline — not modesty.
 
 **1. Record integrity.** A registration for this image exists on chain, signed
 by the body's owner, at time T. Verifiable by anyone against
-`0xA6f0fE1C5d5cF1380e7C7Fe5384795E46166280D` without taking our word for it.
+`0xd1bbDB8A6BfD25563d2e6444fA41E4C5230Ed3C9` without taking our word for it.
 This is the claim that survived every attack in `docs/adversarial.md`.
+
+**On the current deployment, the "at time T" half is provisional.** It is a
+*test* registry: `testMode` is true, and its administrator can wipe every
+record with `resetAll` so the demo can be rehearsed without redeploying. A
+registry that can withdraw a date cannot support a claim about dates, so the
+verify page reads the flag and says so on every verdict. A production registry
+is deployed with the flag false and the contract refuses it outside a testnet
+— but until then, claim 1 here means "a registration exists", not "and no
+earlier one was ever withdrawn".
 
 **2. Pixel linkage.** These pixels correlate with body X's fingerprint at
 PCE *p* against a threshold of 100. This is evidence of a link, **not proof

@@ -11,7 +11,7 @@
  * trade when a shoot is two thousand frames.
  */
 
-import { Bytes } from "@graphprotocol/graph-ts";
+import { BigInt, Bytes, store } from "@graphprotocol/graph-ts";
 
 import {
   BodyRegistered,
@@ -19,11 +19,77 @@ import {
   Commit,
   ImageRegistered,
   Registry,
+  RegistryReset,
   SessionCommitted,
 } from "../generated/Registry/Registry";
-import { Body, CommitLog, Image, Session } from "../generated/schema";
+import { Body, CommitLog, Image, RegistryState, Session } from "../generated/schema";
+
+/**
+ * The registry can be wiped on a testnet, and an index that outlived the
+ * chain is worse than no index: it would answer for records that no longer
+ * exist, and `lookup_body` would hand an agent a body the chain has never
+ * heard of.
+ *
+ * Graph mappings cannot enumerate entities, so ids are tracked as they are
+ * written and walked on reset. The lists grow with the registry, which is
+ * fine for one that exists to be reset.
+ */
+function state(): RegistryState {
+  let s = RegistryState.load("genesis");
+  if (s == null) {
+    s = new RegistryState("genesis");
+    s.epoch = BigInt.zero();
+    s.resettable = false;
+    s.bodyIds = [];
+    s.imageIds = [];
+    s.sessionIds = [];
+    s.commitIds = [];
+  }
+  return s as RegistryState;
+}
+
+function track(list: Array<Bytes>, id: Bytes): Array<Bytes> {
+  for (let i = 0; i < list.length; i++) {
+    if (list[i].equals(id)) return list;
+  }
+  list.push(id);
+  return list;
+}
+
+/**
+ * Clear everything written before this epoch.
+ *
+ * `resettable` is set to true and never unset: a registry that has admitted
+ * once that it can be wiped should not look pristine afterwards, and a reader
+ * deciding what a registration date is worth needs to know.
+ */
+export function handleRegistryReset(event: RegistryReset): void {
+  let s = state();
+
+  let bodies = s.bodyIds;
+  for (let i = 0; i < bodies.length; i++) store.remove("Body", bodies[i].toHexString());
+  let images = s.imageIds;
+  for (let i = 0; i < images.length; i++) store.remove("Image", images[i].toHexString());
+  let sessions = s.sessionIds;
+  for (let i = 0; i < sessions.length; i++) store.remove("Session", sessions[i].toHexString());
+  let commits = s.commitIds;
+  for (let i = 0; i < commits.length; i++) store.remove("CommitLog", commits[i].toHexString());
+
+  s.epoch = event.params.newEpoch;
+  s.resettable = true;
+  s.lastResetAt = event.block.timestamp;
+  s.bodyIds = [];
+  s.imageIds = [];
+  s.sessionIds = [];
+  s.commitIds = [];
+  s.save();
+}
 
 export function handleBodyRegistered(event: BodyRegistered): void {
+  let s = state();
+  s.bodyIds = track(s.bodyIds, event.params.bodyId);
+  s.save();
+
   let body = new Body(event.params.bodyId);
 
   // The event has the owner and the ENS node; the commitment is storage.
@@ -51,6 +117,10 @@ export function handleBodyRevoked(event: BodyRevoked): void {
 }
 
 export function handleImageRegistered(event: ImageRegistered): void {
+  let s = state();
+  s.imageIds = track(s.imageIds, event.params.imageHash);
+  s.save();
+
   let image = new Image(event.params.imageHash);
   let registry = Registry.bind(event.address);
   let stored = registry.try_images(event.params.imageHash);
@@ -83,6 +153,10 @@ export function handleImageRegistered(event: ImageRegistered): void {
 }
 
 export function handleSessionCommitted(event: SessionCommitted): void {
+  let s = state();
+  s.sessionIds = track(s.sessionIds, event.params.sessionId);
+  s.save();
+
   let session = new Session(event.params.sessionId);
   session.merkleRoot = event.params.merkleRoot;
   session.frameCount = event.params.frameCount.toI32();
@@ -96,6 +170,10 @@ export function handleCommit(event: Commit): void {
   // indexer following only the standard sees the same log we do, without
   // inheriting our opinion about what the commit data means.
   let id = event.transaction.hash.concatI32(event.logIndex.toI32());
+  let s = state();
+  s.commitIds = track(s.commitIds, id);
+  s.save();
+
   let log = new CommitLog(id);
   log.recorder = event.params.recorder;
   log.assetCid = event.params.assetCid;
