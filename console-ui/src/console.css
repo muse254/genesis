@@ -354,3 +354,44 @@ input.desc.failed { border-color: var(--error); }
 .refs li { padding: 0.15rem 0; }
 .refs a { opacity: 0.8; }
 .refs a:hover { opacity: 1; }
+
+/* --- 01 Enrol: the operating system's file dialog ------------------------
+   Replaced a server-side directory tree. The tree could only reach volumes
+   the API process could see, and made the operator navigate a filesystem
+   through a list of folder names. */
+.picker { max-width: 34rem; }
+.slot.pick {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 9rem;
+  border: 1px dashed var(--rule, #444);
+  cursor: pointer;
+  font-size: 0.9rem;
+  opacity: 0.85;
+}
+.slot.pick:hover { opacity: 1; border-style: solid; }
+.slot.pick.filled { opacity: 0.45; min-height: 4rem; }
+.enrol-form { margin-top: 1rem; }
+.enrol-form .picked { font-size: 0.85rem; margin: 0 0 0.5rem; }
+.enrol-form .warn { font-size: 0.8rem; line-height: 1.5; opacity: 0.8; margin: 0 0 0.7rem; }
+.enrol-form input {
+  font: inherit;
+  font-size: 0.85rem;
+  padding: 0.35rem 0.5rem;
+  background: transparent;
+  color: inherit;
+  border: 1px solid var(--rule, #333);
+  min-width: 14rem;
+  margin-right: 0.5rem;
+}
+.enrol-form button {
+  font: inherit;
+  font-size: 0.85rem;
+  padding: 0.4rem 0.9rem;
+  background: transparent;
+  color: inherit;
+  border: 1px solid var(--rule, #555);
+  cursor: pointer;
+}
+.enrol-form button:hover { background: rgba(128, 128, 128, 0.12); }

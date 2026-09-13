@@ -390,17 +390,40 @@ The same investigation found `register-session` never recorded `body_id`, so a
 session's frames belonged to no body and the statistics undercounted from the
 other direction. Both are tested now.
 
-## Choosing an enrolment folder
+## Choosing the enrolment frames
 
-`GET /browse` lists folders on the machine running the console, each with a
-count of the RAW frames inside, rooted at `$HOME` and overridable with
-`GENESIS_BROWSE_ROOT` for an archive on an external drive.
+`POST /enrol` takes either, and which one a caller uses is the whole story
+here.
 
-It browses the *server's* filesystem rather than the browser's, because a
-browser cannot hand a server a path: `webkitdirectory` gives file contents,
-so a folder chooser in the page would mean uploading forty 24-megapixel RAWs
-— well over a gigabyte — to a service reading the same disk. The console runs
-on the photographer's machine and can simply look.
+**`files` — the console.** The operating system's own dialog, multi-select.
+This is what screen 01 uses. The frames are uploaded to the service, which
+stages them in a temporary directory, enrols from it, and removes it whether
+the enrolment succeeded or not.
+
+**`folder` — scripts and the offline run.** A path on the machine running the
+API. Nothing is copied.
+
+The console used to draw a directory tree instead, fed by `GET /browse`, and
+the argument for it was the upload: a browser cannot hand a server a path, so
+a picker in the page means moving forty 24-megapixel RAWs — half a gigabyte —
+to a service reading the same disk. That argument is still true and it is no
+longer the one that decides. A photographer already knows where their frames
+are, and their own file dialog already knows how to get there, with previews,
+search and every shortcut they have set up; a list of folder names rendered
+in a page has none of that, and it could only reach volumes the API process
+could see. Half a gigabyte across localhost is memory bandwidth, and it is
+paid once per enrolment.
+
+Both paths produce the same fingerprint from the same frames — checked, the
+same ten frames enrol to the same `bodyId` either way — and both run the same
+refusals: a folder holding more than one camera's serials, and a selection
+with no RAW in it at all.
+
+`GET /browse` remains, rooted at `$HOME` and overridable with
+`GENESIS_BROWSE_ROOT`, with its path-traversal guard and its tests. It has no
+caller in the console now. It is kept because `folder` is still a supported
+input and a future CLI is the obvious consumer, not because anything uses it
+today.
 
 The frame count is the reason the listing exists rather than a plain path
 field. Gate A wants 40–50 frames, and a picker that does not say which folders

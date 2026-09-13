@@ -938,3 +938,61 @@ def test_reset_clears_the_archive(client, monkeypatch, tmp_path):
     assert response.status_code == 200
     assert response.json()["archiveRowsCleared"] == 1
     assert catalogue.listing() == []
+
+
+def test_enrol_accepts_uploaded_frames(client, monkeypatch, tmp_path):
+    """The console path: frames chosen in the operating system's own dialog.
+
+    A browser cannot hand a server a path, so the picker uploads. The service
+    stages them, enrols, and removes the staging whether or not it worked.
+    """
+    import console.app as ca
+
+    seen: dict = {}
+    monkeypatch.setattr(ca, "_serials_disagree", lambda frames: {})
+    monkeypatch.setenv("GENESIS_REFERENCES", str(tmp_path))
+
+    def fake_start(work):
+        class Job:
+            id = "job1"
+
+            def emit(self, **fields):
+                seen.setdefault("emitted", []).append(fields)
+
+            def finish(self, result):
+                seen["result"] = result
+
+        return Job()
+
+    monkeypatch.setattr(ca.jobs, "start", fake_start)
+
+    response = client.post(
+        "/enrol",
+        data={"name": "r10"},
+        files=[
+            ("files", ("IMG_0001.CR3", b"not really raw", "application/octet-stream")),
+            ("files", ("IMG_0002.CR3", b"nor this", "application/octet-stream")),
+        ],
+    )
+    assert response.status_code == 200
+    assert response.json()["frames"] == 2
+
+
+def test_enrol_refuses_a_selection_with_no_raw(client, monkeypatch, tmp_path):
+    """A developed JPEG has been through the camera's own noise reduction,
+    which is the thing that removes the fingerprint -- so this is refused with
+    the reason rather than enrolled into something meaningless."""
+    monkeypatch.setenv("GENESIS_REFERENCES", str(tmp_path))
+
+    response = client.post(
+        "/enrol",
+        data={"name": "r10"},
+        files=[("files", ("snap.jpg", b"jpeg", "image/jpeg"))],
+    )
+    assert response.status_code == 422
+    assert "RAW" in response.json()["detail"]
+
+
+def test_enrol_needs_either_files_or_a_folder(client):
+    response = client.post("/enrol", data={"name": "r10"})
+    assert response.status_code == 422

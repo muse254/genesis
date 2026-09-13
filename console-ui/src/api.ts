@@ -266,14 +266,6 @@ export const api = {
   },
 
   /** Folders on the machine running the console, with RAW counts. */
-  browse: (path?: string) =>
-    call<{
-      path: string;
-      parent: string | null;
-      frames: number;
-      entries: { name: string; path: string; frames: number }[];
-    }>(`/browse${path ? `?path=${encodeURIComponent(path)}` : ""}`),
-
   /** Display only — a browser cannot decode a CR3. Never feeds a verdict. */
   async preview(file: File, longestEdge = 720): Promise<string> {
     const form = new FormData();
@@ -325,9 +317,23 @@ export const api = {
   },
 
   /** Progress arrives per frame; enrolment reads forty 24-megapixel RAWs. */
-  enrol(folder: string, name: string, onEvent: (event: Record<string, unknown>) => void) {
+  /**
+   * Enrol from frames the operator picked, or from a server-side folder.
+   *
+   * `File[]` is the console path: the operating system's own dialog, which is
+   * where a photographer already knows how to find their frames. A string is
+   * a path on the machine running the API, kept for scripts and the offline
+   * run -- forty RAW frames is half a gigabyte and nobody should upload it
+   * twice.
+   */
+  enrol(
+    from: File[] | string,
+    name: string,
+    onEvent: (event: Record<string, unknown>) => void,
+  ) {
     const form = new FormData();
-    form.append("folder", folder);
+    if (typeof from === "string") form.append("folder", from);
+    else for (const file of from) form.append("files", file);
     form.append("name", name);
     return call<{ jobId: string; frames: number }>("/enrol", { method: "POST", body: form })
       .then((job) => {

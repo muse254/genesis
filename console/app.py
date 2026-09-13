@@ -705,25 +705,60 @@ def _serials_disagree(frames: list[Path]) -> dict[str, list[str]]:
 
 
 @app.post("/enrol")
-async def enrol(folder: str = Form(...), name: str = Form(...)) -> dict:
+async def enrol(
+    name: str = Form(...),
+    folder: str = Form(default=""),
+    files: list[UploadFile] = File(default=[]),
+) -> dict:
     """Demo step 1. Returns a job id; progress streams from `/enrol/{id}/events`.
+
+    Two ways in, and they exist for different callers. `files` is the console:
+    the operating system's own file dialog, which is where a photographer
+    already knows how to find their frames. `folder` is a server-side path,
+    kept because scripts and the offline run use it and because forty RAW
+    frames is half a gigabyte that nobody should upload twice.
 
     The reference path is never returned. Only the commitment leaves this
     process -- a published fingerprint is a published forgery kit, and so is
     a path that tells a browser where to ask for one (`docs/security.md`).
     """
-    source = Path(folder).expanduser()
-    if not source.is_dir():
-        raise HTTPException(422, f"{folder} is not a directory")
+    #: Uploaded frames land here and are removed when the job ends. Not a
+    #: context manager: `work` runs on a thread that outlives this function,
+    #: so the directory has to survive until the job says it is done.
+    staged: tempfile.TemporaryDirectory | None = None
+
+    if files:
+        staged = tempfile.TemporaryDirectory(prefix="genesis-enrol-")
+        source = Path(staged.name)
+        for upload in files:
+            # Names arrive from a browser. `Path(...).name` strips any
+            # directory part, so a crafted filename cannot write outside here.
+            safe = Path(upload.filename or "frame").name
+            (source / safe).write_bytes(upload.file.read())
+    elif folder:
+        source = Path(folder).expanduser()
+        if not source.is_dir():
+            raise HTTPException(422, f"{folder} is not a directory")
+    else:
+        raise HTTPException(422, "choose some frames, or name a folder to enrol from")
 
     frames = sorted(
         p for p in source.iterdir() if p.suffix.lower() in record.hashing_raw_suffixes()
     )
     if not frames:
-        raise HTTPException(422, f"no RAW frames in {folder}")
+        if staged:
+            staged.cleanup()
+        raise HTTPException(
+            422,
+            "none of those files are RAW. Enrolment needs the camera's raw frames "
+            "-- a developed JPEG has been through the camera's own noise reduction, "
+            "which is the thing that removes the fingerprint.",
+        )
 
     mixed = _serials_disagree(frames)
     if mixed:
+        if staged:
+            staged.cleanup()
         raise HTTPException(
             422,
             "this folder holds frames from more than one camera: "
@@ -737,6 +772,15 @@ async def enrol(folder: str = Form(...), name: str = Form(...)) -> dict:
     out = references / f"{name}.npz"
 
     def work(job: jobs.Job) -> None:
+        try:
+            _enrol(job)
+        finally:
+            # Half a gigabyte of someone's RAW frames. It goes whether the
+            # enrolment succeeded or not.
+            if staged:
+                staged.cleanup()
+
+    def _enrol(job: jobs.Job) -> None:
         job.emit(event="start", frames=len(frames), enough=len(frames) >= 40)
 
         def progress(index, total, path):

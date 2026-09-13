@@ -521,71 +521,87 @@ export const enrol: Render = (host) => {
        K never leaves this machine; only its commitment goes on chain.</p>
     <div class="two-col">
       <div class="left">
-        <div class="browser"><p class="mono">loading…</p></div>
+        <div class="picker">
+          <label class="slot pick">
+            <input type="file" multiple accept=".cr3,.CR3,.dng,.DNG,.arw,.ARW,.nef,.NEF,.raf,.RAF,.rw2,.RW2,image/*" hidden />
+            <span>Choose the RAW frames</span>
+          </label>
+          <form class="enrol-form" hidden>
+            <p class="picked mono"></p>
+            <p class="warn" hidden></p>
+            <input name="name" placeholder="body name, e.g. r10" required />
+            <button>Enrol these frames</button>
+          </form>
+        </div>
       </div>
       <div class="right"><div class="grid"></div><div class="enrol-side"></div></div>
     </div>`;
 
-  const browser = host.querySelector(".browser")!;
+  const picker = host.querySelector(".picker")!;
   const grid = host.querySelector(".grid")!;
   const side = host.querySelector(".enrol-side")!;
 
-  const draw = async (path?: string) => {
-    browser.innerHTML = `<p class="mono">loading…</p>`;
-    let listing: Awaited<ReturnType<typeof api.browse>>;
-    try {
-      listing = await api.browse(path);
-    } catch (error) {
-      browser.innerHTML = "";
-      browser.append(failure("CANNOT BROWSE", (error as Error).message,
-                             "Set GENESIS_BROWSE_ROOT if the archive is on another volume."));
-      return;
-    }
+  /**
+   * The operating system's own dialog rather than a directory tree drawn in
+   * the browser.
+   *
+   * The tree was a server-side file browser, which meant the console could
+   * only enrol from volumes the API process could see, and the operator had
+   * to navigate a machine's filesystem through a list of folder names. A
+   * photographer already knows where their frames are and their own file
+   * dialog already knows how to get there -- with previews, search, and every
+   * shortcut they have set up.
+   *
+   * The cost is honest: the frames are uploaded rather than read in place,
+   * and forty RAW frames is roughly half a gigabyte. It is localhost, so this
+   * is memory bandwidth and not network, and `/enrol` still takes a folder
+   * path for scripts and the offline run.
+   */
+  const input = picker.querySelector("input[type=file]") as HTMLInputElement;
+  const form = picker.querySelector(".enrol-form") as HTMLFormElement;
+  const picked = picker.querySelector(".picked") as HTMLElement;
+  const warn = picker.querySelector(".warn") as HTMLElement;
+  let chosen: File[] = [];
 
-    const rows = listing.entries
-      .map(
-        (entry) => `
-        <li>
-          <button data-path="${escape(entry.path)}">${escape(entry.name)}</button>
-          <span class="count ${entry.frames > 0 ? "has" : ""}">${
-            entry.frames < 0 ? "—" : `${entry.frames} raw`
-          }</span>
-        </li>`,
-      )
-      .join("");
+  const RAW = /\.(cr3|cr2|dng|arw|nef|raf|rw2|orf|pef|srw)$/i;
 
-    browser.innerHTML = `
-      <p class="here mono">${escape(listing.path)}</p>
-      ${listing.parent ? `<button class="up" data-path="${escape(listing.parent)}">↑ up</button>` : ""}
-      <ul class="folders">${rows || `<li class="empty">no subfolders</li>`}</ul>
-      <div class="chosen">
-        <span class="mono">${listing.frames} RAW frames here</span>
-        ${
-          listing.frames > 0
-            ? `<form class="enrol-form">
-                 <input name="name" placeholder="body name, e.g. r10" required />
-                 <button>Enrol this folder</button>
-               </form>
-               ${listing.frames < 40 ? `<p class="warn">Gate A asks for 40–50.</p>` : ""}`
-            : `<p class="warn">Pick a folder that holds the frames.</p>`
-        }
-      </div>`;
+  input.addEventListener("change", () => {
+    const all = Array.from(input.files ?? []);
+    chosen = all.filter((file) => RAW.test(file.name));
+    const skipped = all.length - chosen.length;
 
-    browser.querySelectorAll("button[data-path]").forEach((button) =>
-      button.addEventListener("click", () => draw((button as HTMLElement).dataset.path)),
-    );
+    form.hidden = chosen.length === 0;
+    const bytes = chosen.reduce((sum, file) => sum + file.size, 0);
+    picked.textContent = chosen.length
+      ? `${chosen.length} RAW ${chosen.length === 1 ? "frame" : "frames"} · ${(
+          bytes / 1e9
+        ).toFixed(2)} GB${skipped ? ` · ${skipped} non-RAW ignored` : ""}`
+      : "";
 
-    browser.querySelector("form")?.addEventListener("submit", (event) => {
-      event.preventDefault();
-      const name = String(new FormData(event.target as HTMLFormElement).get("name"));
-      run(listing.path, name);
-    });
-  };
+    // Gate A asks for 40-50. Fewer still enrols -- the estimator's variance
+    // falls as 1/d, it does not have a cliff -- so this is a caution and not
+    // a refusal.
+    const short = chosen.length > 0 && chosen.length < 40;
+    warn.hidden = !(short || (chosen.length === 0 && all.length > 0));
+    warn.textContent = chosen.length === 0 && all.length > 0
+      ? "None of those are RAW. A developed JPEG has already been through the camera's noise reduction, which is what removes the fingerprint."
+      : `Gate A asks for 40–50 frames; ${chosen.length} will still enrol, less sharply.`;
 
-  const run = (folder: string, name: string) => {
+    if (chosen.length === 0 && all.length > 0) form.hidden = true;
+  });
+
+  form.addEventListener("submit", (event) => {
+    event.preventDefault();
+    const name = String(new FormData(form).get("name")).trim();
+    if (!name || chosen.length === 0) return;
+    picker.querySelector(".slot")!.classList.add("filled");
+    run(chosen, name);
+  });
+
+  const run = (from: File[] | string, name: string) => {
     let total = 0;
     api
-      .enrol(folder, name, (e) => {
+      .enrol(from, name, (e) => {
         if (e.event === "start") {
           total = Number(e.frames);
           grid.innerHTML = Array.from({ length: total }, () => `<i class="cell"></i>`).join("");
@@ -619,7 +635,6 @@ export const enrol: Render = (host) => {
       );
   };
 
-  draw();
 };
 
 /**
