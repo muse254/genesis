@@ -368,12 +368,12 @@ Plain HTML plus TypeScript, or a small Vite app. **No framework.** `viem` for
 chain reads, `fetch` to the scoring service. It is one page: an upload control
 and a result.
 
-### Confidential compute — stretch
+### Confidential compute — built, on simulation
 
 | Tool | Why |
 | --- | --- |
-| `@chainlink/cre-sdk` | Go or TypeScript only, compiles to WASM. The correlation kernel gets rewritten in TS — trivial at 512², but it must agree bit-for-bit with the Python preprocessing. |
-| CRE CLI | deployment and Vault DON secrets. |
+| `@chainlink/cre-sdk` | Go or TypeScript only, compiles to WASM. The correlation kernel is rewritten in TS in `cre/workflow/genesis/correlate.ts`. "Bit-for-bit with the Python preprocessing" is satisfied by construction rather than by effort: the residual extraction is not reimplemented at all, it stays client-side, so there is one implementation and both backends call it. The correlation itself is a radix-2 FFT against numpy's pocketfft and cannot be bit-identical — the tests assert agreement to the thousandth the attestation carries. |
+| CRE CLI | `workflow simulate` per run, and Vault DON secrets. Deployment needs private-beta enrolment; the prize criteria accept a CLI simulation instead. |
 
 ### Dev
 

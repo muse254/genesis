@@ -221,8 +221,8 @@ taken on trust.
 
 ## The technologies, and what each one carries
 
-Every one of these does work the product would not function without. Where a
-piece is not built, the table says so rather than implying it.
+Every one of these does work the product would not function without, and each
+row says how far it actually got rather than how far it was meant to.
 
 | Technology | What it carries here | Status |
 | --- | --- | --- |
