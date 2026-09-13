@@ -12,13 +12,37 @@
 
 .slot {
   display: flex; align-items: center; justify-content: center; text-align: center;
-  width: 100%; aspect-ratio: 3 / 2; max-height: 46vh;
+  width: 100%; max-height: 46vh;
   border: 1.5px dashed var(--hairline);
   color: var(--tertiary); font-size: 13px; cursor: pointer; background: var(--paper);
 }
-.slot.filled { border-style: solid; padding: 0; }
-.slot img { width: 100%; height: 100%; object-fit: cover; filter: grayscale(1); }
-.slot img.degraded { filter: grayscale(1) blur(.6px) contrast(.94); }
+/* 3:2 only while empty -- it is the shape of a drop target, not a claim about
+   what will land in it. A filled slot takes the photograph's own shape. */
+.slot:not(.filled) { aspect-ratio: 3 / 2; }
+/* A filled slot hugs its photograph. Left at full width, `contain` letterboxes
+   a portrait frame inside a landscape box -- which is the crop problem again,
+   drawn in whitespace instead of pixels. */
+.slot.filled {
+  border-style: solid; padding: 0;
+  aspect-ratio: auto; height: auto;
+  width: fit-content; max-width: 100%;
+}
+
+/* `contain`, not `cover`: a portrait frame cropped into a landscape box is a
+   different photograph from the one the operator chose, and this screen is
+   about showing them what they chose. No filter either -- the photograph is
+   evidence, and desaturating evidence is editing it. */
+.slot img {
+  display: block;
+  max-width: 100%; max-height: 46vh;
+  width: auto; height: auto;
+  margin: 0 auto;
+  object-fit: contain;
+}
+/* The degraded copy is shown as it actually is. It used to carry a blur, and
+   that quietly argued against the demo it appears in: step 4's whole point is
+   that the damage is invisible to the eye and the fingerprint survives it
+   anyway. Drawing damage that is not in the file makes the weaker case. */
 
 /* --- verdict cards ------------------------------------------------------- */
 .verdict { border: 2px solid var(--ink); margin: 18px 0; }
@@ -116,6 +140,9 @@
 .survival { display: grid; grid-template-columns: 1fr 260px; gap: 24px; }
 .pair { display: grid; grid-template-columns: 1fr .66fr; gap: 16px; align-items: start; }
 .pair .slot { width: 100%; max-height: 34vh; }
+/* The image's own cap has to come down with the slot's, or it overrides it
+   and the pair stops lining up. */
+.pair .slot img { max-height: 34vh; }
 /* The step numbers were clipping: 18px of padding is not enough room for a
    monospace numeral plus its period, so the marker sat half outside the
    content box and rendered as a sliced digit. Markers go inside the box and
