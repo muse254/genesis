@@ -92,7 +92,11 @@ export function publicClient(): PublicClient {
  * private key in the environment, and a module that throws on import is a
  * module that cannot be tested offline.
  */
-export function wallet(): { client: WalletClient; account: Address } {
+export function wallet(): {
+  client: WalletClient;
+  account: Address;
+  signerAccount: ReturnType<typeof privateKeyToAccount>;
+} {
   const key = process.env.DEPLOYER_PRIVATE_KEY;
   if (!key) {
     throw new Error(
@@ -103,8 +107,43 @@ export function wallet(): { client: WalletClient; account: Address } {
   const account = privateKeyToAccount(key as `0x${string}`);
   return {
     client: createWalletClient({ account, chain: sepolia, transport: http(RPC) }),
+    // The address, for the many places that want one as an argument...
     account: account.address,
+    // ...and the account itself, which is what `simulateContract` needs.
+    //
+    // Passing the bare address makes viem treat it as a JSON-RPC account, so
+    // the prepared request goes out as `eth_sendTransaction` and a public RPC
+    // answers "unknown account" -- it has no key to sign with. Every write
+    // here was built that way and none of them had ever run: `--dry-run`
+    // returns before `writeContract`, so the rehearsal exercised the
+    // simulation and stopped one line short of the bug.
+    signerAccount: account,
   };
+}
+
+/**
+ * Send and wait, rather than send and hope.
+ *
+ * `writeContract` resolves as soon as the transaction is *submitted*. Three
+ * writes here used it bare, which meant `register` was still pending when
+ * `setBodyRecords` went out against the name it was creating, and the script
+ * printed "registered" before the chain had agreed to any of it. A reverted
+ * write looked exactly like a successful one.
+ *
+ * Waiting also makes the ordering real: the records cannot be written until
+ * the name exists, and that is a dependency the chain enforces only if we
+ * let it.
+ */
+async function send(
+  signer: WalletClient,
+  request: Parameters<WalletClient["writeContract"]>[0],
+): Promise<`0x${string}`> {
+  const hash = await signer.writeContract(request);
+  const receipt = await publicClient().waitForTransactionReceipt({ hash });
+  if (receipt.status !== "success") {
+    throw new Error(`transaction ${hash} reverted`);
+  }
+  return hash;
 }
 
 /**
@@ -175,7 +214,7 @@ export async function registerBody(
   assertBodyLabel(body.label);
 
   const client = publicClient();
-  const { client: signer, account } = wallet();
+  const { client: signer, account, signerAccount } = wallet();
   const registry = await subregistryFor(body.parent);
 
   const owner = (await client.readContract({
@@ -228,11 +267,11 @@ export async function registerBody(
     abi: permissionedRegistryAbi,
     functionName: "register",
     args: [body.label, account, zeroAddress, ENS.resolver, BODY_ROLES, expiry],
-    account,
+    account: signerAccount,
   });
 
   if (options.dryRun) return "0x";
-  return signer.writeContract(request);
+  return send(signer, request);
 }
 
 /**
@@ -250,7 +289,7 @@ export async function setBodyRecords(
 
   const node = nodeFor(`${body.label}.${body.parent}`);
   const client = publicClient();
-  const { client: signer, account } = wallet();
+  const { client: signer, account, signerAccount } = wallet();
 
   const calls = [
     [TEXT_KEY.commitment, body.fingerprintCommitment],
@@ -270,11 +309,11 @@ export async function setBodyRecords(
     abi: permissionedResolverAbi,
     functionName: "multicall",
     args: [calls],
-    account,
+    account: signerAccount,
   });
 
   if (options.dryRun) return;
-  await signer.writeContract(request);
+  await send(signer, request);
 }
 
 /**
@@ -350,18 +389,18 @@ export async function resolveBody(name: string): Promise<BodySubname | null> {
 export async function revokeBody(name: string, options: Options = {}): Promise<void> {
   const node = nodeFor(name);
   const client = publicClient();
-  const { client: signer, account } = wallet();
+  const { client: signer, account, signerAccount } = wallet();
 
   const { request } = await client.simulateContract({
     address: ENS.resolver,
     abi: permissionedResolverAbi,
     functionName: "setText",
     args: [node, TEXT_KEY.status, STATUS_REVOKED],
-    account,
+    account: signerAccount,
   });
 
   if (options.dryRun) return;
-  await signer.writeContract(request);
+  await send(signer, request);
 }
 
 async function main(argv: string[]): Promise<void> {

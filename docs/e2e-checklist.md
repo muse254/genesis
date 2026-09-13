@@ -112,11 +112,19 @@ false-positive rate, and a second enrolment so the test runs both ways.
       duplicate `bodyId`, so the registry was redeployed rather than documented
       around. Two tests in `console/validate_console.py` now pin it against the
       value viem computes, so the two halves cannot drift apart again
-- [ ] `r10-4471.cam.osoro.eth` does not exist yet — by design, the demo creates
-      it live. Which means `setBodyRecords` has never run against anything: the
-      dry-run cannot simulate it, because the resolver authorises per node and
-      the node has no owner until registration lands. **The one step in the
-      demo that has never been executed**
+- [x] **`setBodyRecords` rehearsed on chain, 13 September 2026.**
+      `rehearsal-0003.cam.osoro.eth` registered live, all three records
+      written, and resolved back through the *universal resolver* — the path a
+      third party takes. `rehearsal-0002` then revoked and reads `revoked`, so
+      all three write paths are exercised. `r10-4471` is deliberately still
+      free for the demo to create
+- [x] Three bugs that only the real write could find, all fixed and written up
+      in `identity/addresses.md`: the resolver was pinned to the
+      *implementation* rather than a name's proxy; `simulateContract` was given
+      an address so every write went out as `eth_sendTransaction` and a public
+      RPC answered `unknown account`; and writes never waited for a receipt, so
+      `setBodyRecords` raced `register` and a revert looked like success.
+      `--dry-run` could not see any of them — it returns before the write
 - [x] `identity/scripts/register-body.ts` — the four stubs implemented
       against the real ENSv2 ABIs, read from the verified sources on
       Blockscout rather than guessed. 8 tests on the name arithmetic, which

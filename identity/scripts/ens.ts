@@ -44,7 +44,7 @@ function envAddress(name: string, pinned: string): Address {
  */
 export const ENS = {
   ethRegistry: envAddress("ENS_ETH_REGISTRY", "0xbdc85dd5b15d7ecb354cd7cb6f2c50b4f2c4f0e2"),
-  resolver: envAddress("ENS_PERMISSIONED_RESOLVER", "0x9eae5c2730a7dd16bdd1dee6421a1b91e3b0365e"),
+  resolver: envAddress("ENS_PERMISSIONED_RESOLVER", "0xA0977579eC240023fa0B763BdE337e6A4AFe60F1"),
   ethRegistrar: envAddress("ENS_ETH_REGISTRAR", "0xa88553f454b77203b0d036a05c894d555eaaa2cc"),
   universalResolver: envAddress(
     "ENS_UNIVERSAL_RESOLVER_V2",

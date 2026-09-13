@@ -113,6 +113,53 @@ Three things that were not obvious and each cost a transaction:
 - **Expiry is inherited, not chosen.** `cam` was registered at `osoro`'s own
   expiry, 1820499912 (September 2027). A child cannot outlive its parent.
 
+## Writing records: three bugs the dry-run could not see
+
+Found on 13 September 2026, the first time any of these writes actually ran.
+`--dry-run` returns before `writeContract`, so every rehearsal up to then had
+exercised the simulation and stopped one line short of the bug. All three were
+in the path the demo depends on.
+
+**1. The resolver was pinned to the implementation, not a resolver.**
+`0x9eae5c27…` is `PermissionedResolver` *Impl* — the table below always called
+it that, and the code read it as the resolver to write to. It calls
+`_disableInitializers()` in its constructor and lives behind an ERC-1967 proxy
+deployed per name by the verifiable factory. Writing to it reverts
+`EACUnauthorizedAccountRoles(resource, 0x10, caller)`, and so does
+`authorizeTextRoles`, because nobody holds roles on the bare implementation.
+
+The resolver a name actually uses is its own proxy. `osoro.eth`, registered
+through app.ens.dev, resolves to `0xA0977579eC240023fa0B763BdE337e6A4AFe60F1`
+— that is the instance with roles granted to the deployer, and writing a
+descendant node's records on it works. `ENS_PERMISSIONED_RESOLVER` now points
+there. **Check this after any ENS redeployment**: a fresh proxy means a fresh
+address, and the symptom is an authorisation revert rather than a missing name.
+
+**2. Every write went out as `eth_sendTransaction`.** `wallet()` returned the
+account *address*, and `simulateContract({ account })` given a bare address
+makes viem prepare a JSON-RPC account. A public RPC has no key for it and
+answers `unknown account`. It now returns the account object as well, and the
+simulate calls take that.
+
+**3. Writes did not wait for a receipt.** `writeContract` resolves on
+submission, so `setBodyRecords` was sent while `register` was still pending,
+and a reverted write was indistinguishable from a successful one. Every write
+now waits and throws on a non-success status.
+
+### Rehearsed, on chain
+
+`rehearsal-0003.cam.osoro.eth` was registered live, had all three records
+written, and resolves through the **universal resolver** — the path a third
+party takes, not a direct read of the resolver we happened to write to:
+
+```
+{ "label": "rehearsal-0003", "parent": "cam.osoro.eth",
+  "fingerprintCommitment": "0xbb3e3a38…", "signingKey": "0x91C968D9…" }
+```
+
+`rehearsal-0002` was then revoked and reads `revoked`, so the third write path
+is exercised too. `r10-4471` is deliberately still free for the demo to create.
+
 ## Pinned addresses
 
 From <https://docs.ens.domains/learn/deployments/>, read 8 September 2026.
@@ -129,7 +176,8 @@ are not final and a mid-window upgrade is how the demo breaks.
 | ETHRegistrar | `0xa88553f454b77203b0d036a05c894d555eaaa2cc` | |
 | ETHRegistry | `0xbdc85dd5b15d7ecb354cd7cb6f2c50b4f2c4f0e2` | |
 | UniversalResolverV2 | `0x4a1817d13e9cf196f471725176355c1234b63c70` | |
-| PermissionedResolverImpl | `0x9eae5c2730a7dd16bdd1dee6421a1b91e3b0365e` | |
+| PermissionedResolver **Impl** | `0x9eae5c2730a7dd16bdd1dee6421a1b91e3b0365e` | Not writable — see above |
+| `osoro.eth`'s resolver proxy | `0xA0977579eC240023fa0B763BdE337e6A4AFe60F1` | **This is `ENS_PERMISSIONED_RESOLVER`** |
 | PublicResolverV2 | `0xe7b9a25607e02da8145e4eb1836ca539e53f11f7` | |
 
 Legacy ENSv1 on Sepolia, kept only so nobody wires them by mistake:
