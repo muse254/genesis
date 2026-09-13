@@ -415,18 +415,18 @@ stripped), portrait capture costs a delivered file the aligned path (282 →
 | | Component | State |
 | --- | --- | --- |
 | ██████████ | `fingerprint/` — enrolment, scoring, commitment | done |
-| ██████████ | Gate A — does K exist on this body | **passed**, one body |
+| ██████████ | Gate A — does K exist on this body | **passed** — one body, which is not a false-positive rate |
 | ███████░░░ | Gate B — does K survive the web | **conditional pass** — `docs/gates.md` names the quality |
 | ██████████ | `ingest/` — hashing, record, Merkle | done |
 | ██████████ | `contracts/` — ERC-7053 registry | **live on Sepolia**, verified on both explorers |
 | ██████████ | `identity/` — ENSv2 subnames | **live** — parent and subregistries deployed; register, records and revoke all rehearsed on chain |
 | ██████████ | `subgraph/` — image → record | **live**, `genesis` v0.0.4, all entity types from real events |
 | ██████████ | `scoring/` — FastAPI wrapper | done |
-| ██████████ | `verify/` — the page | four verdicts, driven in a browser against the live chain and index |
+| ██████████ | `verify/` — the page | four verdicts, driven in a browser against the live chain and index; on-chain values link out to where anyone can re-read them |
 | ██████████ | `mcp/` — Subgraph MCP server | answers from the deployed subgraph |
 | ██████████ | `console/` — demo orchestration API | eight screens wired; registration, sessions, archive and reset exercised live |
 | █████████░ | `console-ui/` — the presenter console | eight screens built to the handoff |
-| ████████░░ | `cre/` — confidential scoring | a real `cre workflow simulate` per run, from screen 07; both backends agree to the tenth. Deployment needs private-beta enrolment, which the criteria do not require |
+| ████████░░ | `cre/` — confidential scoring | a real `cre workflow simulate` per run, from screen 07; both backends agree to the tenth, and `capture-evidence.sh` writes the transcript. **`attested` is false** — the simulator is not an enclave. Deployment needs private-beta enrolment, which the criteria do not require |
 | ██████████ | `docs/adversarial.md` — red team | the fingerprint forged three ways against our own reference |
 
 **177 tests** — 133 pytest, 21 Foundry, 9 matchstick, 6 MCP, 8 identity.
