@@ -654,3 +654,51 @@ def test_ens_node_is_recursive_over_labels():
 
     assert ens_namehash("cam.osoro.eth") != ens_namehash("r10-4471.cam.osoro.eth")
     assert ens_namehash("eth") != ens_namehash("osoro.eth")
+
+
+def test_enrolment_refuses_a_folder_holding_two_cameras(monkeypatch):
+    """The archive folder that holds the enrolment frames also holds the
+    negatives, and `/enrol` took every RAW in it.
+
+    `docs/gates.md` makes the serial check the first thing done to any file,
+    and this endpoint skipped it. Averaging two sensors produces a fingerprint
+    belonging to neither -- silently, with a commitment that looks fine.
+    """
+    from pathlib import Path
+
+    from console.app import _serials_disagree
+
+    class Done:
+        returncode = 0
+        stdout = "473034005088\tIMG_0217.CR3\n022031004996\tother.CR3\n"
+
+    monkeypatch.setattr("subprocess.run", lambda *a, **k: Done())
+    mixed = _serials_disagree([Path("IMG_0217.CR3"), Path("other.CR3")])
+    assert set(mixed) == {"473034005088", "022031004996"}
+
+
+def test_one_camera_enrols_cleanly(monkeypatch):
+    from pathlib import Path
+
+    from console.app import _serials_disagree
+
+    class Done:
+        returncode = 0
+        stdout = "473034005088\tIMG_0217.CR3\n473034005088\tIMG_0216.CR3\n"
+
+    monkeypatch.setattr("subprocess.run", lambda *a, **k: Done())
+    assert _serials_disagree([Path("a.CR3"), Path("b.CR3")]) == {}
+
+
+def test_a_missing_serial_does_not_block_enrolment(monkeypatch):
+    """A format with no serial tag is not evidence of a second body."""
+    from pathlib import Path
+
+    from console.app import _serials_disagree
+
+    class Done:
+        returncode = 0
+        stdout = "-\ta.DNG\n473034005088\tb.CR3\n"
+
+    monkeypatch.setattr("subprocess.run", lambda *a, **k: Done())
+    assert _serials_disagree([Path("a.DNG"), Path("b.CR3")]) == {}

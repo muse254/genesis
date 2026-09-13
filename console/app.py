@@ -638,6 +638,43 @@ async def preview(file: UploadFile = File(...), longest_edge: int = Form(720)) -
         path.unlink(missing_ok=True)
 
 
+def _serials_disagree(frames: list[Path]) -> dict[str, list[str]]:
+    """Group frames by camera serial, and return them only if there is disagreement.
+
+    `docs/gates.md` makes `exiftool -SerialNumber` the first check on any file
+    before it is scored, and the reason is measured: two files offered as
+    other-body samples turned out to carry our own serial. The procedure said
+    so and this endpoint did not do it, which mattered because the obvious
+    folder to point it at -- the archive holding the enrolment frames -- also
+    holds the two negatives kept for testing. Enrolling from there would have
+    averaged a second R10 and a 5D Mark III into K and produced a fingerprint
+    belonging to no camera at all, silently, with a plausible commitment.
+
+    Frames whose serial cannot be read are not counted against the check: a
+    missing tag is not evidence of a second body, and refusing on it would
+    reject formats that simply do not carry one.
+    """
+    import subprocess
+    from collections import defaultdict
+
+    done = subprocess.run(
+        ["exiftool", "-s3", "-SerialNumber", "-filename", "-T", *[str(f) for f in frames]],
+        capture_output=True,
+        text=True,
+    )
+    if done.returncode != 0:
+        return {}  # no exiftool, or it failed: do not block enrolment on a missing tool
+
+    by_serial: dict[str, list[str]] = defaultdict(list)
+    for line in done.stdout.splitlines():
+        serial, _, filename = line.partition("\t")
+        serial = serial.strip()
+        if serial and serial != "-":
+            by_serial[serial].append(filename.strip())
+
+    return dict(by_serial) if len(by_serial) > 1 else {}
+
+
 @app.post("/enrol")
 async def enrol(folder: str = Form(...), name: str = Form(...)) -> dict:
     """Demo step 1. Returns a job id; progress streams from `/enrol/{id}/events`.
@@ -655,6 +692,16 @@ async def enrol(folder: str = Form(...), name: str = Form(...)) -> dict:
     )
     if not frames:
         raise HTTPException(422, f"no RAW frames in {folder}")
+
+    mixed = _serials_disagree(frames)
+    if mixed:
+        raise HTTPException(
+            422,
+            "this folder holds frames from more than one camera: "
+            + "; ".join(f"{serial} ({', '.join(names)})" for serial, names in mixed.items())
+            + ". Enrol one body at a time -- averaging two sensors produces a "
+            "fingerprint belonging to neither.",
+        )
 
     references = Path(os.environ.get("GENESIS_REFERENCES", "data/references"))
     references.mkdir(parents=True, exist_ok=True)
