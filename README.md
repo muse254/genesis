@@ -442,7 +442,45 @@ overlapping.
 `docs/security.md` is the posture, `docs/claims.md` the closed list of two
 claims, `docs/e2e-checklist.md` the ordered list of what unblocks what.
 
-## Further Work?
+## Further work
+
+Everything below is named because it is *not* built. Each one is a known gap
+with a known shape, and the docs say which.
+
+**The one that matters most: a false-positive rate.** One negative body rules
+out a broken approach; it does not say how often a wrong body matches. That
+needs dozens of bodies and a designed study — the bar PCAST sets for any
+feature-comparison method, which this does not yet meet and says so
+(`docs/claims.md`).
+
+**Forgery detection on the delivered path.** Nothing built so far catches the
+delivered-JPEG forgery, and that is the path the product exists to serve. Four
+candidates are queued in `docs/security.md`, each with its premise stated:
+two fingerprints in one image, noise-floor physics, demosaic/CFA consistency,
+and a hot-pixel defect map. None is a control until it has a measured
+false-positive rate on a corpus with many bodies and many scenes.
+
+**A deployed confidential workflow.** CRE runs on simulation today, which is
+what the criteria accept. A deployed workflow is what produces a DON-signed
+report and a true `attested: true`; it needs private-beta enrolment.
+
+**A Merkle commitment over the body fields**, so a camera serial can be
+revealed in a dispute without also revealing geolocation. Worth building once
+more than one field is separately disclosable.
+
+**A second enrolled body**, so the test runs both ways — score A against K_B
+as well as B against K_A.
+
+**Deliberately not planned:** receipt parsing, OCR and issuer checks.
+Verifying documents is a harder forensics problem than the pixel one and would
+add a weak link that becomes the thing an opponent attacks. An adjudicator
+with subpoena power settles that; we supply the half nobody else can.
+
+**Out of scope, not a roadmap item:** phone photographs. Binned output,
+multi-frame fusion and no photosite lattice to sample onto — `docs/phones.md`
+is the reasoning.
+
+---
 
 We never say "authentic", "AI-free", "verified real", or that the absence of a
 record means anything. A camera pointed at a high-quality screen produces a

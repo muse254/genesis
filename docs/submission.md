@@ -147,3 +147,22 @@ market, including in-camera cryptographic signing — we say so before anyone
 else does.
 
 **177 tests**: 133 pytest, 21 Foundry, 9 matchstick, 6 MCP, 8 identity.
+
+## Known gaps, named
+
+Not built, and each one stated rather than left to be discovered:
+
+- **A false-positive rate.** One negative body is not one. It needs dozens of
+  bodies and a designed study — the PCAST bar, which this does not meet.
+- **Forgery detection on the delivered path.** Nothing built catches it, and
+  that is the path the product serves. Four candidates queued in
+  `docs/security.md`, none a control until measured.
+- **A deployed confidential workflow.** Simulation today; deployment needs
+  private-beta enrolment and is what would make `attested` true.
+- **A second enrolled body**, so the match test runs both ways.
+- **A Merkle commitment over the body fields**, so a serial can be revealed
+  without also revealing geolocation.
+
+Deliberately not planned: receipt parsing and issuer checks — a harder
+forensics problem that would add a weak link. Out of scope: phone
+photographs (`docs/phones.md`).
