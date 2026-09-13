@@ -131,6 +131,10 @@ def cast_send(args: list[str]) -> dict:
              "re-taken."),
             ("below threshold",
              "The pixels do not clear the threshold; nothing was signed."),
+            ("unknown body",
+             "The registry has no record of this body. Register the body first "
+             "(demo step 2a) -- after a wipe the enrolled fingerprint survives but "
+             "its registration does not."),
         ):
             if phrase in done.stderr:
                 raise HTTPException(409, message)
@@ -150,10 +154,14 @@ def cast_send(args: list[str]) -> dict:
     if str(receipt.get("status", "")).lower() not in ("0x1", "1", "true"):
         raise HTTPException(502, f"transaction reverted: {receipt.get('transactionHash')}")
 
+    tx_hash = receipt.get("transactionHash", "")
     return {
-        "txHash": receipt.get("transactionHash"),
+        "txHash": tx_hash,
         "blockNumber": int(str(receipt.get("blockNumber", "0")), 0),
-        "explorerUrl": chain.explorer_url(receipt.get("transactionHash", ""), "tx"),
+        "explorerUrl": chain.explorer_url(tx_hash, "tx"),
+        # Every signing endpoint returns these, so anything the console puts on
+        # chain comes back with the places it can be checked.
+        "links": chain.reference_links(tx_hash),
     }
 
 
@@ -209,6 +217,28 @@ async def register_image(
     if body not in bodies:
         raise HTTPException(404, f"unknown body {body}")
     body_id, holder = bodies[body]
+
+    # Enrolled is not registered, and the contract is the one that knows.
+    # `registerImage` reverts `unknown body` when the id has no record, and
+    # the two ways to arrive there are both ordinary: a fresh enrolment that
+    # has not been registered yet, and a `resetAll` that cleared the chain out
+    # from under one that had. Checked here rather than left to the revert
+    # because the scoring below takes a minute, and spending that to arrive at
+    # a hex-encoded error is the worst version of this.
+    try:
+        registered = chain.body("0x" + body_id)
+    except chain.ChainError as error:
+        # Unreadable chain: the transaction below would fail anyway, and
+        # saying which half is broken beats a gas-estimation error.
+        raise HTTPException(503, f"cannot read the registry: {error}")
+    if registered is None:
+        raise HTTPException(
+            409,
+            f"body {holder['name']} is enrolled on this machine but not registered on "
+            f"{chain.REGISTRY}. Register the body first -- that is demo step 2a. "
+            "After a registry wipe this is expected: the fingerprint survived the "
+            "wipe, the registration did not.",
+        )
 
     references = Path(os.environ.get("GENESIS_REFERENCES", "data/references"))
     suffix = Path(file.filename or "upload").suffix or ".bin"
@@ -467,6 +497,14 @@ async def reset_registry(confirm: str = Form(...), clear_enrolments: bool = Form
     # same K unless the same frames are chosen, because `save_fingerprint`
     # does not record which ones were used (`docs/adversarial.md`). The UI
     # says so before this runs.
+    # The archive describes what this machine registered, keyed by image hash.
+    # After the wipe none of those hashes resolve on chain, so every row is a
+    # claim the registry will not confirm and screen 06 would go on presenting
+    # them as registered work. It goes with the chain, always -- unlike the
+    # references, there is nothing here that cannot be rebuilt by registering
+    # again, so there is no reason to make it a choice.
+    archived = catalogue.clear()
+
     cleared: list[str] = []
     if clear_enrolments:
         references = Path(os.environ.get("GENESIS_REFERENCES", "data/references"))
@@ -482,6 +520,7 @@ async def reset_registry(confirm: str = Form(...), clear_enrolments: bool = Form
         "epochBefore": before,
         "epochAfter": chain.registry_epoch(),
         "enrolmentsCleared": cleared,
+        "archiveRowsCleared": archived,
         **receipt,
     }
 

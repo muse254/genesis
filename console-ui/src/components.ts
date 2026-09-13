@@ -34,8 +34,11 @@ const VERDICTS: Record<Verdict, { word: string; blurb: string }> = {
   registered: {
     word: "REGISTERED",
     blurb:
-      "This states where these pixels came from and who signed for them, when. " +
-      "It does not state what the photograph depicts, or that it is “authentic”.",
+      "The body’s owner registered this image at the time shown, and these pixels " +
+      "carry that body’s fingerprint. It does not state where the light fell — " +
+      "`registerImage` checks only that the body’s owner sent the transaction, and " +
+      "a fingerprint can be planted. Nor what the photograph depicts, nor that it " +
+      "is “authentic”.",
   },
   derived: {
     word: "DERIVED",

@@ -172,6 +172,46 @@ def explorer_url(tx_or_address: str, kind: str = "tx") -> str:
     return f"{EXPLORER}/{kind}/{tx_or_address}"
 
 
+#: The second explorer, on purpose. The registry is verified on both, so a
+#: reader who distrusts one has another that serves the same ABI.
+ETHERSCAN = "https://sepolia.etherscan.io"
+
+#: Where the subgraph can actually be looked at. The query endpoint in `.env`
+#: answers POSTs and is no use in a browser; the Studio page is the one a
+#: person can open.
+GRAPH_STUDIO = "https://thegraph.com/studio/subgraph/genesis"
+
+
+def reference_links(tx_hash: str = "") -> list[dict]:
+    """Every place a claim made here can be checked by someone else.
+
+    Returned by the server rather than assembled in the frontend, for the same
+    reason verdicts are: the console knows the addresses and the frontend
+    should not be a second place that has to be kept in step with them.
+
+    The point is not decoration. `docs/claims.md` says a registration is
+    "verifiable by anyone against the registry without taking our word for
+    it", and a claim nobody is shown how to check is a claim taken on trust.
+    """
+    links: list[dict] = []
+    if tx_hash:
+        links.append({"label": "Transaction · Etherscan", "url": f"{ETHERSCAN}/tx/{tx_hash}"})
+        links.append({"label": "Transaction · Blockscout", "url": f"{EXPLORER}/tx/{tx_hash}"})
+    if REGISTRY:
+        # Verified source, so the Read Contract tab needs no wallet -- this is
+        # the link that lets someone check the record themselves.
+        links.append({
+            "label": "Registry · Etherscan (read contract)",
+            "url": f"{ETHERSCAN}/address/{REGISTRY}#readContract",
+        })
+        links.append({
+            "label": "Registry · Blockscout",
+            "url": f"{EXPLORER}/address/{REGISTRY}?tab=read_contract",
+        })
+    links.append({"label": "Index · The Graph", "url": GRAPH_STUDIO})
+    return links
+
+
 #: ENSv2 Sepolia. Pinned in `identity/addresses.md`; blank env means unset,
 #: not empty -- `.env` declared these keys with no value and `??` semantics
 #: cost an afternoon once already.

@@ -125,3 +125,23 @@ def statistics() -> dict:
     stats["perBody"] = [dict(r) for r in per_body]
     stats["catalogue"] = str(CATALOGUE)
     return stats
+
+
+def clear() -> int:
+    """Empty the archive, and say how many rows went.
+
+    The archive is what this machine registered, keyed by image hash. After a
+    `resetAll` none of those hashes resolve on chain any more, so every row is
+    a claim the registry will not confirm -- and screen 06 would go on listing
+    them as registered work. Same shape as the enrolled references: the wipe
+    clears the chain, and anything local that described the chain has to go
+    with it or start lying.
+
+    Rows are deleted rather than the file removed, so the schema and the
+    indexes survive and the next registration does not have to recreate them.
+    """
+    with closing(_connect()) as connection:
+        removed = connection.execute("SELECT COUNT(*) FROM images").fetchone()[0]
+        connection.execute("DELETE FROM images")
+        connection.commit()
+    return int(removed)

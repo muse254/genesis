@@ -21,10 +21,20 @@ export interface Check {
   remedy?: string;
 }
 
+export interface BodyStatus {
+  name: string;
+  bodyId: string;
+  /** Whether the registry has a record for it. Enrolled is not registered:
+   *  an image cannot attach to a body the chain has never heard of, and a
+   *  `resetAll` clears the registration while leaving the fingerprint. */
+  registered: boolean;
+}
+
 export interface State {
   ready: boolean;
   checks: Check[];
   bodies: string[];
+  bodyStatus?: BodyStatus[];
   threshold: number;
   chain: { chainId?: number; blockNumber?: number; registry?: string | null };
   ensParent: string | null;
@@ -34,6 +44,12 @@ export interface State {
    * only when it is true, so a production registry simply has no button.
    */
   registry?: { resettable: boolean; epoch: number };
+}
+
+/** Where a claim can be checked by someone who does not trust this console. */
+export interface ReferenceLink {
+  label: string;
+  url: string;
 }
 
 export interface ConfidentialScore {
@@ -61,9 +77,14 @@ export interface ResetResult {
   epochAfter: number;
   /** Names of the enrolled references deleted, if any were. */
   enrolmentsCleared: string[];
+  /** Archive rows removed. Always cleared: every row describes a chain record
+   *  the wipe just withdrew, so keeping them would present withdrawn work as
+   *  registered. */
+  archiveRowsCleared: number;
   txHash: string;
   blockNumber: number;
   explorerUrl: string;
+  links?: ReferenceLink[];
 }
 
 export interface Signal {
@@ -101,6 +122,7 @@ export interface VerifyResult {
     modificationLevel: number;
     pceAtRegistration: number;
     explorerUrl: string;
+  links?: ReferenceLink[];
   } | null;
   derivedFrom: { imageHash: string; hammingDistance: number; matchedBy: string } | null;
   consistency: Record<string, number | boolean | null> | null;
@@ -147,6 +169,21 @@ export const api = {
     const form = new FormData();
     form.append("file", file);
     return call<VerifyResult>("/verify", { method: "POST", body: form });
+  },
+
+  /**
+   * Demo step 2a, and the step the console never had. `registerBody` is a
+   * race -- `bodyId` derives from SHA-256(K), so a leaked reference lets
+   * someone else claim the slot -- which is why it comes before anything else.
+   */
+  registerBody(name: string, ensLabel: string) {
+    const form = new FormData();
+    form.append("name", name);
+    form.append("ens_label", ensLabel);
+    return call<{ bodyId: string; ensName: string; txHash: string; blockNumber: number;
+                  explorerUrl: string; links?: ReferenceLink[] }>(
+      "/register-body", { method: "POST", body: form },
+    );
   },
 
   /**
@@ -251,7 +288,19 @@ export const api = {
     const form = new FormData();
     form.append("file", file);
     form.append("body", body);
-    return call<Record<string, unknown>>("/register-image", { method: "POST", body: form });
+    // Typed rather than `Record<string, unknown>`: the screen renders the
+    // score and the links off this, and an untyped bag hides a rename.
+    return call<{
+      imageHash: string;
+      perceptualHash: string;
+      bodyId: string;
+      pce: number;
+      registeredAt: number;
+      txHash: string;
+      blockNumber: number;
+      explorerUrl: string;
+      links?: ReferenceLink[];
+    }>("/register-image", { method: "POST", body: form });
   },
 
   /**
@@ -271,6 +320,7 @@ export const api = {
       txHash: string;
       blockNumber: number;
       explorerUrl: string;
+  links?: ReferenceLink[];
     }>("/register-session", { method: "POST", body: form });
   },
 

@@ -312,3 +312,45 @@ input.desc.failed { border-color: var(--error); }
   cursor: pointer;
 }
 .reset-also input { margin-top: 0.25rem; flex: 0 0 auto; }
+
+/* --- Step 2a: register the body ------------------------------------------
+   Only drawn when the registry has no record of the enrolled body, which is
+   the state a wipe leaves behind. */
+.body-step {
+  border: 1px solid var(--rule, #333);
+  border-left: 3px solid #6ea86e;
+  padding: 1rem 1.25rem;
+  margin-bottom: 1.25rem;
+}
+.body-step p { margin: 0 0 0.8rem; font-size: 0.85rem; line-height: 1.55; }
+.body-step label { display: block; font-size: 0.75rem; opacity: 0.7; margin-bottom: 0.8rem; }
+.body-step input {
+  display: block;
+  margin-top: 0.3rem;
+  font: inherit;
+  font-size: 0.85rem;
+  padding: 0.35rem 0.5rem;
+  background: transparent;
+  color: inherit;
+  border: 1px solid var(--rule, #333);
+  min-width: 18rem;
+}
+.body-go {
+  font: inherit;
+  font-size: 0.85rem;
+  padding: 0.4rem 0.9rem;
+  background: transparent;
+  color: inherit;
+  border: 1px solid #6ea86e;
+  cursor: pointer;
+}
+.body-go:hover:not(:disabled) { background: rgba(110, 168, 110, 0.12); }
+.body-go:disabled { opacity: 0.5; cursor: default; }
+.body-out { margin-top: 0.6rem; font-size: 0.8rem; }
+.body-out .bad { color: #c05b5b; }
+
+/* Where a claim can be checked by someone who does not trust this console. */
+.refs { list-style: none; margin: 0.6rem 0 0; padding: 0; font-size: 0.78rem; }
+.refs li { padding: 0.15rem 0; }
+.refs a { opacity: 0.8; }
+.refs a:hover { opacity: 1; }

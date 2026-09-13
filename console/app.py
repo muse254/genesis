@@ -134,6 +134,24 @@ async def state() -> dict:
     record("enrolled bodies", len(bodies), f"at least {MIN_BODIES}",
            len(bodies) >= MIN_BODIES, "run /enrol, or check GENESIS_REFERENCES")
 
+    # Enrolled and registered are different states and the console used to
+    # show only the first, which is how a wiped registry led to `registerImage`
+    # reverting `unknown body` with no screen offering the step that fixes it.
+    body_status = []
+    for body_id, body in bodies.items():
+        try:
+            on_chain = chain.body("0x" + body_id) is not None
+        except chain.ChainError:
+            on_chain = False
+        body_status.append({"name": body["name"], "bodyId": "0x" + body_id,
+                            "registered": on_chain})
+    if body_status and not any(b["registered"] for b in body_status):
+        record("body registered", "no", "the body is on chain", False,
+               "register the body on screen 02 -- an image cannot attach to a body "
+               "the registry has never heard of")
+    elif body_status:
+        record("body registered", "yes", "the body is on chain", True)
+
     try:
         subgraph_ok = bool(subgraph.SUBGRAPH_URL)
     except Exception:
@@ -156,6 +174,7 @@ async def state() -> dict:
         "ready": all(c["go"] for c in checks),
         "checks": checks,
         "bodies": [b["name"] for b in bodies.values()],
+        "bodyStatus": body_status,
         "threshold": prnu.PCE_THRESHOLD,
         "chain": status,
         "ensParent": parent or None,

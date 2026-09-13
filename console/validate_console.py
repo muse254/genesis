@@ -193,6 +193,8 @@ def test_register_image_refuses_below_threshold(client, monkeypatch):
 
     monkeypatch.setattr(reg, "_score_against", lambda body, path, progress=None: {"pce": 41.0})
     monkeypatch.setattr(reg.record, "build_record", lambda *a, **k: Weak())
+    # The body is registered on chain; this test is about the threshold.
+    monkeypatch.setattr(chain, "body", lambda body_id: object())
 
     sent = []
     monkeypatch.setattr(reg, "cast_send", lambda args: sent.append(args))
@@ -303,6 +305,8 @@ def test_every_hash_field_is_padded_to_a_word(monkeypatch):
     monkeypatch.setattr(reg, "_score_against", lambda body, path, progress=None: {"pce": 49310.0})
     monkeypatch.setattr(reg.record, "build_record", lambda *a, **k: Built())
     monkeypatch.setattr(reg.prnu, "PCE_THRESHOLD", 100.0)
+    # Registered on chain; this test is about ABI padding.
+    monkeypatch.setattr(chain, "body", lambda body_id: object())
 
     sent: list = []
     monkeypatch.setattr(reg, "cast_send", lambda args: sent.append(args) or {"txHash": "0x"})
@@ -824,3 +828,113 @@ def test_the_scorer_notices_a_reference_disappearing(tmp_path, monkeypatch):
     (tmp_path / "one.npz").unlink()
     # No cache_clear, no restart: the directory changed and that is enough.
     assert len(service._bodies()) == 0
+
+
+def test_register_image_refuses_an_unregistered_body_before_scoring(client, monkeypatch):
+    """Enrolled is not registered, and the difference costs a minute.
+
+    `registerImage` reverts `unknown body` when the id has no record on chain.
+    Reaching that revert means paying for the PRNU scale search first and then
+    being handed hex. Both routes there are ordinary: a fresh enrolment, and a
+    `resetAll` that cleared the chain out from under an existing one.
+    """
+    import io
+
+    from console import registry as registry_module
+
+    scored: list = []
+    monkeypatch.setattr(chain, "REGISTRY", "0x" + "11" * 20)
+    monkeypatch.setattr(chain, "body", lambda body_id: None)
+    monkeypatch.setattr(
+        registry_module, "_score_against",
+        lambda *a, **k: scored.append(a) or {"pce": 1.0, "path": "aligned"},
+    )
+
+    response = client.post(
+        "/register-image",
+        files={"file": ("frame.CR3", io.BytesIO(b"raw"), "application/octet-stream")},
+        data={"body": "synthetic"},
+    )
+    assert response.status_code in (404, 409)
+    if response.status_code == 409:
+        assert "not registered" in response.json()["detail"]
+    # The point of the guard: it refuses before paying for the search.
+    assert scored == []
+
+
+def test_no_user_facing_copy_claims_origin():
+    """The claim `docs/adversarial.md` falsifies, guarded across both frontends.
+
+    `registerImage` checks only that the body's owner sent the transaction, so
+    a registration establishes who claimed an image and when -- **not where
+    the light fell**. `mcp/` has had a test for this since the wording was
+    corrected there; the frontends had none, and the console drifted back to
+    "states where these pixels came from" without anything objecting.
+
+    Source-level because the copy is the product here. A verdict card that
+    overclaims is the failure this repository is most exposed to, and it costs
+    nothing to pin.
+    """
+    import re
+    from pathlib import Path
+
+    forbidden = [
+        r"where .{0,20}pixels came from",
+        r"where the light fell(?!.{0,80}(not|never|does not))",
+        r"exposed on",
+        r"\bAI[- ]free\b",
+        r"verified real",
+        r"proves? (?:it is |the )?authentic",
+    ]
+    roots = [Path("console-ui/src"), Path("verify/src")]
+    offences = []
+    for root in roots:
+        if not root.is_dir():
+            continue
+        for source in sorted(root.rglob("*.ts")):
+            text = source.read_text()
+            for pattern in forbidden:
+                for match in re.finditer(pattern, text, re.IGNORECASE):
+                    line = text[: match.start()].count("\n") + 1
+                    context = text.splitlines()[line - 1].strip()
+                    # A negation is the correct use: the copy is allowed to say
+                    # what the system does *not* claim.
+                    if re.search(r"\b(not|never|does not|nor)\b", context, re.I):
+                        continue
+                    offences.append(f"{source}:{line}: {context[:100]}")
+    assert not offences, "user-facing copy claims origin:\n" + "\n".join(offences)
+
+
+def test_reset_clears_the_archive(client, monkeypatch, tmp_path):
+    """The archive describes the chain, so it cannot outlive a wipe.
+
+    Every row is keyed by an image hash that, after `resetAll`, resolves to
+    nothing. Left alone, screen 06 goes on presenting withdrawn registrations
+    as registered work -- the same shape as the enrolled references, and the
+    same reason it has to go.
+    """
+    from console import catalogue
+    from console import registry as registry_module
+
+    monkeypatch.setattr(catalogue, "CATALOGUE", tmp_path / "catalogue.db")
+    catalogue.record_image(
+        image_hash="0xdead", perceptual_hash="0x00", body_id="0xb", body_name="r10",
+        pce=1895.0, registered_at=1, tx_hash="0xt", block_number=1, session_id=None,
+        file_name="IMG_0217.CR3", file_path="", description="", noted_at=1,
+    )
+    assert len(catalogue.listing()) == 1
+
+    monkeypatch.setattr(chain, "REGISTRY", "0x" + "11" * 20)
+    monkeypatch.setattr(chain, "test_mode", lambda: True)
+    monkeypatch.setattr(chain, "registry_epoch", lambda: 1)
+    monkeypatch.setattr(
+        registry_module, "cast_send",
+        lambda args: {"txHash": "0xabc", "blockNumber": 1, "explorerUrl": "u"},
+    )
+
+    response = client.post(
+        "/reset", data={"confirm": "0x" + "11" * 20, "clear_enrolments": "false"}
+    )
+    assert response.status_code == 200
+    assert response.json()["archiveRowsCleared"] == 1
+    assert catalogue.listing() == []

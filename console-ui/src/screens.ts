@@ -9,7 +9,14 @@
  * typical figure and no fake sub-steps (`docs/console-server.md`).
  */
 
-import { api, type Check, type ConfidentialScore, type State, type VerifyResult } from "./api";
+import {
+  api,
+  type Check,
+  type ConfidentialScore,
+  type ReferenceLink,
+  type State,
+  type VerifyResult,
+} from "./api";
 import { el, escape, rail, stageStrip, verdictCard } from "./components";
 
 type Render = (host: HTMLElement) => void;
@@ -230,6 +237,13 @@ function drawReset(host: HTMLElement, state: State): void {
             ? `<br>Cleared ${escape(result.enrolmentsCleared.join(", "))} — enrol again to continue.`
             : ""
         }
+        ${
+          result.archiveRowsCleared
+            ? `<br>Archive emptied: ${escape(result.archiveRowsCleared)} ${
+                result.archiveRowsCleared === 1 ? "record" : "records"
+              } described registrations the wipe withdrew.`
+            : ""
+        }
         <br>The index follows within a block or two. Nothing is registered now.`;
       // Updated in place rather than by redrawing the panel: a redraw would
       // replace this element and take the transaction hash with it, which is
@@ -262,8 +276,9 @@ function drawReset(host: HTMLElement, state: State): void {
 export const confidential: Render = (host) => {
   host.innerHTML = `
     <h1 class="title">Scored where nobody holds K</h1>
-    <p class="lede">The reference never leaves the enclave. Only a residual crop goes in,
-       and only a score comes out. RAW only — a developed JPEG has no lattice left.</p>
+    <p class="lede">The reference is never sent and never published — only a residual
+       crop is scored against it, and only a score comes back. RAW only: a developed
+       JPEG has no photosite lattice left.</p>
     <div class="two-col"><div class="left"></div><div class="right result-area"></div></div>`;
   host.querySelector(".title")!.append(clearButton(host, confidential));
 
@@ -355,6 +370,83 @@ function confidentialCard(r: ConfidentialScore): string {
          fingerprint faithfully and sign it — confidential compute protects the reference
          from the verifier, and the attack happens before the pixels arrive.</p>
     </div>`;
+}
+
+/**
+ * The places a claim can be checked by someone who does not trust this
+ * console. `docs/claims.md` says a registration is verifiable by anyone
+ * against the registry without taking our word for it, and a claim nobody is
+ * shown how to check is a claim taken on trust.
+ *
+ * Server-assembled: the console knows the addresses, and a second copy in the
+ * frontend is a second thing to keep in step with a redeployment.
+ */
+function referenceLinks(links?: ReferenceLink[]): string {
+  if (!links?.length) return "";
+  const items = links
+    .map(
+      (link) =>
+        `<li><a href="${escape(link.url)}" target="_blank" rel="noreferrer">${escape(
+          link.label,
+        )}</a></li>`,
+    )
+    .join("");
+  return `<ul class="refs">${items}</ul>`;
+}
+
+/**
+ * Register the enrolled body, when the registry has no record of it.
+ *
+ * Drawn only when it is needed: once the body is on chain this is noise, and
+ * the screen is about photographs. `registerBody` is a race -- `bodyId`
+ * derives from SHA-256(K), so anyone holding a leaked reference can claim the
+ * slot and lock the photographer out permanently -- which is why it comes
+ * before anything else rather than being offered as an afterthought.
+ */
+async function drawBodyStep(host: HTMLElement, ledger: HTMLElement): Promise<void> {
+  const state = await api.state().catch(() => null);
+  const pending = state?.bodyStatus?.find((b) => !b.registered);
+  if (!pending) return;
+
+  const panel = el(`
+    <div class="body-step">
+      <p><b>${escape(pending.name)}</b> is enrolled on this machine and the registry has
+         no record of it. A photograph cannot attach to a body the chain has never heard
+         of, so this comes first.</p>
+      <label>ENS label
+        <input class="ens-label" value="${escape(pending.name)}" spellcheck="false" />
+      </label>
+      <button class="body-go">Register this body</button>
+      <div class="body-out"></div>
+    </div>`);
+  ledger.prepend(panel);
+
+  const button = panel.querySelector(".body-go") as HTMLButtonElement;
+  const out = panel.querySelector(".body-out") as HTMLElement;
+
+  button.addEventListener("click", async () => {
+    const label = (panel.querySelector(".ens-label") as HTMLInputElement).value.trim();
+    if (!label) {
+      out.innerHTML = `<span class="bad">The ENS label cannot be empty.</span>`;
+      return;
+    }
+    button.disabled = true;
+    button.textContent = "registering…";
+    try {
+      const receipt = await api.registerBody(pending.name, label);
+      panel.innerHTML = `
+        <p><b>${escape(pending.name)}</b> registered as
+           <span class="mono">${escape(receipt.ensName)}</span>, block
+           ${escape(receipt.blockNumber)}.</p>
+        <p class="mono txlink"><a href="${escape(receipt.explorerUrl)}" target="_blank"
+           rel="noreferrer">view transaction ↗</a></p>
+        ${referenceLinks(receipt.links)}`;
+    } catch (error) {
+      out.innerHTML = `<span class="bad">${escape((error as Error).message)}</span>`;
+      button.disabled = false;
+      button.textContent = "Register this body";
+    }
+  });
 }
 
 /** 00 · Pre-flight. The go/no-go gate, checked before recording starts. */
@@ -553,6 +645,11 @@ export const register: Render = (host) => {
   const ledger = host.querySelector(".ledger-area")!;
   host.querySelector(".title")!.append(clearButton(host, register));
 
+  // Step 2a, and the step this console never had. Without it a wiped registry
+  // left no way to put the body back, and `registerImage` reverted
+  // `unknown body` with nothing on screen offering the fix.
+  void drawBodyStep(host, ledger as HTMLElement);
+
   // Multi-select is the bulk path: one file registers an ImageRecord, many
   // commit one session root. The contract has both because they answer
   // different questions -- see `/register-session`.
@@ -593,7 +690,8 @@ export const register: Render = (host) => {
           : ""
       }
       <p class="mono txlink"><a href="${escape(session.explorerUrl)}" target="_blank"
-         rel="noreferrer">view transaction ↗</a></p>`;
+         rel="noreferrer">view transaction ↗</a></p>
+      ${referenceLinks(session.links)}`;
     } catch (error) {
       ledger.innerHTML = "";
       ledger.append(failure("SESSION FAILED", (error as Error).message,
@@ -630,7 +728,8 @@ export const register: Render = (host) => {
           <li>included in block ${escape(receipt.blockNumber)}</li>
         </ol>
         <p class="mono txlink"><a href="${escape(receipt.explorerUrl)}" target="_blank"
-           rel="noreferrer">view transaction ↗</a></p>`;
+           rel="noreferrer">view transaction ↗</a></p>
+        ${referenceLinks(receipt.links)}`;
 
         // Read it back the way a verifier would, rather than trusting the
         // receipt. If the chain does not agree, the demo should show that.
