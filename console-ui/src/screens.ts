@@ -794,12 +794,28 @@ export const register: Render = (host) => {
         return;
       }
 
+      // Both lines used to be drawn at once, with "signing and broadcasting"
+      // pulsing for the whole call -- so the screen named the fast step while
+      // it was doing the slow one. Registering runs the full PRNU scale
+      // search first, which is tens of seconds on a RAW, and an operator
+      // watching "broadcasting" pulse for a minute reasonably concludes the
+      // chain has swallowed their transaction.
       ledger.innerHTML = `<ol class="ledger">
-        <li>scoring against <b>${escape(bodyName)}</b></li>
-        <li class="pulse">signing and broadcasting</li></ol>`;
+        <li class="pulse">scoring against <b>${escape(bodyName)}</b>
+          <small class="hint">the slow part — a full scale and orientation
+          search over the frame</small></li>
+        <li class="waiting">then signing and broadcasting</li></ol>
+        <p class="elapsed mono"></p>`;
+
+      const clock = ledger.querySelector(".elapsed") as HTMLElement | null;
+      const startedAt = Date.now();
+      const ticking = setInterval(() => {
+        if (clock) clock.textContent = `${((Date.now() - startedAt) / 1000).toFixed(1)}s elapsed`;
+      }, 100);
 
       try {
         const receipt = await api.registerImage(file, bodyName);
+        clearInterval(ticking);
         ledger.innerHTML = `<ol class="ledger">
           <li>scored — PCE ${Number(receipt.pce).toLocaleString()}</li>
           <li>signed by the body's owner</li>
@@ -813,6 +829,7 @@ export const register: Render = (host) => {
         // receipt. If the chain does not agree, the demo should show that.
         await scored(host, file);
       } catch (error) {
+        clearInterval(ticking);
         ledger.innerHTML = "";
         const message = (error as Error).message;
         ledger.append(

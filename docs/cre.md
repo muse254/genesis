@@ -149,6 +149,31 @@ that showed the first and described the third would be the same drift
 - **A run takes about 16 seconds**, nearly all of it compiling TypeScript to
   WASM. The correlation itself is milliseconds.
 
+## Capturing evidence for a submission
+
+```bash
+cre/capture-evidence.sh <frame.CR3> [out.log]
+```
+
+Builds the payload from a real frame against whatever body is enrolled, runs
+the confidential workflow in the CRE simulator, and writes the transcript.
+
+What the transcript carries: the TEE constraint the CLI resolved (AWS Nitro,
+us-west-2), the binary and config hashes, the enforced simulation limits, and
+the returned score. Measured on IMG_0217 against a ten-frame enrolment:
+`pceMillis: 2407533` — PCE 2,407.5 at 256² — with the payload digest beside
+it.
+
+What it does not carry is K. The cropped reference goes into a gitignored
+`.env` for the length of the run and is removed after, and the script refuses
+to keep a transcript that looks like it contains key material. That check runs
+in Python rather than grep, because BSD grep rejects `{400,}` in an ERE and
+exits non-zero — which made an earlier version read as "clean" while checking
+nothing.
+
+The CLI's own warning that the simulator is not a real TEE is kept in the
+output on purpose. It is the most important line in the file.
+
 ## Driving it from the console
 
 Screen **07 CONFIDENTIAL** in the presenter console. Drop a RAW frame, and it

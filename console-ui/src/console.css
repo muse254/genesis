@@ -447,3 +447,9 @@ input.desc.failed { border-color: var(--error); }
    points at -- a fleet parent is not the body's own name, and the index is
    not an authority. */
 .hint { color: var(--tertiary); font-size: 11.5px; }
+
+/* A step that has not started yet. Dimmed rather than hidden, so the operator
+   can see what is coming and that it is not what is running now. */
+.ledger .waiting { color: var(--tertiary); }
+.ledger .hint { display: block; margin-top: 2px; }
+.ledger + .elapsed { color: var(--tertiary); font-size: 11.5px; margin: 8px 0 0; }
