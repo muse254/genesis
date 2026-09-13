@@ -702,3 +702,47 @@ def test_a_missing_serial_does_not_block_enrolment(monkeypatch):
 
     monkeypatch.setattr("subprocess.run", lambda *a, **k: Done())
     assert _serials_disagree([Path("a.DNG"), Path("b.CR3")]) == {}
+
+
+def test_reset_refuses_a_production_registry(client, monkeypatch):
+    """The gate is the contract's answer, not a local flag.
+
+    A console that trusted configuration could offer a wipe against a registry
+    that has no wipe, and the failure would arrive as an unexplained revert
+    mid-demo. Worse, it could hide the control on a registry that does.
+    """
+    monkeypatch.setattr(chain, "REGISTRY", "0x" + "11" * 20)
+    monkeypatch.setattr(chain, "test_mode", lambda: False)
+
+    response = client.post("/reset", data={"confirm": "0x" + "11" * 20})
+    assert response.status_code == 409
+    assert "not a test registry" in response.json()["detail"]
+
+
+def test_reset_requires_the_registry_address_as_confirmation(client, monkeypatch):
+    """The mistake worth preventing is wiping the wrong registry."""
+    monkeypatch.setattr(chain, "REGISTRY", "0x" + "11" * 20)
+    monkeypatch.setattr(chain, "test_mode", lambda: True)
+
+    response = client.post("/reset", data={"confirm": "yes"})
+    assert response.status_code == 422
+    assert "0x" + "11" * 20 in response.json()["detail"]
+
+
+def test_reset_sends_one_transaction_when_confirmed(client, monkeypatch):
+    from console import registry as registry_module
+
+    sent: list = []
+    monkeypatch.setattr(chain, "REGISTRY", "0x" + "11" * 20)
+    monkeypatch.setattr(chain, "test_mode", lambda: True)
+    monkeypatch.setattr(chain, "registry_epoch", lambda: 7)
+    monkeypatch.setattr(
+        registry_module,
+        "cast_send",
+        lambda args: sent.append(args) or {"txHash": "0xabc", "blockNumber": 1, "explorerUrl": "u"},
+    )
+
+    response = client.post("/reset", data={"confirm": "0x" + "11" * 20})
+    assert response.status_code == 200
+    assert sent == [["resetAll()"]]
+    assert response.json()["epochAfter"] == 7

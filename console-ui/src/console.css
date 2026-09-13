@@ -210,3 +210,52 @@ input.desc.failed { border-color: var(--error); }
 
 .verdict .diagnosis { margin: 0; padding: 12px 18px; border-top: 1px solid var(--hairline);
                       background: var(--panel); font-size: 12.5px; line-height: 1.55; }
+
+/* --- Test-registry reset -------------------------------------------------
+   Deliberately not styled as a primary action. It destroys work, it only
+   exists on a testnet, and it should read as a tool rather than a step. */
+.reset {
+  margin-top: 2rem;
+  padding: 1rem 1.25rem;
+  border: 1px solid var(--rule, #333);
+  border-left: 3px solid #c2762b;
+  max-width: 62ch;
+}
+.reset-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 0.5rem;
+}
+.reset p {
+  margin: 0 0 0.85rem;
+  font-size: 0.85rem;
+  line-height: 1.5;
+  opacity: 0.75;
+}
+.reset-go {
+  font: inherit;
+  font-size: 0.85rem;
+  padding: 0.4rem 0.9rem;
+  background: transparent;
+  color: inherit;
+  border: 1px solid #c2762b;
+  cursor: pointer;
+}
+.reset-go:hover:not(:disabled) { background: rgba(194, 118, 43, 0.12); }
+.reset-go:disabled { opacity: 0.5; cursor: default; }
+/* Armed is the only state that looks like a warning, because it is the only
+   state one more click destroys something from. */
+.reset-go.armed {
+  background: #c2762b;
+  color: #111;
+  border-color: #c2762b;
+}
+.reset-out {
+  margin-top: 0.7rem;
+  font-size: 0.8rem;
+  line-height: 1.5;
+  min-height: 1.2em;
+}
+.reset-out .ok { color: #6ea86e; }
+.reset-out .bad { color: #c05b5b; }

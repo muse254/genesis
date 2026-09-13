@@ -33,6 +33,20 @@ about what the commit data means.
 """
 type CommitLog @entity(immutable: true) {
   id: Bytes!
+  """
+  The registry epoch this commit was made in.
+
+  Commits are events, and a reset cannot unhappen an event -- on chain the
+  `Commit` log stays forever too, while the queryable `commitLogs` mapping is
+  epoch-scoped and cleared. So these entities survive a reset by design, and
+  carry the epoch rather than being deleted. Filter on it to see only the
+  current registry: `commitLogs(where: { epoch: ... })`.
+
+  They are also `immutable`, which is what makes deleting them impossible
+  rather than merely wrong: `store.remove` on an immutable entity is a no-op,
+  so a handler that tried would silently do nothing.
+  """
+  epoch: BigInt!
   recorder: Bytes!
   assetCid: String!
   commitData: String!
@@ -66,6 +80,5 @@ type RegistryState @entity {
   bodyIds: [Bytes!]!
   imageIds: [Bytes!]!
   sessionIds: [Bytes!]!
-  commitIds: [Bytes!]!
   lastResetAt: BigInt
 }

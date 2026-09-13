@@ -54,10 +54,13 @@ def _rpc(method: str, params: list, timeout: float = 15.0):
     return payload["result"]
 
 
-def _call(signature: str, argument: str) -> bytes:
+def _call(signature: str, argument: str = "") -> bytes:
+    """One `eth_call`. `argument` is a single bytes32-shaped word, or nothing
+    for a no-argument getter like `testMode()`."""
     if not REGISTRY:
         raise ChainError("REGISTRY_ADDRESS is not set")
-    data = "0x" + _selector(signature) + argument.removeprefix("0x").rjust(64, "0")
+    encoded = argument.removeprefix("0x").rjust(64, "0") if argument else ""
+    data = "0x" + _selector(signature) + encoded
     return bytes.fromhex(_rpc("eth_call", [{"to": REGISTRY, "data": data}, "latest"])[2:])
 
 
@@ -122,6 +125,30 @@ def body(body_id: str) -> BodyRecord | None:
         ens_node="0x" + _word(raw, 2).hex(),
         revoked=bool(_uint(raw, 3)),
     )
+
+
+def test_mode() -> bool:
+    """`testMode()`. True on a registry whose records can be wiped.
+
+    Read from the contract rather than from configuration, because it is the
+    contract's answer that matters: a console that believed a `.env` flag
+    could offer a reset button on a registry that has no reset, or hide one
+    that does.
+    """
+    try:
+        raw = _call("testMode()")
+    except Exception:
+        return False  # a registry predating the flag cannot be reset
+    return bool(_uint(raw, 0)) if len(raw) >= 32 else False
+
+
+def registry_epoch() -> int:
+    """`epoch()`. Bumped by every reset; 0 on a registry never wiped."""
+    try:
+        raw = _call("epoch()")
+    except Exception:
+        return 0
+    return _uint(raw, 0) if len(raw) >= 32 else 0
 
 
 def status() -> dict:

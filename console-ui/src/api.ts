@@ -28,6 +28,21 @@ export interface State {
   threshold: number;
   chain: { chainId?: number; blockNumber?: number; registry?: string | null };
   ensParent: string | null;
+  /**
+   * Whether this registry can be wiped, read from the contract's own
+   * `testMode()` rather than from configuration. The reset control is drawn
+   * only when it is true, so a production registry simply has no button.
+   */
+  registry?: { resettable: boolean; epoch: number };
+}
+
+export interface ResetResult {
+  registry: string;
+  epochBefore: number;
+  epochAfter: number;
+  txHash: string;
+  blockNumber: number;
+  explorerUrl: string;
 }
 
 export interface Signal {
@@ -89,6 +104,20 @@ async function call<T>(path: string, init?: RequestInit): Promise<T> {
 
 export const api = {
   state: () => call<State>("/state"),
+
+  /**
+   * Wipe the registry so the demo can be run again. Testnet only; the server
+   * re-reads `testMode()` and refuses on a registry that has no reset, so a
+   * stale frontend cannot spend gas on a transaction that would revert.
+   *
+   * `confirm` is the registry address, which the server checks. It is not
+   * ceremony: this is the one control in the console that destroys work.
+   */
+  reset(registryAddress: string) {
+    const form = new FormData();
+    form.append("confirm", registryAddress);
+    return call<ResetResult>("/reset", { method: "POST", body: form });
+  },
 
   verify(file: File) {
     const form = new FormData();

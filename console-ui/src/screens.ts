@@ -139,13 +139,102 @@ function failure(heading: string, detail: string, standing: string): HTMLElement
     </div>`);
 }
 
+/**
+ * The reset control, drawn only on a registry that says it can be wiped.
+ *
+ * `bodyId` derives from SHA-256(K), so the same camera always reaches the same
+ * id and `registerBody` refuses a duplicate forever. Rehearsing the demo twice
+ * used to mean redeploying; this is the button that replaces that.
+ *
+ * Two-step on purpose. It is the only control in the console that destroys
+ * work, and the second step shows the registry address because the mistake
+ * worth preventing is wiping the wrong one -- not wiping at all.
+ */
+function drawReset(host: HTMLElement, state: State): void {
+  const zone = host.querySelector(".reset-zone") as HTMLElement | null;
+  if (!zone) return;
+
+  if (!state.registry?.resettable) {
+    // A production registry has no reset, so it gets no button and no
+    // explanation of one. Silence is the correct UI for a missing capability.
+    zone.innerHTML = "";
+    return;
+  }
+
+  const address = state.chain.registry ?? "";
+  const epoch = state.registry.epoch;
+  zone.innerHTML = `
+    <div class="reset">
+      <div class="reset-head">
+        <b>Test registry</b>
+        <span class="mono">epoch ${epoch}</span>
+      </div>
+      <p>This deployment can be wiped, which is how the demo is rehearsed more
+         than once. Registration dates here mean nothing and the verify page
+         says so. A production registry has no such control.</p>
+      <button class="reset-go">Wipe every record</button>
+      <div class="reset-out"></div>
+    </div>`;
+
+  const button = zone.querySelector(".reset-go") as HTMLButtonElement;
+  const out = zone.querySelector(".reset-out") as HTMLElement;
+  let armed = false;
+
+  button.addEventListener("click", async () => {
+    if (!armed) {
+      armed = true;
+      button.textContent = `Confirm — wipe ${address.slice(0, 10)}…`;
+      button.classList.add("armed");
+      out.textContent = "Click again to send the transaction. Anything else cancels.";
+      // Disarming on a click elsewhere means a stray press cannot destroy a
+      // registry two seconds before recording.
+      setTimeout(() => {
+        document.addEventListener(
+          "click",
+          () => {
+            if (!armed) return;
+            armed = false;
+            button.textContent = "Wipe every record";
+            button.classList.remove("armed");
+            out.textContent = "";
+          },
+          { once: true },
+        );
+      }, 0);
+      return;
+    }
+
+    armed = false;
+    button.disabled = true;
+    button.textContent = "wiping…";
+    button.classList.remove("armed");
+    try {
+      const result = await api.reset(address);
+      out.innerHTML = `<span class="ok">Wiped.</span> epoch ${result.epochBefore} → ${result.epochAfter} ·
+        <a href="${escape(result.explorerUrl)}" target="_blank" rel="noreferrer">${escape(result.txHash.slice(0, 12))}…</a>
+        <br>The index follows within a block or two. Nothing is registered now.`;
+      // Updated in place rather than by redrawing the panel: a redraw would
+      // replace this element and take the transaction hash with it, which is
+      // the one thing the operator may need after a destructive action.
+      const label = zone.querySelector(".reset-head .mono");
+      if (label) label.textContent = `epoch ${result.epochAfter}`;
+    } catch (error) {
+      out.innerHTML = `<span class="bad">${escape((error as Error).message)}</span>`;
+    } finally {
+      button.disabled = false;
+      button.textContent = "Wipe every record";
+    }
+  });
+}
+
 /** 00 · Pre-flight. The go/no-go gate, checked before recording starts. */
 export const preflight: Render = (host) => {
   host.innerHTML = `
     <h1 class="title">Pre-flight</h1>
     <p class="lede">Every one of these can fail on camera. Checked now, not during.
        Press <b>P</b> to re-run.</p>
-    <div class="preflight"><div class="table">loading…</div><div class="gate"></div></div>`;
+    <div class="preflight"><div class="table">loading…</div><div class="gate"></div></div>
+    <div class="reset-zone"></div>`;
 
   const draw = (state: State) => {
     const rows = state.checks
@@ -166,6 +255,8 @@ export const preflight: Render = (host) => {
         <thead><tr><th>CHECK</th><th>MEASURED</th><th>EXPECTED</th><th>GO</th></tr></thead>
         <tbody>${rows}</tbody>
       </table>`;
+
+    drawReset(host, state);
 
     const failing = state.checks.filter((c) => !c.go);
     host.querySelector(".gate")!.innerHTML = state.ready

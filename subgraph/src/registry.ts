@@ -43,7 +43,6 @@ function state(): RegistryState {
     s.bodyIds = [];
     s.imageIds = [];
     s.sessionIds = [];
-    s.commitIds = [];
   }
   return s as RegistryState;
 }
@@ -72,8 +71,9 @@ export function handleRegistryReset(event: RegistryReset): void {
   for (let i = 0; i < images.length; i++) store.remove("Image", images[i].toHexString());
   let sessions = s.sessionIds;
   for (let i = 0; i < sessions.length; i++) store.remove("Session", sessions[i].toHexString());
-  let commits = s.commitIds;
-  for (let i = 0; i < commits.length; i++) store.remove("CommitLog", commits[i].toHexString());
+  // CommitLog is deliberately NOT cleared. It records events, a reset cannot
+  // unhappen an event, and the entity is immutable so `store.remove` would be
+  // a silent no-op anyway. They carry `epoch` instead.
 
   s.epoch = event.params.newEpoch;
   s.resettable = true;
@@ -81,7 +81,6 @@ export function handleRegistryReset(event: RegistryReset): void {
   s.bodyIds = [];
   s.imageIds = [];
   s.sessionIds = [];
-  s.commitIds = [];
   s.save();
 }
 
@@ -170,11 +169,8 @@ export function handleCommit(event: Commit): void {
   // indexer following only the standard sees the same log we do, without
   // inheriting our opinion about what the commit data means.
   let id = event.transaction.hash.concatI32(event.logIndex.toI32());
-  let s = state();
-  s.commitIds = track(s.commitIds, id);
-  s.save();
-
   let log = new CommitLog(id);
+  log.epoch = state().epoch;
   log.recorder = event.params.recorder;
   log.assetCid = event.params.assetCid;
   log.commitData = event.params.commitData;

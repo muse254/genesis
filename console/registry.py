@@ -412,3 +412,54 @@ async def register_session(
     finally:
         for path in written:
             path.unlink(missing_ok=True)
+
+
+@router.post("/reset")
+async def reset_registry(confirm: str = Form(...)) -> dict:
+    """Wipe every record, so the demo can be run again.
+
+    `bodyId` derives from `SHA-256(K)`, so the same camera always reaches the
+    same id and `registerBody` refuses a duplicate forever. That refusal is
+    correct -- it is what stops someone claiming a body out from under its
+    owner -- and it is also why rehearsing twice needed a fresh deployment
+    until now.
+
+    **Gated on the contract, not on configuration.** `testMode()` is read from
+    the registry itself: a console that trusted a local flag could offer this
+    against a registry that has no reset, and the failure would arrive as an
+    unexplained revert mid-demo. A production registry answers false here and
+    this endpoint refuses before it spends anything.
+
+    `confirm` must be the registry address. Not ceremony: this is the one
+    button in the console that destroys work, and the operator should have to
+    look at which registry they are pointed at before pressing it.
+    """
+    if not chain.REGISTRY:
+        raise HTTPException(503, "REGISTRY_ADDRESS is not set")
+
+    if not chain.test_mode():
+        raise HTTPException(
+            409,
+            f"{chain.REGISTRY} is not a test registry -- `testMode()` is false, so it "
+            "has no reset. This is what a production deployment looks like.",
+        )
+
+    if confirm.strip().lower() != chain.REGISTRY.strip().lower():
+        raise HTTPException(
+            422,
+            "confirm must be the registry address you are about to wipe, "
+            f"which is {chain.REGISTRY}",
+        )
+
+    before = chain.registry_epoch()
+    receipt = cast_send(["resetAll()"])
+
+    # The scorer caches enrolled bodies and the console caches nothing from
+    # chain, so there is no local state to invalidate -- the next read simply
+    # finds a zeroed struct, exactly as it would for a body nobody registered.
+    return {
+        "registry": chain.REGISTRY,
+        "epochBefore": before,
+        "epochAfter": chain.registry_epoch(),
+        **receipt,
+    }

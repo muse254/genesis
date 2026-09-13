@@ -166,7 +166,7 @@ false-positive rate, and a second enrolment so the test runs both ways.
       re-run does not
 - [x] `graph test` — 5 matchstick tests still green after the deployment
 - [x] Deployed to Subgraph Studio, 8 September 2026 — `genesis` v0.0.1,
-      queries at `api.studio.thegraph.com/query/1758974/genesis/v0.0.3`.
+      queries at `api.studio.thegraph.com/query/1758974/genesis/v0.0.4`.
       Synced past the registration blocks with `hasIndexingErrors: false`,
       and the body and image read back with the same owner, commitment and
       PCE the chain returns directly

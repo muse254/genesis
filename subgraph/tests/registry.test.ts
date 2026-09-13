@@ -127,6 +127,23 @@ function sessionCommitted(): SessionCommitted {
   return event;
 }
 
+function commitFor(image: Bytes): Commit {
+  let event = changetype<Commit>(newMockEvent());
+  event.address = REGISTRY;
+  event.parameters = [
+    new ethereum.EventParam(
+      "recorder",
+      ethereum.Value.fromAddress(Address.fromString("0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266")),
+    ),
+    new ethereum.EventParam(
+      "assetCid",
+      ethereum.Value.fromString("genesis:" + image.toHexString().slice(2)),
+    ),
+    new ethereum.EventParam("commitData", ethereum.Value.fromString("")),
+  ];
+  return event;
+}
+
 function registryReset(newEpoch: i32): RegistryReset {
   let event = changetype<RegistryReset>(newMockEvent());
   event.address = REGISTRY;
@@ -247,6 +264,24 @@ describe("Registry mappings", () => {
     assert.entityCount("Image", 0);
     assert.entityCount("Session", 0);
     assert.fieldEquals("RegistryState", "genesis", "epoch", "1");
+  });
+
+  test("commits survive a reset, stamped with the epoch they happened in", () => {
+    mockBody();
+    mockImage(IMAGE, ZERO, 0);
+    handleBodyRegistered(bodyRegistered());
+    handleImageRegistered(imageRegistered(IMAGE));
+    handleCommit(commitFor(IMAGE));
+    assert.entityCount("CommitLog", 1);
+
+    handleRegistryReset(registryReset(1));
+
+    // A reset cannot unhappen an event. On chain the `Commit` log is permanent
+    // too -- it is the queryable mapping that is epoch-scoped and cleared --
+    // and the entity is immutable, so deleting it is not merely wrong but
+    // impossible: `store.remove` would be a silent no-op.
+    assert.entityCount("CommitLog", 1);
+    assert.entityCount("Image", 0);
   });
 
   test("a registry that has been reset once says so forever", () => {

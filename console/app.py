@@ -143,6 +143,15 @@ async def state() -> dict:
            "set GENESIS_SUBGRAPH_URL; without it a degraded copy cannot find "
            "its original and step 4 falls back to fingerprint-only")
 
+    # Asked of the contract, not of configuration: the console must not offer
+    # a reset button against a registry that has no reset, nor hide one that
+    # does. A production registry answers false and the button never appears.
+    try:
+        resettable = chain.test_mode()
+        epoch = chain.registry_epoch()
+    except Exception:
+        resettable, epoch = False, 0
+
     return {
         "ready": all(c["go"] for c in checks),
         "checks": checks,
@@ -150,6 +159,7 @@ async def state() -> dict:
         "threshold": prnu.PCE_THRESHOLD,
         "chain": status,
         "ensParent": parent or None,
+        "registry": {"resettable": resettable, "epoch": epoch},
     }
 
 
