@@ -6,7 +6,7 @@ run start to finish. Ticked items were verified on 7 September 2026.
 ## Works today
 
 - [x] `demo` passes on the synthetic sensor — `python3 fingerprint/fingerprint.py demo`
-- [x] `pytest` — 32 tests; `forge test` — 12; `npm test` — 6 in `mcp/`, 8 in `identity/`
+- [x] `pytest` — 133; `forge test` — 21; `graph test` — 9; `npm test` — 6 in `mcp/`, 8 in `identity/`. **177 in total**
 - [x] Flow A on real CR3: 16 frames enrolled, `.npz` written, commitment printed
 - [x] Flow C upper branch, offline: 13/13 held-out frames MATCH via the CLI,
       PCE 1,895 to 56,255, exit 0
@@ -150,7 +150,7 @@ false-positive rate, and a second enrolment so the test runs both ways.
       from storage
 - [x] Address and `startBlock` filled: `0xd1bbDB8A6BfD25563d2e6444fA41E4C5230Ed3C9`, block 11694580
 - [x] All four entity types populated from live Sepolia. Re-checked against
-      the new registry on 13 September 2026, `genesis` v0.0.2: `Body` (with the
+      the new registry on 13 September 2026, `genesis` v0.0.4: `Body` (with the
       correct namehash in `ensNode`), `Image` x2, `Session` (root and
       frameCount 2) and the ERC-7053 `CommitLog`, `hasIndexingErrors: false`.
       Four of the five handlers are therefore exercised against real events
@@ -165,7 +165,7 @@ false-positive rate, and a second enrolment so the test runs both ways.
       repo — they show nothing secret, but neither do they prove anything a
       re-run does not
 - [x] `graph test` — 5 matchstick tests still green after the deployment
-- [x] Deployed to Subgraph Studio, 8 September 2026 — `genesis` v0.0.1,
+- [x] Deployed to Subgraph Studio, 8 September 2026 — `genesis` v0.0.1, now v0.0.4,
       queries at `api.studio.thegraph.com/query/1758974/genesis/v0.0.4`.
       Synced past the registration blocks with `hasIndexingErrors: false`,
       and the body and image read back with the same owner, commitment and
@@ -211,9 +211,10 @@ false-positive rate, and a second enrolment so the test runs both ways.
       "Registered by the owner of body X" and states the two claims from
       `docs/claims.md`. A test fails if "exposed on" returns
 
-**10. Chainlink CRE — built, on simulation.** `cre/`, 10 tests. Deployment
-still waits on private-beta enrolment, so the demo runs on simulation and
-treats deployment as a bonus, exactly as planned.
+**10. Chainlink CRE — built, on simulation.** `cre/`, 10 tests, driven from
+console screen 07. Chainlink's criteria accept **either** a Confidential
+Workflow simulation via the CLI **or** a live deployment, so the private-beta
+gate blocks deployment and blocks nothing about the submission.
 
 What it would buy, precisely: `scoring/app.py` is the trust hole by design —
 it holds K and you take its word for a score. A confidential workflow makes
@@ -246,6 +247,20 @@ frame in the corpus falls into the null. `docs/cre.md` has the table.
 - [x] The size question, measured: a ~1 MB reference was the wrong figure. It
       is 89 MB, `WASMSecretsSizeLimit` is 1mb, and **Confidential HTTP is not
       the fallback** — 125 kb request, 500 kb response. K is cropped instead
+- [x] **Wired into the console**, screen 07, with the elapsed time and the
+      crop size reported beside the score. ~17s a run and deterministic:
+      17.8s, 16.1s, 16.2s on three consecutive runs, same PCE each time
+- [x] **Evidence for a submission** — `cre/capture-evidence.sh <frame>` writes
+      the transcript: the TEE constraint resolved (AWS Nitro, us-west-2), the
+      binary and config hashes, the enforced limits and the score. It refuses
+      to keep a transcript that looks like it contains key material, and it
+      keeps the CLI's own "not a real TEE" warning, which is the most
+      important line in the file
+- [x] The auth trap, measured: with `~/.cre/cre.yaml` moved aside, `simulate`
+      refuses before doing any work. That token lasts 900 seconds and is
+      refreshed on use — fine at a terminal, a liability on camera, because an
+      expired one sends `cre login` to a browser. **`CRE_API_KEY` does not
+      expire and is not yet set**
 - [ ] `CRE_WORKFLOW_OWNER` — `cre account list-key` still reports no linked
       owners. `link-key` broadcasts a transaction and needs gas the deployer
       does not have. Only read on deploy; simulation runs without it

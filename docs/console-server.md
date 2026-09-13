@@ -60,6 +60,55 @@ the record with `ingest/record.py`, calls `registerImage` and then `commit()`
 for the ERC-7053 log. `msg.sender` is the owner, and that owner check is the
 system's only real boundary — so this endpoint signs, and no other one does.
 
+### `POST /register-image/stream` — step 2b, watched
+
+Same work, returned as a job id with progress on
+`GET /register-image/{id}/events`. Every phase is an event carrying a UTC
+timestamp and an elapsed figure, stamped by `jobs.Job.emit` so no caller has
+to remember to:
+
+```
+reading · scoring (with the search's own "n of 21") · building the record ·
+signing · broadcasting · receipt
+```
+
+It exists because the blocking form says nothing between the upload and the
+receipt, and the wait is not where anyone assumes. Registering runs the full
+PRNU scale and orientation search first — tens of seconds on an unfamiliar
+frame — and the transaction at the end is seconds. The screen used to draw
+"signing and broadcasting" for the whole call, which named the fast step while
+running the slow one and taught operators to distrust a chain that was not the
+problem.
+
+Measured on one registration: scoring 3.0s, broadcasting 19.6s. Which half is
+slow varies per run, and that is exactly why it is reported rather than
+guessed.
+
+### `POST /score-confidential` — screen 07
+
+Scores a RAW frame where nobody holds K, through `cre/backend.py`. Returns the
+score, the elapsed seconds, the crop size, the payload digest, and `attested`
+— which is **false** on every path available today, because the CRE simulator
+is not a real enclave. `docs/cre.md` is the honest reading.
+
+RAW only. The confidential path correlates on the photosite lattice, and the
+scale search that rescues a developed JPEG needs the whole 89 MB reference,
+which is the thing that does not fit an enclave.
+
+### `POST /reset` — testnet only
+
+Wipes the registry, the enrolled references and the archive, so the demo can
+be rehearsed without redeploying. Gated on the contract's own `testMode()`
+rather than on configuration: a console that trusted a local flag could offer
+a wipe against a registry that has no wipe, and the failure would arrive as an
+unexplained revert mid-demo. `confirm` must be the registry address.
+
+The three halves are not equally reversible and the UI says so. A wiped
+registration is re-registered in one transaction; the archive rebuilds by
+registering again; a deleted reference **cannot be recreated identically**,
+because `save_fingerprint` does not record which frames were enrolled. So
+enrolments are a checkbox and the other two are not.
+
 ### `POST /degrade` — step 4
 
 ```

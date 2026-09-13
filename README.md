@@ -17,183 +17,135 @@ The photo world is trying to verify a negative — proving an image *wasn't*
 AI-generated. It can't be done. We verify the positive instead: every image
 sensor carries a permanent, per-body physical fingerprint (PRNU) that imprints
 on every exposure and cannot exist in an image that never passed through it.
-We register it and certify **origin, not truth**.
-`docs/camera-sensors.md` is why that fingerprint exists and how K is recovered.
 
-The record model follows the Birthmark Standard (arXiv 2602.04933,
-`github.com/Birthmark-Standard/Birthmark`), which authenticates camera origin
-from pixel data alone — NUC maps on professional bodies, PRNU on phones — and
-explicitly scopes out the staged-photograph problem.
+**We certify two things and nothing else:**
 
-Its verification path references manufacturer key tables — a manufacturer
-validates the NUC hash — and its own roadmap concedes that adoption needs
-manufacturer firmware integration. We enrol from the photographer's own files
-instead: 40+ RAW frames from an archive that already exists, with no
-manufacturer and no platform involved. The camera's own data is the whole
-input — K is estimated by maximum likelihood from the frames the body itself
-produced, so nothing outside them is needed to enrol a body or to score an
-image against it.
+1. these pixels correlate with body X's fingerprint at PCE *p*, and
+2. body X's **owner** registered this image on chain at time T.
 
-We certify: this image carries body X's sensor fingerprint **and body X's
-owner registered it** · camera body registered to identity Y · first
-registered at time T · these derivatives descend from that original.
+Never the first alone. The fingerprint can be planted by anyone holding one
+RAW file off the body, invisibly — measured, in `docs/adversarial.md`. The
+owner's signature is what carries the claim. We never say "authentic",
+"AI-free", or that the absence of a record means anything.
 
-A photographer needs no ENS name of their own. Each enrolled body gets a
-subname under the operator's parent, and the contract never requires one —
-`registerBody`'s `ensNode` may be zero. The ENS dependency is Genesis's, once.
+Enrolment needs nothing but the photographer's own archive: 40+ RAW frames
+they already have, no manufacturer and no platform. `docs/camera-sensors.md`
+is the physics; `docs/claims.md` is the closed list of what we will and will
+not say.
 
-The fingerprint alone certifies nothing: it can be planted by anyone holding
-one RAW file off the body, invisibly (`docs/adversarial.md`). The owner's
-registration is what carries the claim.
+## What it looks like
+
+| | |
+| --- | --- |
+| ![Registering a photograph](screenshots/Screenshot%202026-09-13%20at%2014.23.33.png) | **Register** — scored, refused below threshold, then signed. Every phase timestamped, because the wait is PRNU scoring rather than the chain. |
+| ![The money shot](screenshots/Screenshot%202026-09-13%20at%2014.27.32.png) | **Survival** — metadata stripped, resized to 1800px, re-encoded. Different pixel hash, and it still resolves at PCE 314.9 through the pHash-plus-PRNU branch. |
+| ![No record](screenshots/Screenshot%202026-09-13%20at%2014.28.38.png) | **No record** — and the three stages that produced it. Only stage 3, the chain read, grants a claim. |
+| ![Pre-flight](screenshots/Screenshot%202026-09-13%20at%2013.36.29.png) | **Pre-flight** — everything that can fail on camera, checked before recording. The registry says it is a test registry and offers to wipe itself, because a date it can withdraw is not a date to rely on. |
+
+More in [`screenshots/`](screenshots/).
 
 ## The maths behind K
 
 A sensor's photosites differ slightly in how much charge each returns for the
-same light. That gain error is fixed at manufacture, unique to the die, and
-it multiplies the signal rather than adding to it:
+same light. That gain error is fixed at manufacture, unique to the die, and it
+**multiplies** the signal:
 
 ```
-I = I⁰ + I⁰·K + Θ
+I  = I⁰ + I⁰·K + Θ          the sensor model
+K̂  = Σ(Wₖ · Iₖ) / Σ(Iₖ²)    maximum likelihood over d frames
 ```
 
-`I` is what the sensor read, `I⁰` the light that fell on it, `K` the
-per-pixel gain field — the fingerprint — and `Θ` everything else, shot noise
-and dark current. Because K multiplies I⁰, a bright pixel carries more
-evidence of K than a dark one, and a saturated pixel carries none.
+`W = I − denoise(I)` is the residual that holds the fingerprint. Each frame is
+weighted by its own intensity, which is what the multiplicative model calls
+for; the estimator is minimum-variance unbiased and its variance falls as 1/d.
+Verification correlates `W` against `I·K̂` and scores it by Peak to Correlation
+Energy — alignment-independent, with a null stable enough for one threshold
+across bodies.
 
-Enrolment recovers K from frames alone. Each frame is denoised and the
-denoised copy subtracted from the original, leaving a residual
-`W = I − denoise(I)` that holds the fingerprint plus noise. Maximum likelihood over `d` frames then gives:
+Two properties make it work retroactively: **K is a property of the silicon,
+not the file**, so stripping metadata removes nothing — and K is never
+published, because a published fingerprint is a forgery kit. The same
+estimator that reads K can plant it.
 
-```
-K̂ = Σ(Wₖ · Iₖ) / Σ(Iₖ²)
-```
-
-Each frame is weighted by its own intensity, which is exactly the weighting
-the multiplicative model calls for. The model is linear, so this estimator is
-minimum-variance unbiased and its variance falls as 1/d — more frames, a
-sharper K, with no ceiling other than patience.
-
-Verification asks whether a candidate image's residual contains that body's
-fingerprint, scaled by the candidate's own intensity. The statistic is Peak
-to Correlation Energy: correlate `W` against `I·K̂`, take the peak over all
-shifts, divide its square by the energy in every other shift. PCE is used
-rather than plain correlation because it is alignment-independent and its
-null distribution is stable enough to set one threshold across bodies.
-
-Two properties are what make this work retroactively. K is a property of the
-silicon, not of the file, so stripping metadata removes nothing. And K is
-never published — only a hash of it goes on chain, because a published
-fingerprint is a forgery kit.
-
-The same estimator that reads K can plant it. Measured on this body, one RAW
-file is enough to forge a match at a distortion no eye sees, which is why
-neither the references nor the enrolment frames are in this repository —
-`docs/claims.md` has the reasoning and `docs/adversarial.md` the numbers.
-
-The full derivation is Fridrich, *Digital Image Forensics Using Sensor Noise*,
-IEEE Signal Processing Magazine 26(2), 2009: sensor model eq. (3), estimator
-eq. (6), variance bound eq. (7), PCE eq. (14), denoiser in Appendix A.
+Derivation: Fridrich, *Digital Image Forensics Using Sensor Noise*, IEEE SPM
+26(2), 2009 — model eq. (3), estimator eq. (6), variance eq. (7), PCE eq. (14).
 
 ## Where this stands on real cameras
 
-One body has been tested: a Canon EOS R10, 41 CR3 frames, 16 enrolled. Every
-one of the 25 frames that did not build the fingerprint scores as a match —
-672 at worst, 56,255 at best, against a null of 29 to 43. That includes
-frames up to 17.7% blown out.
+One body tested: a Canon EOS R10, 41 CR3 frames, 16 enrolled.
 
-It worked on frames that break four of the five enrolment conditions: ordinary
-photographs rather than defocused flats, **C-RAW rather than lossless CR3**,
-High ISO NR on, and mostly not base ISO. Surviving Canon's lossy raw
-compression matters more than the rest, because C-RAW is what a great many
+| | |
+| --- | --- |
+| Held-out own frames | **672 to 56,255**, all 25 of them, against a null of 29–43 |
+| A **different R10** (same model) | **39.1**, and −44.0 through the orientation search — the null band |
+| Cross-model (5D Mark III) | 26.6 |
+| Threshold | 100 — about twice the worst null, well under the weakest true match |
+
+It worked on frames breaking four of the five enrolment conditions: ordinary
+photographs rather than flats, **C-RAW rather than lossless**, High ISO NR on,
+mostly not base ISO. C-RAW surviving matters most, because it is what many
 photographers actually shoot.
 
-**A second R10 does not match.** The case that matters is two bodies of the
-same model, sharing every model-level artefact and differing only in the
-fingerprint. A different R10 (serial `022031004996` against our
-`473034005088`, from `raw.pixls.us`) scores **39.1** against our fingerprint,
-and −44.0 through the orientation search — the null band, where our own body
-scores 629 to 56,255.
+One negative body is **not a false-positive rate.** It rules out a broken
+approach; it does not say how often a wrong body matches, which needs dozens.
 
-That is one negative sample, not a false-positive rate. It rules out the
-approach being broken; it does not say how often a wrong body matches, which
-needs dozens of bodies. The threshold sits at 100 — about twice the worst null
-observed, well under the weakest true match — and is a floor with a margin
-rather than a calibrated operating point.
+**In-camera JPEGs carry no readable fingerprint** — the sharpest limit here.
+Four straight off the card score 24.7, 18.5, −29.2, 29.6: the null band. The
+same sensor developed from RAW on a desktop scores 1,148. Not geometry — by
+region a desktop development grows with area (78 → 206 → 1,293) while the
+in-camera file is flat at the null (24 → −27 → 30). The fingerprint is gone,
+and the likely cause is in-camera noise reduction. **The camera deletes the
+fingerprint because to the camera it is noise.**
 
-**In-camera JPEGs carry no readable fingerprint.** The sharpest limit here,
-and it went untested for weeks because the delivered-JPEG result used a
-*desktop* development. Four JPEGs straight off the card — same body by serial
-— score 24.7, 18.5, −29.2 and 29.6, the null band, colour and monochrome
-alike. The same sensor developed from RAW on a desktop scores 1,148.
-
-It is not geometry: measured by region, a desktop development grows with area
-as PCE should (78 → 206 → 1,293) while the in-camera file is flat at the null
-everywhere (24 → −27 → 30). The fingerprint is not displaced, it is gone. The
-likely cause is in-camera noise reduction, and the irony is exact — PRNU is a
-high-frequency, low-amplitude, spatially random signal, which is what a
-denoiser exists to remove. **The camera deletes the fingerprint because to the
-camera it is noise.**
-
-So: enrol, register and verify from RAW or a desktop development. Monochrome
-is *not* a problem — the same photograph desaturated scores 1,503 against
-1,182 in colour.
-
-Method, numbers and the rest of the findings are in `docs/gates.md`.
+So enrol, register and verify from RAW or a desktop development. Monochrome is
+fine — desaturated scores 1,503 against 1,182 in colour. Method and the rest
+of the numbers: `docs/gates.md`.
 
 ## Live on Sepolia
 
-The registry is deployed, source-verified, and carries a real body and a real
-photograph — not a local chain:
+Deployed, source-verified on **both** explorers, and carrying a real body and
+real photographs — not a local chain.
 
-**[`0xd1bbDB8A6BfD25563d2e6444fA41E4C5230Ed3C9`](https://eth-sepolia.blockscout.com/address/0xd1bbDB8A6BfD25563d2e6444fA41E4C5230Ed3C9)**
-· [transactions](https://eth-sepolia.blockscout.com/address/0xd1bbDB8A6BfD25563d2e6444fA41E4C5230Ed3C9?tab=txs)
-· [Etherscan](https://sepolia.etherscan.io/address/0xd1bbDB8A6BfD25563d2e6444fA41E4C5230Ed3C9)
+**[`0xd1bbDB8A6BfD25563d2e6444fA41E4C5230Ed3C9`](https://sepolia.etherscan.io/address/0xd1bbDB8A6BfD25563d2e6444fA41E4C5230Ed3C9)**
+· [Blockscout](https://eth-sepolia.blockscout.com/address/0xd1bbDB8A6BfD25563d2e6444fA41E4C5230Ed3C9)
+· [The Graph](https://thegraph.com/studio/subgraph/genesis)
 
-| Block | Call | Transaction |
-| --- | --- | --- |
-| 11694580 | deploy | [`0x…`](https://eth-sepolia.blockscout.com/address/0xd1bbDB8A6BfD25563d2e6444fA41E4C5230Ed3C9) |
-| 11694598 | `resetAll` | [`0x…`](https://eth-sepolia.blockscout.com/address/0xd1bbDB8A6BfD25563d2e6444fA41E4C5230Ed3C9?tab=txs) — the rehearsal wipe, proving the cycle |
-| 11694610 | `registerBody` | [`0x1699f14d…`](https://eth-sepolia.blockscout.com/tx/0x1699f14db34f0bc2e175c53fc748aaf31ff6cd21c07ef769798196445aa66393) |
-| 11694616 | `commitSession` | [`0xcd8f78dd…`](https://eth-sepolia.blockscout.com/tx/0xcd8f78dd3ccebd0c9af37d0f660103bf96934ca86b5827e1623cf91de5636eb1) |
+One body (`0x653c40dd…`, ENS node the namehash of `r10-4471.cam.osoro.eth`)
+and five registered photographs, PCE 7,739 to 409,355. `registerImage` emits
+`ImageRegistered` **and** an ERC-7053 `Commit`, so an indexer that knows only
+the standard sees it too.
 
-**This is a test registry, deliberately.** `testMode()` returns true, which
-gives its administrator one call — `resetAll` — that makes every record
-unreachable so the demo can be rehearsed without redeploying. It is the reason
-`bodyId` deriving from `SHA-256(K)` does not lock the same camera out after one
-run. It also means **a registration date here is not one to rely on**: the
-verify page reads the flag and says so on every verdict, and `docs/claims.md`
-marks claim 1 provisional on this deployment. A production registry is
-deployed with the flag false, and the constructor refuses the setting on any
-chain not in an explicit testnet list.
+**This is a test registry, deliberately.** `testMode()` returns true, giving
+its administrator one call — `resetAll` — that makes every record unreachable
+so the demo can be rehearsed without redeploying. `bodyId` derives from
+`SHA-256(K)`, so without it the same camera is locked out after one run. It
+also means **a registration date here is not one to rely on**: the verify page
+reads the flag and says so on every verdict, and `docs/claims.md` marks claim
+1 provisional on this deployment. A production registry passes the flag false,
+and the constructor **refuses** it on any chain not in an explicit testnet
+list.
 
-This is the **second** deployment. The first, at `0xDf71e935…`, stored the
-body's `ensNode` as `keccak256("r10-4471.cam.osoro.eth")` where EIP-137 wants
-the recursive *namehash* — so the on-chain record pointed at a name that
-resolves to nothing, and the registry and the resolver disagreed about what a
-node is. `ensNode` has no setter and `registerBody` reverts on a duplicate
-`bodyId`, so the record could not be corrected in place. Redeployed rather
-than documented around, because "body X is registered to identity Y" is one
-of the two claims and it has to survive being checked.
-
-`registerImage` emits two events: `ImageRegistered`, and an ERC-7053 `Commit`
-under `genesis:1675d734…` so an indexer that knows only the standard sees it
-too.
+The first deployment, `0xDf71e935…`, stored the body's `ensNode` as
+`keccak256(name)` where EIP-137 wants the recursive namehash — so it pointed
+at a name that resolves to nothing. `ensNode` has no setter and `registerBody`
+reverts on a duplicate `bodyId`, so it could not be corrected in place.
+Redeployed rather than documented around: "body X is registered to identity Y"
+is one of the two claims and it has to survive being checked.
 
 **Check it yourself without trusting this page.** The source is verified, so
-the explorer's *Read contract* tab needs no wallet:
+the *Read contract* tab needs no wallet:
 
-- `deriveBodyId` with `0xbb3e3a38e051973355faf0d7dcdb8a0598c87d4f04b8a8ecbff152c4ad5cb5d7`
-  — the commitment `enroll` printed for the R10 — returns
-  `0xb5ed056e…`, the same body id `ingest/record.py` derives locally. The
-  Python and the Solidity agree about which camera this is.
-- `images` with `0x2224a686797182e43b86a0efb74fe34d29424b51ce7df233914508c887624725`
-  returns that body, a PCE of 1895, and the registration time.
-- `bodies` with the body id returns the fingerprint commitment — a hash. K
-  itself is not there, and never will be.
+- `deriveBodyId` with `0x3c00867d1717c0fc33eb28c25ffff2dfddc9af65c8952a5d6f52f7c5e52894c6`
+  — the commitment `enroll` printed — returns `0x653c40dd…`, the same body id
+  `ingest/record.py` derives locally. The Python and the Solidity agree about
+  which camera this is.
+- `images` with `0xd03e71c254a338b374dd75ed023fe9a00ecbf17abd2b681530b6b8187a33f598`
+  returns that body, PCE 10,439, and the registration time.
+- `bodies` with the body id returns the fingerprint **commitment** — a hash.
+  K itself is not there, and never will be.
 
-The body behind these records is the demo body whose frames were published
-and then withdrawn, so treat it as burned rather than as a live registration.
+The body behind these records is the demo body whose frames were published and
+then withdrawn, so treat it as burned rather than as a live registration.
 
 ## Validate the mathematics yourself
 
@@ -209,7 +161,7 @@ fingerprint, so this proves the estimator recovers what it is given:
 
 ```bash
 python3 fingerprint/fingerprint.py demo
-pytest fingerprint ingest        # 26 tests
+pytest fingerprint ingest        # 68 tests
 ```
 
 **With your own camera.** 40+ RAW frames from an archive you already have:
@@ -231,26 +183,20 @@ Two candidates for that role here turned out to be the same camera.
 
 ## The console
 
-Six screens driven by one presenter on localhost, built to
+Eight screens driven by one presenter on localhost, built to
 `design_handoff_genesis_console/`. Registration and verification go through
 one scorer, so the two cannot disagree about the same photograph.
 
 ```
-00 PRE-FLIGHT   01 ENROL   02 REGISTER   03 NEGATIVE   04 SURVIVAL   05 VERDICT   06 ARCHIVE
+00 PRE-FLIGHT  01 ENROL  02 REGISTER  03 NEGATIVE
+04 SURVIVAL    05 VERDICT  06 ARCHIVE  07 CONFIDENTIAL
 ```
 
-**02 · Register**, exercised live: a photograph scored at **PCE 15,358**,
-refused below the threshold before anything is signed, then included in
-**block 11667252** with the transaction linked out to the explorer. The
-identity row resolves `cam.osoro.eth` to the address that owns the body, and
-the card's footer says what the green heading does not — *"this states where
-these pixels came from and who signed for them, when. It does not state what
-the photograph depicts, or that it is authentic."*
-
-**03 · Negative**: a photograph from a different camera, **PCE 34.7** against
-a threshold of 100. It reads **no record**, on a neutral grey rule rather than
-an alarming one — absence is not a finding about the image, and `claims.md`
-is explicit it must never read as "fake".
+Every registration is a timestamped log of the real phases — reading, scoring
+with the search's own *n of 21*, building the record, signing, broadcasting,
+receipt. Named because the wait is dominated by PRNU scoring rather than by
+the chain, and a screen that said "broadcasting" while running the search
+taught operators to distrust a chain that was not the problem.
 
 **Under every verdict, the stage strip.** Stage 1 decides only whether to look
 further. Stage 2 is labelled **advisory — decides nothing** and carries each
@@ -258,11 +204,16 @@ signal's measured AUC beside its value, because a weak number read without its
 error bar becomes a strong one. Stage 3, the chain read, is the only stage
 that grants a claim and the only one drawn in a heavy rule.
 
-Two rules hold the whole grammar together. Scores render in identical ink
-whatever their magnitude, and the rail is logarithmic from 1 to 100,000 —
-because a forged image scores 82,190 and a genuine degraded photograph scores
-37.3, so **no size, colour or bar length may imply trust**. The verdict word
-is the claim; the number beside it is a measurement.
+Two rules hold the grammar together. Scores render in identical ink whatever
+their magnitude, and the rail is logarithmic from 1 to 100,000 — because a
+forged image scores 82,190 and a genuine degraded photograph scores 37.3, so
+**no size, colour or bar length may imply trust**. The verdict word is the
+claim; the number beside it is a measurement.
+
+On-chain values link out to where anyone can read them back: Etherscan and
+Blockscout for the transaction and the contract, The Graph for the index,
+app.ens.dev for the namespace. A claim nobody is shown how to check is a claim
+taken on trust.
 
 ## The technologies, and what each one carries
 
@@ -273,22 +224,39 @@ piece is not built, the table says so rather than implying it.
 | --- | --- | --- |
 | **Ethereum (Sepolia)** | `Registry.sol` — the body registry, image records, session roots and the ERC-7053 commit log. `registerImage`'s `require(body.owner == msg.sender)` is the system's only real security boundary | **Live** — `0xd1bbDB8A…`, block 11694580, verified on Blockscout *and* Etherscan |
 | **ENS (ENSv2, Sepolia)** | The identity model *is* the hierarchy: `osoro.eth` is the photographer, `cam.osoro.eth` the fleet, `r10-4471.cam.osoro.eth` one enrolled body, with the fingerprint commitment, signer, revocation status and a keyed camera-serial commitment in its resolver records | **Live** — registered, and both subregistries deployed by hand because the beta app has no subname UI (`identity/addresses.md`) |
-| **The Graph** | The perceptual index. A degraded copy has a different pixel hash, so the only way back to the original's registration is a pHash lookup — the registry has no index on it, so the subgraph *is* that index. Demo step 4 depends on it | **Live** — `genesis` v0.0.1, indexing real Sepolia events, all four entity types populated |
+| **The Graph** | The perceptual index. A degraded copy has a different pixel hash, so the only way back to the original's registration is a pHash lookup — the registry has no index on it, so the subgraph *is* that index. Demo step 4 depends on it | **Live** — `genesis` v0.0.4, indexing real Sepolia events, all four entity types populated, and it clears itself when the testnet registry is wiped |
 | **The Graph (MCP server)** | Three read-only tools so an agent can verify conversationally, with the claims discipline enforced in the wording an agent repeats | **Live** — answering from the deployed subgraph, 6 tests on the wording |
-| **Chainlink CRE** | Takes the scoring service out of the trust path — it is the trust hole by design, since today you take its word for a PCE. The confidential workflow makes the algorithm public, keeps the reference private and returns a *signed* score | **Runs on simulation** — `cre/`, an HTTP trigger into a TEE handler, K from the Vault DON. Deploying needs private-beta enrolment, so a second backend behind a flag runs the same arithmetic locally. `docs/cre.md` |
+| **Chainlink CRE** | Takes the scoring service out of the trust path — it is the trust hole by design, since today you take its word for a PCE. The confidential workflow makes the algorithm public, keeps the reference private and returns a *signed* score | **Runs, on simulation** — `cre/`, an HTTP trigger into a TEE handler, K from the Vault DON, driven from console screen 07. ~17s a run, deterministic. Deployment needs private-beta enrolment, which the prize criteria do not require. `docs/cre.md` |
 | **ERC-7053** | The commit log shape, so a record is portable rather than ours alone | **Live** — `commit()` fires on every registration |
 | **Foundry, viem, FastAPI, Vite** | Tooling: contracts and transactions, chain reads in the browser, the scorer and console, the two web surfaces | In use throughout |
 
-Three honest notes on CRE, because it is easy to oversell after a day of
-adversarial work. Confidential compute removes the *scorer* as a trusted
-party; it does nothing about forgery — an enclave would score a planted
-fingerprint faithfully and sign it. **Nothing available today produces a real
+### Where CRE actually stands
+
+It runs. A real `cre workflow simulate` through the CRE CLI, compiling the
+workflow to WASM on every run and executing it in the simulator: the residual
+is extracted locally, a 256² int8 crop of K is released to the handler, and a
+score comes back. About seventeen seconds, and deterministic — three
+consecutive runs returned 17.8s, 16.1s, 16.2s and the same PCE every time.
+Console screen 07 drives it, and `cre/capture-evidence.sh` writes the
+transcript a submission needs.
+
+Chainlink's criteria accept **either** a Confidential Workflow simulation via
+the CLI **or** a live deployment. This is the first, so the private-beta gate
+blocks deployment and blocks nothing else. `cre account access` still reports
+deployment access not enabled, `cre account list-key` reports no linked
+owners, and neither is needed to simulate.
+
+Three honest notes, because it is easy to oversell after a day of adversarial
+work. Confidential compute removes the *scorer* as a trusted party; it does
+nothing about forgery — an enclave would score a planted fingerprint
+faithfully and sign it. **Nothing available today produces a real
 attestation**: the simulator is not an enclave and the local backend signs on
 the machine that holds K, so `attested` is False on every path that can be
-run. And the reference does not fit an enclave — 89 MB against a 1 MB secret
-limit — so K is cropped, and at that size the weakest frame in the corpus
-falls into the null. `docs/cre.md` measures all three; `docs/security.md` says
-the first where someone would look for it.
+run, and the code refuses to let either claim otherwise. And the reference does
+not fit an enclave — 89 MB against a 1 MB secret limit — so K is cropped, and
+at that size the weakest frame in the corpus falls into the null. `docs/cre.md`
+measures all three; `docs/security.md` says the first where someone would look
+for it.
 
 ## Layout
 
@@ -366,8 +334,8 @@ flowchart TB
     C8 -->|no| C10["no-record<br/>absence means nothing"]
   end
 
-  CRE["CHAINLINK CRE · simulation only<br/>confidential workflow takes the scoring<br/>service out of the trust path: public algorithm,<br/>secret reference, signed score<br/>deploying needs private-beta enrolment"]
-  C7 -.->|"runs · docs/cre.md"| CRE
+  CRE["CHAINLINK CRE · runs on simulation<br/>confidential workflow takes the scoring<br/>service out of the trust path: public algorithm,<br/>secret reference, signed score<br/>attested: false until deployed"]
+  C7 -.->|"console screen 07 · docs/cre.md"| CRE
 
   A5 -.->|K stays local| B3
   A7 -.->|events indexed| C4
@@ -442,45 +410,33 @@ stripped), portrait capture costs a delivered file the aligned path (282 →
 
 | | Component | State |
 | --- | --- | --- |
-| ██████████ | `fingerprint/` — enrolment, scoring, commitment | done, 7 tests |
+| ██████████ | `fingerprint/` — enrolment, scoring, commitment | done |
 | ██████████ | Gate A — does K exist on this body | **passed**, one body |
-| ███████░░░ | Gate B — does K survive the web | **conditional pass** |
-| ██████████ | `fingerprint/stress.py` — degradation ladder | done |
-| ██████████ | `ingest/` — hashing, record, Merkle | done, 17 tests |
-| ██████████ | `contracts/` — ERC-7053 registry | **live on Sepolia**, verified |
-| ██████████ | `identity/` — ENSv2 subnames | **live** — `osoro.eth` and `cam.osoro.eth` registered, both subregistries deployed by hand, `--dry-run` rehearses clean |
-| ██████████ | `subgraph/` — image → record | **deployed to Studio**, indexing live Sepolia events |
-| ██████████ | `scoring/` — FastAPI wrapper | done, 5 tests |
-| ██████████ | `verify/` — the page | four verdicts, both branches live against Sepolia and The Graph |
+| ███████░░░ | Gate B — does K survive the web | **conditional pass** — `docs/gates.md` names the quality |
+| ██████████ | `ingest/` — hashing, record, Merkle | done |
+| ██████████ | `contracts/` — ERC-7053 registry | **live on Sepolia**, verified on both explorers |
+| ██████████ | `identity/` — ENSv2 subnames | **live** — parent and subregistries deployed; register, records and revoke all rehearsed on chain |
+| ██████████ | `subgraph/` — image → record | **live**, `genesis` v0.0.4, all entity types from real events |
+| ██████████ | `scoring/` — FastAPI wrapper | done |
+| ██████████ | `verify/` — the page | four verdicts, driven in a browser against the live chain and index |
 | ██████████ | `mcp/` — Subgraph MCP server | answers from the deployed subgraph |
-| ██████████ | `console/` — demo orchestration API | all six screens wired; registration, sessions and the catalogue exercised live on Sepolia |
-| █████████░ | `console-ui/` — the presenter console | six screens built to the handoff; never checked in a browser by anyone but the operator |
-| ██████████ | `verify/` — run in a browser | all three verdicts driven headless against the live page and the live chain, 13 September |
+| ██████████ | `console/` — demo orchestration API | eight screens wired; registration, sessions, archive and reset exercised live |
+| █████████░ | `console-ui/` — the presenter console | eight screens built to the handoff |
+| ████████░░ | `cre/` — confidential scoring | a real `cre workflow simulate` per run, from screen 07; both backends agree to the tenth. Deployment needs private-beta enrolment, which the criteria do not require |
 | ██████████ | `docs/adversarial.md` — red team | the fingerprint forged three ways against our own reference |
-| ███████░░░ | `cre/` — confidential scoring | runs on `cre workflow simulate`; both backends agree to the tenth. Deployment needs private-beta enrolment |
 
-115 tests. The imaging core works on real files: `enroll`, `test` and `pair`
-run against RAW and delivered JPEGs, `demo` runs without a camera.
+**177 tests** — 133 pytest, 21 Foundry, 9 matchstick, 6 MCP, 8 identity.
 
 **What a day of attacking it changed.** The fingerprint can be planted in an
 image the camera never took, invisibly, by anyone holding **one RAW file** off
-the body — measured against our own reference, `docs/adversarial.md`. So a PCE
-score is evidence of a link and never proof of origin, and every claim the
-product makes now sits behind `registerImage`'s owner check, the one mechanism
-no attack got past. There is no forgery-detection rate and none should be
-quoted: measured separations are AUC 0.725 to 0.900 with every range
-overlapping. `docs/security.md` is the posture; `docs/claims.md` is the closed
-list of two claims.
+the body. So a PCE score is evidence of a link and never proof of origin, and
+everything the product claims sits behind `registerImage`'s owner check — the
+one mechanism no attack got past. There is no forgery-detection rate and none
+should be quoted: measured separations are AUC 0.725 to 0.900 with every range
+overlapping.
 
-What the day of adversarial work changed is what the system is allowed to
-say. The fingerprint can be planted by anyone holding **one RAW file** off a
-body, invisibly — measured against our own reference in
-`docs/adversarial.md`. So a PCE score is evidence of a link and never proof of
-origin, and everything the product claims sits behind `registerImage`'s owner
-check, which is the one mechanism no attack got past. `docs/security.md` is
-the posture and `docs/claims.md` is the closed list of two claims.
-
-`docs/e2e-checklist.md` is the ordered list of what unblocks what.
+`docs/security.md` is the posture, `docs/claims.md` the closed list of two
+claims, `docs/e2e-checklist.md` the ordered list of what unblocks what.
 
 ## Further Work?
 
