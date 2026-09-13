@@ -157,12 +157,13 @@ false-positive rate, and a second enrolment so the test runs both ways.
 - [ ] `BodyRevoked` has never fired on chain — nothing has been revoked, so
       that handler rests on matchstick alone. Not a defect, but not evidence
       either
-- [ ] The verify page's perceptual branch has not been run in a browser. The
-      query is verified from node against the live index, the URL is inlined
-      in the bundle and it typechecks and builds — but nobody has watched it
-      resolve an image on a page. `verify/.env` did not exist until today,
-      which meant `VITE_SUBGRAPH_URL` was undefined and the branch returned
-      early: written, and not wired
+- [x] **Run in a browser, 13 September 2026.** Headless Chromium against the
+      live page, all three verdicts: the registered original resolves by exact
+      pixel hash (49,310), the degraded copy through the perceptual branch
+      (407.9, Hamming 0 of 64), and a different R10 reads `No record` with the
+      "not that the image is fake" wording intact. Screenshots kept out of the
+      repo — they show nothing secret, but neither do they prove anything a
+      re-run does not
 - [x] `graph test` — 5 matchstick tests still green after the deployment
 - [x] Deployed to Subgraph Studio, 8 September 2026 — `genesis` v0.0.1,
       queries at `api.studio.thegraph.com/query/1758974/genesis/v0.0.2`.
@@ -292,15 +293,35 @@ Scores the image, deploys the registry, registers body and photograph,
 commits a session root, then reads it all back and proves inclusion. Refuses
 to register anything that does not clear the threshold.
 
-## The full run, once the above exists
+## The full run — done 13 September 2026, except the last line
 
-- [ ] Enrol body A from an archive folder
-- [ ] Register one photograph → `commit()` on Sepolia, ENS name resolves
-- [ ] Score a different camera's photograph → no match
-- [ ] Strip metadata, resize, re-encode the registered photograph → still
-      resolves through the pHash-plus-PRNU branch
-- [ ] Verify page shows body, identity and registration time
-- [ ] Whole path repeated on a clean machine, following `README.md` from the top
+- [x] Enrol body A from an archive folder — 10 frames through `/enrol`,
+      commitment and bodyId returned, `enough: false` correctly flagged below
+      the 40 frames the method wants. Ran on a clean subset **because the real
+      archive is refused now**: it holds three serials, and the guard that
+      catches that was written during this run
+- [x] Register one photograph → `commit()` on Sepolia — IMG_0217 and IMG_0236
+      on the new registry, each emitting `ImageRegistered` and an ERC-7053
+      `Commit`, plus a session root over two more frames
+- [x] ENS name resolves — rehearsed live on
+      `rehearsal-0003.cam.osoro.eth`, records written and read back through the
+      universal resolver. `r10-4471` is deliberately still free: ENS's criteria
+      want the subname created live, so the demo creates it
+- [x] Score a different camera's photograph → no match. 39.1 against a
+      threshold of 100, verdict `no-record`, and the staged reasoning shows the
+      verdict coming from the chain read rather than the pixels
+- [x] Strip metadata, resize, re-encode the registered photograph → still
+      resolves. 6000x4000 RAW to a 1800px q95 JPEG with the EXIF gone: a
+      different pixel hash, and it comes back `derived` at PCE 407.9, matched
+      to the original at Hamming distance 0. **This is demo step 4** and it
+      reproduces `docs/gates.md`'s 408 to the decimal
+- [x] Verify page shows body, identity and registration time. Identity was the
+      half that was missing — the page read `ensNode` and rendered nothing from
+      it, and a namehash is one-way so nothing on chain turns back into a name.
+      It now reverse-resolves the body's owner and forward-checks the result,
+      showing `osoro.eth (0x91C968D9…)`
+- [ ] Whole path repeated on a clean machine, following `README.md` from the
+      top. The one item a second machine is needed for
 
 ## Verified state, 7 September 2026
 

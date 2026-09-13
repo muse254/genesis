@@ -445,6 +445,7 @@ stripped), portrait capture costs a delivered file the aligned path (282 →
 | ██████████ | `mcp/` — Subgraph MCP server | answers from the deployed subgraph |
 | ██████████ | `console/` — demo orchestration API | all six screens wired; registration, sessions and the catalogue exercised live on Sepolia |
 | █████████░ | `console-ui/` — the presenter console | six screens built to the handoff; never checked in a browser by anyone but the operator |
+| ██████████ | `verify/` — run in a browser | all three verdicts driven headless against the live page and the live chain, 13 September |
 | ██████████ | `docs/adversarial.md` — red team | the fingerprint forged three ways against our own reference |
 | ███████░░░ | `cre/` — confidential scoring | runs on `cre workflow simulate`; both backends agree to the tenth. Deployment needs private-beta enrolment |
 

@@ -58,6 +58,10 @@ export interface VerifyResult {
   threshold?: number;
   /** Set on `derived`: which registered image this was matched to, and how far. */
   derivedFrom?: { imageHash: `0x${string}`; hammingDistance: number };
+  /** The body's owner, and its ENS name when one forward-resolves. */
+  owner?: `0x${string}`;
+  ownerName?: string;
+  revoked?: boolean;
 }
 
 const SCORING = import.meta.env.VITE_SCORING_URL ?? "http://127.0.0.1:8000";
@@ -144,10 +148,12 @@ export async function verifyImage(file: File): Promise<VerifyResult> {
   const best = lookup.candidates[0];
 
   if (exact) {
+    const identity = best ? await identityOf(best.bodyId) : undefined;
     return {
       verdict: "registered",
       registered: true,
       bodyName: best?.body,
+      ...identity,
       pceScore: exact.pceScore,
       modificationLevel: exact.modificationLevel,
       registeredAt: exact.registeredAt,
@@ -164,10 +170,12 @@ export async function verifyImage(file: File): Promise<VerifyResult> {
   if (near) {
     const parent = await lookupByPixelHash(near.imageHash);
     if (parent) {
+      const identity = best ? await identityOf(best.bodyId) : undefined;
       return {
         verdict: "derived",
         registered: true,
         bodyName: best?.body,
+        ...identity,
         pceScore: best?.pce,
         method: best?.path,
         orientation: best?.orientation,
@@ -219,6 +227,55 @@ async function lookupByPixelHash(hash: `0x${string}`) {
     pceScore: Number(record[6]),
     registeredAt: new Date(Number(record[7]) * 1000).toISOString(),
   };
+}
+
+/**
+ * Who the body is registered to, as a name rather than an address.
+ *
+ * `docs/claims.md` derives "body X is registered to identity Y" from the two
+ * claims, and until now the page showed X and never Y. It could not read Y off
+ * the registry either: `ensNode` is a namehash, and a namehash is one-way, so
+ * nothing on chain turns back into a name.
+ *
+ * A reverse record does, and it is resolved live rather than configured --
+ * ENS's criteria forbid a hardcoded value, and a hardcoded name here would be
+ * exactly the decorative lookup the prize excludes.
+ *
+ * **Forward-checked.** A reverse record is self-asserted: anyone may point
+ * their address at `vitalik.eth`. It counts only if the name resolves back to
+ * the same address, so that is checked, and a name that fails is discarded
+ * rather than shown. Same rule as the subgraph branch below -- a claim from an
+ * index is a lookup, never an authority.
+ */
+async function identityOf(rawBodyId: string) {
+  if (!client || !REGISTRY) return undefined;
+
+  // `/lookup` returns body ids as bare hex; the chain wants them prefixed.
+  const bodyId = (rawBodyId.startsWith("0x") ? rawBodyId : `0x${rawBodyId}`) as `0x${string}`;
+
+  const body = await client.readContract({
+    address: REGISTRY,
+    abi: REGISTRY_ABI,
+    functionName: "bodies",
+    args: [bodyId],
+  });
+
+  const owner = body[1] as `0x${string}`;
+  if (/^0x0+$/.test(owner)) return undefined;
+
+  let name: string | undefined;
+  try {
+    const reverse = await client.getEnsName({ address: owner });
+    if (reverse) {
+      const forward = await client.getEnsAddress({ name: reverse });
+      if (forward && forward.toLowerCase() === owner.toLowerCase()) name = reverse;
+    }
+  } catch {
+    // No reverse record, or no resolver. An address is still an identity;
+    // it is just not a readable one, and that is not a failure to report.
+  }
+
+  return { owner, ownerName: name, revoked: body[3] as boolean };
 }
 
 /**
@@ -327,6 +384,7 @@ function render(result: VerifyResult): void {
     section.className = "derived";
     rows.push("<h2>Descends from a registered photograph</h2>");
     if (result.bodyName) say("Body", result.bodyName);
+    sayIdentity(result, say);
     if (result.derivedFrom) {
       say("Matched to", `${result.derivedFrom.imageHash.slice(0, 18)}…`);
       say(
@@ -354,6 +412,7 @@ function render(result: VerifyResult): void {
     section.className = "registered";
     rows.push("<h2>Registered by the body’s owner</h2>");
     if (result.bodyName) say("Body", result.bodyName);
+    sayIdentity(result, say);
     if (result.pceScore !== undefined) {
       say("PCE", `${result.pceScore.toFixed(1)} (threshold ${result.threshold})`);
     }
@@ -373,6 +432,25 @@ function render(result: VerifyResult): void {
 
   section.innerHTML = `<dl>${rows.join("")}</dl>`;
   section.hidden = false;
+}
+
+/**
+ * "Body X is registered to identity Y" -- the derived claim in
+ * `docs/claims.md`, which this page used to state only half of.
+ *
+ * The name is shown when it forward-resolves and the raw address otherwise.
+ * An address is a perfectly good identity; it is only a less readable one, and
+ * substituting a name that does not check out would be worse than showing hex.
+ */
+function sayIdentity(result: VerifyResult, say: (label: string, value: string) => void): void {
+  if (result.ownerName) {
+    say("Registered by", `${result.ownerName} (${result.owner?.slice(0, 10)}\u2026)`);
+  } else if (result.owner) {
+    say("Registered by", result.owner);
+  }
+  if (result.revoked) {
+    say("Body status", "revoked \u2014 the owner withdrew this body's signing key");
+  }
 }
 
 const input = document.getElementById("file") as HTMLInputElement | null;
