@@ -35,14 +35,17 @@ not say.
 
 ## What it looks like
 
+The demo, in the order it runs. More in [`screenshots/`](screenshots/).
+
 | | |
 | --- | --- |
-| ![Registering a photograph](screenshots/Screenshot%202026-09-13%20at%2014.23.33.png) | **Register** — scored, refused below threshold, then signed. Every phase timestamped, because the wait is PRNU scoring rather than the chain. |
-| ![The money shot](screenshots/Screenshot%202026-09-13%20at%2014.27.32.png) | **Survival** — metadata stripped, resized to 1800px, re-encoded. Different pixel hash, and it still resolves at PCE 314.9 through the pHash-plus-PRNU branch. |
-| ![No record](screenshots/Screenshot%202026-09-13%20at%2014.28.38.png) | **No record** — and the three stages that produced it. Only stage 3, the chain read, grants a claim. |
-| ![Pre-flight](screenshots/Screenshot%202026-09-13%20at%2013.36.29.png) | **Pre-flight** — everything that can fail on camera, checked before recording. The registry says it is a test registry and offers to wipe itself, because a date it can withdraw is not a date to rely on. |
+| ![Pre-flight](screenshots/Screenshot%202026-09-13%20at%2013.36.29.png) | **00 · Pre-flight** — everything that can fail on camera, checked before recording rather than during. The registry admits it is a *test* registry and offers to wipe itself, because a date it can withdraw is not a date to rely on. |
+| ![Enrolling a camera body](screenshots/Screenshot%202026-09-13%20at%2013.38.46.png) | **01 · Enrol** — 41 RAW frames the photographer already had, chosen in their own file dialog. K is estimated here and stays here; only the commitment goes on chain, and the panel says plainly that it is **not there yet** — registering the body on step 02 is what puts it in the registry. |
+| ![Registering a photograph](screenshots/Screenshot%202026-09-13%20at%2014.23.33.png) | **02 · Register** — scored, refused below threshold, then signed. Every phase timestamped, because the wait is PRNU scoring rather than the chain. |
+| ![The money shot](screenshots/Screenshot%202026-09-13%20at%2014.27.32.png) | **04 · Survival** — metadata stripped, resized to 1800px, re-encoded. Different pixel hash, and it still resolves at PCE 314.9 through the pHash-plus-PRNU branch. |
+| ![No record](screenshots/Screenshot%202026-09-13%20at%2014.28.38.png) | **05 · Verdict** — no record, and the three stages that produced it. Only stage 3, the chain read, grants a claim. |
 
-More in [`screenshots/`](screenshots/).
+
 
 ## The maths behind K
 
