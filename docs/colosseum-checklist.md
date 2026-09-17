@@ -69,6 +69,7 @@ Work happens on `colosseum` only. `main`, `ethonline` and the tag
 - [ ] Name the prior art before a judge does: Birthmark Standard (arXiv 2602.04933), OpenOrigins (Galaxy-backed); nearest Colosseum projects `decentracam`, `certana`, `here.`
 - [ ] Every sentence checked against `docs/claims.md`
 - [ ] **LICENSE** chosen and committed — open-source status is scored
+- [x] CI green on every push: pytest ≥75% coverage, Foundry with 10k fuzz runs and Registry at 100% coverage, Slither, subgraph, MCP, web, desktop clippy (17 Sept)
 - [ ] Prior-work disclosure: `git log ethonline-submission..colosseum`, with the tag as the boundary
 - [ ] Confirm the event: Crypto World's Fair 14 Sept – 12 Oct vs the blog's Fall hackathon 28 Sept – 2 Nov
 - [ ] Submission form complete; links resolve from a logged-out browser
