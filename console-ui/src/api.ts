@@ -45,7 +45,6 @@ export interface State {
     etherscan?: string;
     blockscout?: string;
   };
-  ensParent: string | null;
   /**
    * Whether this registry can be wiped, read from the contract's own
    * `testMode()` rather than from configuration. The reset control is drawn
@@ -60,24 +59,6 @@ export interface ReferenceLink {
   url: string;
 }
 
-export interface ConfidentialScore {
-  body: string;
-  /** Wall-clock for the whole run. ~16s on the CRE path, almost all of it
-   *  compiling TypeScript to WASM; milliseconds on the local one. */
-  seconds: number;
-  planeSize: number;
-  pce: number;
-  match: boolean;
-  threshold: number;
-  backend: "cre" | "local";
-  /** False on every path available today. Only a deployed confidential
-   *  workflow may set it true -- see `cre/backend.py`. */
-  attested: boolean;
-  trust: string;
-  payload_digest: string;
-  signature: string | null;
-  signer: string | null;
-}
 
 export interface ResetResult {
   registry: string;
@@ -179,16 +160,6 @@ export let ETHERSCAN = "https://sepolia.etherscan.io";
 export const GRAPH_STUDIO = "https://thegraph.com/studio/subgraph/genesis";
 
 /**
- * ENSv2's beta app. Not `sepolia.app.ens.domains` -- the beta moved, the old
- * host still answers, and that is exactly how a name gets looked up in the
- * wrong place (`identity/addresses.md`).
- */
-export const ENS_APP = "https://app.ens.dev";
-
-/** The published algorithm, which is the half of the CRE claim that is real. */
-export const SOURCE = "https://github.com/muse254/genesis/tree/main/cre";
-
-/**
  * Where a bytes32 the registry holds can be read back by anyone.
  *
  * Etherscan cannot deep-link a mapping read with its argument, so this points
@@ -244,20 +215,6 @@ export const api = {
                   explorerUrl: string; links?: ReferenceLink[] }>(
       "/register-body", { method: "POST", body: form },
     );
-  },
-
-  /**
-   * Screen 07. Scores the frame where nobody holds K.
-   *
-   * Slow on purpose: the CRE backend compiles the workflow to WASM and runs
-   * it in the simulator, which takes about sixteen seconds. The caller must
-   * say so on screen or it reads as a hang.
-   */
-  scoreConfidential(file: File, body: string) {
-    const form = new FormData();
-    form.append("file", file);
-    form.append("body", body);
-    return call<ConfidentialScore>("/score-confidential", { method: "POST", body: form });
   },
 
   /** Screen 04. Quality has no default here either -- see `/degrade`'s docstring. */

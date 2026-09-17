@@ -117,7 +117,8 @@ fails if that ordering is broken.
 
 ## Chainlink CRE, and what confidential compute does not do
 
-Built on simulation — `cre/`, and `docs/cre.md` has the measurements.
+Built on simulation for ETHOnline and removed for Colosseum; the code is at the
+`ethonline-submission` tag and `docs/cre.md` has the measurements.
 Recorded here because it is easy to mistake for a defence against what this
 document describes, and it is not one.
 
@@ -150,7 +151,7 @@ there, in the console and the desktop app, next to the RAW archive that
 produced K. No server holds a reference.
 
 **The hosted scoring service holds nothing.** It runs with `GENESIS_PUBLIC=1`:
-it loads no reference, answers `/score` and `/score/confidential` with 403,
+it loads no reference, answers `/score` with 403,
 and refuses to start if a reference is present in its directory. Its only job
 is to hash pixels (`imageHash`, `perceptualHash`) for the verify page, which
 resolves them against the chain itself.

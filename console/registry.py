@@ -36,6 +36,12 @@ router = APIRouter()
 CAST_TIMEOUT = 180
 
 
+
+#: Who the metadata commitment names as owner. Was `ENS_PARENT_NAME` while
+#: the photographer was an ENS name; kept as a fallback so an existing `.env`
+#: commits to the same owner string it always did.
+OWNER = os.environ.get("GENESIS_OWNER") or os.environ.get("ENS_PARENT_NAME")
+
 def _hmac_key() -> bytes | None:
     """`METADATA_HMAC_KEY` as bytes.
 
@@ -73,30 +79,6 @@ def _invalidate_state() -> None:
     from console.app import invalidate_state
 
     invalidate_state()
-
-
-def ens_namehash(name: str) -> str:
-    """EIP-137 namehash, which is NOT keccak256 of the name.
-
-    This was `cast keccak` until 13 September 2026, and the difference is the
-    expensive kind of silent: a record written against the wrong node
-    succeeds, costs gas, and resolves to nothing. `identity/scripts/ens.ts`
-    had it right the whole time and has eight tests on this arithmetic; this
-    path shelled out to the wrong subcommand and had none, so the registry
-    and the resolver disagreed about what a node is.
-
-    Namehash is recursive -- keccak256(namehash(parent) || keccak256(label))
-    down to the empty root -- so no amount of hashing the whole string gets
-    there. `cast namehash` implements it and agrees with viem's, which is
-    what `identity/` uses.
-    """
-    done = subprocess.run(["cast", "namehash", name], capture_output=True, text=True)
-    node = done.stdout.strip()
-    # Checked rather than assumed: the previous version took `.stdout` from an
-    # unchecked run, so a missing `cast` wrote the zero node instead of failing.
-    if done.returncode != 0 or not node.startswith("0x") or len(node) != 66:
-        raise HTTPException(502, f"cast namehash {name} failed: {done.stderr.strip()[:200]}")
-    return node
 
 
 def cast_send(args: list[str]) -> dict:
@@ -282,7 +264,7 @@ async def register_image(
             path,
             references / f"{holder['name']}.npz",
             hmac_key=_hmac_key(),
-            owner=os.environ.get("ENS_PARENT_NAME"),
+            owner=OWNER,
             score=measured["pce"],
         )
         if built.pce_score < prnu.PCE_THRESHOLD:
@@ -389,7 +371,7 @@ async def register_session(
                     path,
                     reference,
                     hmac_key=_hmac_key(),
-                    owner=os.environ.get("ENS_PARENT_NAME"),
+                    owner=OWNER,
                     score=_score_against(holder, path)["pce"],
                 )
             except Exception as error:      # a corrupt frame is not fatal to a shoot
@@ -549,60 +531,6 @@ async def reset_registry(confirm: str = Form(...), clear_enrolments: bool = Form
     }
 
 
-@router.post("/score-confidential")
-async def score_confidential(file: UploadFile = File(...), body: str = Form(...)) -> dict:
-    """Score where nobody holds K, so the console can show the CRE path.
-
-    The scoring service has the same endpoint; this one exists because the
-    console frontend talks only to the console, and because a presenter needs
-    the two things the raw score does not carry: how long it took, and which
-    backend produced it. Sixteen seconds of WASM compilation looks like a hang
-    unless the screen says what it is doing.
-
-    RAW only, and the refusal is the honest one: the confidential path
-    correlates on the photosite lattice and a developed JPEG has none left.
-    The scale search that rescues those needs the whole 89 MB reference, which
-    is the one thing that does not fit an enclave.
-    """
-    import time
-
-    from cre import backend as confidential
-
-    bodies = {name: (bid, b) for bid, b in _bodies().items() for name in (b["name"], bid)}
-    if body not in bodies:
-        raise HTTPException(404, f"unknown body {body}")
-    _, holder = bodies[body]
-
-    # The same inline handling the other signing endpoints use; `_save` lives
-    # in console/app.py and importing it here would make the module cycle.
-    suffix = Path(file.filename or "upload").suffix or ".bin"
-    handle = tempfile.NamedTemporaryFile(suffix=suffix, delete=False)
-    handle.write(file.file.read())
-    handle.close()
-    path = Path(handle.name)
-
-    try:
-        if path.suffix.lower() not in record.hashing_raw_suffixes():
-            raise HTTPException(
-                415,
-                "the confidential path needs a RAW frame. A developed JPEG has no "
-                "photosite lattice left, and the search that rescues it needs the "
-                "whole reference -- which is what does not fit an enclave.",
-            )
-
-        started = time.time()
-        probe = prnu.load_raw_planes(path, crop=confidential.payload_mod.PLANE_SIZE * 2)
-        result = confidential.score(probe, holder["planes"], body)
-        return {
-            "body": holder["name"],
-            "seconds": round(time.time() - started, 1),
-            "planeSize": confidential.payload_mod.PLANE_SIZE,
-            **result.to_json(),
-        }
-    finally:
-        path.unlink(missing_ok=True)
-
-
 @router.post("/register-image/stream")
 async def register_image_stream(
     file: UploadFile = File(...), body: str = Form(...), description: str = Form("")
@@ -664,7 +592,7 @@ async def register_image_stream(
                      label=f"building the record — PCE {measured['pce']:.1f}")
             built = record.build_record(
                 path, references / f"{holder['name']}.npz", hmac_key=_hmac_key(),
-                owner=os.environ.get("ENS_PARENT_NAME"), score=measured["pce"],
+                owner=OWNER, score=measured["pce"],
             )
 
             if built.pce_score < prnu.PCE_THRESHOLD:

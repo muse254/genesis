@@ -187,13 +187,13 @@ Two candidates for that role here turned out to be the same camera.
 
 ## The console
 
-Eight screens driven by one presenter on localhost, built to
+Seven screens driven by one presenter on localhost, built to
 `design_handoff_genesis_console/`. Registration and verification go through
 one scorer, so the two cannot disagree about the same photograph.
 
 ```
 00 PRE-FLIGHT  01 ENROL  02 REGISTER  03 NEGATIVE
-04 SURVIVAL    05 VERDICT  06 ARCHIVE  07 CONFIDENTIAL
+04 SURVIVAL    05 VERDICT  06 ARCHIVE
 ```
 
 Every registration is a timestamped log of the real phases — reading, scoring
@@ -215,8 +215,8 @@ forged image scores 82,190 and a genuine degraded photograph scores 37.3, so
 claim; the number beside it is a measurement.
 
 On-chain values link out to where anyone can read them back: Etherscan and
-Blockscout for the transaction and the contract, The Graph for the index,
-app.ens.dev for the namespace. A claim nobody is shown how to check is a claim
+Blockscout for the transaction and the contract, The Graph for the index.
+A claim nobody is shown how to check is a claim
 taken on trust.
 
 ## The technologies, and what each one carries
@@ -227,40 +227,25 @@ row says how far it actually got rather than how far it was meant to.
 | Technology | What it carries here | Status |
 | --- | --- | --- |
 | **Ethereum (Sepolia)** | `Registry.sol` — the body registry, image records, session roots and the ERC-7053 commit log. `registerImage`'s `require(body.owner == msg.sender)` is the system's only real security boundary | **Live** — `0xd1bbDB8A…`, block 11694580, verified on Blockscout *and* Etherscan |
-| **ENS (ENSv2, Sepolia)** | The identity model *is* the hierarchy: `osoro.eth` is the photographer, `cam.osoro.eth` the fleet, `r10-4471.cam.osoro.eth` one enrolled body, with the fingerprint commitment, signer, revocation status and a keyed camera-serial commitment in its resolver records | **Live** — registered, and both subregistries deployed by hand because the beta app has no subname UI (`identity/addresses.md`) |
+| **ENS (ENSv2, Sepolia)** | The camera commitment and the naming hierarchy for ETHOnline | **Removed for Colosseum** — prior work, removed from the Colosseum build; the code is at the `ethonline-submission` tag |
 | **The Graph** | The perceptual index. A degraded copy has a different pixel hash, so the only way back to the original's registration is a pHash lookup — the registry has no index on it, so the subgraph *is* that index. Demo step 4 depends on it | **Live** — `genesis` v0.0.4, indexing real Sepolia events, all four entity types populated, and it clears itself when the testnet registry is wiped |
 | **The Graph (MCP server)** | Three read-only tools so an agent can verify conversationally, with the claims discipline enforced in the wording an agent repeats | **Live** — answering from the deployed subgraph, 6 tests on the wording |
-| **Chainlink CRE** | Takes the scoring service out of the trust path — it is the trust hole by design, since today you take its word for a PCE. The confidential workflow makes the algorithm public, keeps the reference private and returns a *signed* score | **Runs, on simulation** — `cre/`, an HTTP trigger into a TEE handler, K from the Vault DON, driven from console screen 07. ~17s a run, deterministic. Deployment needs private-beta enrolment, which the prize criteria do not require. `docs/cre.md` |
+| **Chainlink CRE** | Confidential scoring, simulation only (`attested` false) | **Removed for Colosseum** — prior work, removed from the Colosseum build; the code is at the `ethonline-submission` tag; measurements in `docs/cre.md` |
 | **ERC-7053** | The commit log shape, so a record is portable rather than ours alone | **Live** — `commit()` fires on every registration |
 | **Foundry, viem, FastAPI, Vite** | Tooling: contracts and transactions, chain reads in the browser, the scorer and console, the two web surfaces | In use throughout |
 
-### Where CRE actually stands
+### What left the build for Colosseum
 
-It runs. A real `cre workflow simulate` through the CRE CLI, compiling the
-workflow to WASM on every run and executing it in the simulator: the residual
-is extracted locally, a 256² int8 crop of K is released to the handler, and a
-score comes back. About seventeen seconds, and deterministic — three
-consecutive runs returned 17.8s, 16.1s, 16.2s and the same PCE every time.
-Console screen 07 drives it, and `cre/capture-evidence.sh` writes the
-transcript a submission needs.
+ENSv2 and Chainlink CRE were built for ETHOnline and are not part of the
+Colosseum build. Their code is preserved at the `ethonline-submission` tag.
 
-Chainlink's criteria accept **either** a Confidential Workflow simulation via
-the CLI **or** a live deployment. This is the first, so the private-beta gate
-blocks deployment and blocks nothing else. `cre account access` still reports
-deployment access not enabled, `cre account list-key` reports no linked
-owners, and neither is needed to simulate.
-
-Three honest notes, because it is easy to oversell after a day of adversarial
-work. Confidential compute removes the *scorer* as a trusted party; it does
-nothing about forgery — an enclave would score a planted fingerprint
-faithfully and sign it. **Nothing available today produces a real
-attestation**: the simulator is not an enclave and the local backend signs on
-the machine that holds K, so `attested` is False on every path that can be
-run, and the code refuses to let either claim otherwise. And the reference does
-not fit an enclave — 89 MB against a 1 MB secret limit — so K is cropped, and
-at that size the weakest frame in the corpus falls into the null. `docs/cre.md`
-measures all three; `docs/security.md` says the first where someone would look
-for it.
+- **ENS.** The camera commitment moved from an ENS resolver record into the
+  registry's own body record (`docs/security.md`), and a photographer needs no
+  name.
+- **CRE** only ever ran in the simulator, with `attested` false on every path,
+  and it scored a 256² crop at which the weakest genuine frame already fails.
+  No server holds K now, and a verifiable score is costed as future work
+  (`docs/security.md`, "Where K lives"). `docs/cre.md` keeps the measurements.
 
 ## Layout
 
@@ -268,11 +253,9 @@ for it.
 fingerprint/   Python — PRNU extraction, PCE scoring
 ingest/        Python — record construction, hashing, Merkle session batching
 contracts/     Solidity + Foundry — ERC-7053 commit() and the body registry
-identity/      ENSv2 on Sepolia — body subname registration
 subgraph/      The Graph — index registrations, resolve image → record
-scoring/       FastAPI — HTTP wrapper around the scorer
-cre/           Chainlink CRE — confidential scoring, two backends behind a flag
-verify/        web page — upload, score, look up, verdict
+scoring/       FastAPI — the scorer locally; hashes only when public (GENESIS_PUBLIC=1)
+verify/        web page — upload, hash, look up on chain, verdict
 mcp/           Subgraph MCP server
 docs/          the sensor physics, claims discipline, gate results, demo script
 data/          local scratch: enrolment frames, references (gitignored)
@@ -419,17 +402,15 @@ stripped), portrait capture costs a delivered file the aligned path (282 →
 | ███████░░░ | Gate B — does K survive the web | **conditional pass** — `docs/gates.md` names the quality |
 | ██████████ | `ingest/` — hashing, record, Merkle | done |
 | ██████████ | `contracts/` — ERC-7053 registry | **live on Sepolia**, verified on both explorers |
-| ██████████ | `identity/` — ENSv2 subnames | **live** — parent and subregistries deployed; register, records and revoke all rehearsed on chain |
 | ██████████ | `subgraph/` — image → record | **live**, `genesis` v0.0.4, all entity types from real events |
-| ██████████ | `scoring/` — FastAPI wrapper | done |
+| ██████████ | `scoring/` — FastAPI wrapper | done; public mode holds no K and only hashes |
 | ██████████ | `verify/` — the page | four verdicts, driven in a browser against the live chain and index; on-chain values link out to where anyone can re-read them |
 | ██████████ | `mcp/` — Subgraph MCP server | answers from the deployed subgraph |
-| ██████████ | `console/` — demo orchestration API | eight screens wired; registration, sessions, archive and reset exercised live |
-| █████████░ | `console-ui/` — the presenter console | eight screens built to the handoff |
-| ████████░░ | `cre/` — confidential scoring | a real `cre workflow simulate` per run, from screen 07; both backends agree to the tenth, and `capture-evidence.sh` writes the transcript. **`attested` is false** — the simulator is not an enclave. Deployment needs private-beta enrolment, which the criteria do not require |
+| ██████████ | `console/` — demo orchestration API | seven screens wired; registration, sessions, archive and reset exercised live |
+| █████████░ | `console-ui/` — the presenter console | seven screens built to the handoff |
 | ██████████ | `docs/adversarial.md` — red team | the fingerprint forged three ways against our own reference |
 
-**177 tests** — 133 pytest, 21 Foundry, 9 matchstick, 6 MCP, 8 identity.
+**166 tests** — 128 pytest, 23 Foundry, 9 matchstick, 6 MCP.
 
 **What a day of attacking it changed.** The fingerprint can be planted in an
 image the camera never took, invisibly, by anyone holding **one RAW file** off

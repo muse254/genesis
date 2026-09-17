@@ -174,16 +174,14 @@ def test_state_rows_carry_what_a_table_needs_and_no_logic(client, monkeypatch):
 
 def test_a_failing_check_carries_a_remedy(client, monkeypatch):
     """A gate that says no without saying what to do gets ignored on camera."""
-    monkeypatch.setenv("ENS_PARENT_NAME", "cam.osoro.eth")
-    monkeypatch.setattr(chain, "ens_parent_ready",
-                        lambda n: (False, "`osoro` has no subregistry under eth"))
+    monkeypatch.delenv("DEPLOYER_ADDRESS", raising=False)
     monkeypatch.setattr(chain, "status", lambda: {
         "chainId": 11155111, "onExpectedChain": True, "blockNumber": 1, "registry": "0xr",
     })
     monkeypatch.setattr(chain, "block_age_seconds", lambda: 5)
     body = client.get("/state").json()
-    ens = next(c for c in body["checks"] if c["check"] == "ens parent")
-    assert ens["go"] is False and "app.ens.dev" in ens["remedy"]
+    gas = next(c for c in body["checks"] if c["check"] == "deployer gas")
+    assert gas["go"] is False and "DEPLOYER_ADDRESS" in gas["remedy"]
 
 
 def test_gas_threshold_is_ours_not_a_mockups(client, monkeypatch):
@@ -705,37 +703,6 @@ def test_a_raw_gets_no_guess(tmp_path):
     from console.app import _diagnose
 
     assert _diagnose(tmp_path / "IMG_0001.CR3", {}) is None
-
-
-def test_ens_node_is_the_namehash_and_not_a_hash_of_the_name():
-    """The one that would have caught the 8 September registration.
-
-    `registerBody` takes an `ensNode` and nothing on chain checks it, so a
-    wrong node succeeds, costs gas, and resolves to nothing -- the failure
-    `identity/addresses.md` warned about, written into the live record by the
-    console shelling out to `cast keccak` instead of `cast namehash`.
-
-    Pinned against a value computed independently by viem in
-    `identity/scripts/ens.test.ts`, so the two halves of the system cannot
-    drift apart again without one of them going red.
-    """
-    from console.registry import ens_namehash
-
-    name = "r10-4471.cam.osoro.eth"
-    namehash = "0x3533036ced2f2bc810b8f48af0e57a86d334a9612e265789b272c9292dfa8c7c"
-    keccak_of_string = "0x55c9d4fbcd22449029534f3350d732c1222dba3435f93f6bc72074efb28e6543"
-
-    assert ens_namehash(name) == namehash
-    assert ens_namehash(name) != keccak_of_string
-
-
-def test_ens_node_is_recursive_over_labels():
-    """A parent's node is not a prefix of its child's, which is the whole
-    reason hashing the flat string cannot work."""
-    from console.registry import ens_namehash
-
-    assert ens_namehash("cam.osoro.eth") != ens_namehash("r10-4471.cam.osoro.eth")
-    assert ens_namehash("eth") != ens_namehash("osoro.eth")
 
 
 def test_enrolment_refuses_a_folder_holding_two_cameras(monkeypatch):

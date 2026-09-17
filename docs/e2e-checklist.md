@@ -1,5 +1,9 @@
 # End-to-end testing checklist
 
+> **ETHOnline prior work.** This describes the ETHOnline build. The code it
+> refers to under `cre/` and `identity/` was removed from the Colosseum build on
+> 17 September 2026 and is preserved at the `ethonline-submission` tag.
+
 What has to exist, in order, before the three flows in `BUILD.md` §4 can be
 run start to finish. Ticked items were verified on 7 September 2026.
 

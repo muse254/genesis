@@ -1,5 +1,9 @@
 # ETHOnline submission copy
 
+> **ETHOnline prior work.** This describes the ETHOnline build. The code it
+> refers to under `cre/` and `identity/` was removed from the Colosseum build on
+> 17 September 2026 and is preserved at the `ethonline-submission` tag.
+
 Rewritten 13 September 2026. Every claim here is either built and running or
 says plainly that it is not. Measurements live in `docs/gates.md`,
 `docs/adversarial.md` and `docs/cre.md`; the closed list of what this system

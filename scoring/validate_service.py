@@ -83,10 +83,9 @@ def test_the_public_service_loads_no_fingerprint(public, tmp_path):
 def test_the_public_service_refuses_to_score(public, tmp_path):
     api, _ = public
     path = _png({c: np.full((16, 16), 0.5, np.float32) for c in range(4)}, tmp_path / "grey.png")
-    for route in ("/score", "/score/confidential"):
-        with path.open("rb") as handle:
-            response = api.post(route, files={"file": ("grey.png", handle, "image/png")})
-        assert response.status_code == 403, route
+    with path.open("rb") as handle:
+        response = api.post("/score", files={"file": ("grey.png", handle, "image/png")})
+    assert response.status_code == 403
 
 
 def test_the_public_service_will_not_start_beside_a_reference(client, monkeypatch):

@@ -1,5 +1,9 @@
 # Chainlink CRE — confidential scoring
 
+> **ETHOnline prior work.** This describes the ETHOnline build. The code it
+> refers to under `cre/` and `identity/` was removed from the Colosseum build on
+> 17 September 2026 and is preserved at the `ethonline-submission` tag.
+
 `scoring/app.py` is the trust hole by design: it holds the reference and you
 take its word for a PCE. This is the fix, and this document is what it cost.
 

@@ -38,12 +38,14 @@ process. See `docs/security.md`.
 ### `POST /register-body` — step 2a
 
 ```
-{ "name": "r10", "ensLabel": "r10-4471" }
-->  { "bodyId", "txHash", "blockNumber", "ensName" }
+{ "name": "r10", "body_commitment": "0x… or blank" }
+->  { "bodyId", "bodyCommitment", "txHash", "blockNumber" }
 ```
 
-Calls `registerBody(bodyId, commitment, ensNode)` with `DEPLOYER_PRIVATE_KEY`,
-then `identity/scripts/register-body.ts` for the subname and its records.
+Calls `registerBody(bodyId, commitment, bodyCommitment)` with
+`DEPLOYER_PRIVATE_KEY`. The camera commitment comes from
+`python -m ingest commit-body` on the same machine; a malformed one is refused
+before any gas is spent.
 Registering a body is a race that a leaked K wins, so this is deliberately the
 first chain call and not a later one.
 
@@ -83,17 +85,6 @@ problem.
 Measured on one registration: scoring 3.0s, broadcasting 19.6s. Which half is
 slow varies per run, and that is exactly why it is reported rather than
 guessed.
-
-### `POST /score-confidential` — screen 07
-
-Scores a RAW frame where nobody holds K, through `cre/backend.py`. Returns the
-score, the elapsed seconds, the crop size, the payload digest, and `attested`
-— which is **false** on every path available today, because the CRE simulator
-is not a real enclave. `docs/cre.md` is the honest reading.
-
-RAW only. The confidential path correlates on the photosite lattice, and the
-scale search that rescues a developed JPEG needs the whole 89 MB reference,
-which is the thing that does not fit an enclave.
 
 ### `POST /reset` — testnet only
 
@@ -199,9 +190,6 @@ Sepolia, against the live deployment: `Registry` at
 `0xd1bbDB8A6BfD25563d2e6444fA41E4C5230Ed3C9`, block 11694580, verified on
 Blockscout and Etherscan. `docs/e2e-checklist.md` §6 is the state of it.
 
-ENSv2 names on Sepolia reset on redeployment, so `/state` resolves the parent
-live and the console shows it before recording. `identity/addresses.md` has
-the sequence and the `--dry-run` rehearsal.
 
 ## Built so far
 

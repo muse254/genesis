@@ -139,17 +139,6 @@ async def state() -> dict:
         record("deployer gas", "DEPLOYER_ADDRESS unset", "an address to check", False,
                "set DEPLOYER_ADDRESS in .env")
 
-    parent = os.environ.get("ENS_PARENT_NAME", "")
-    if parent:
-        try:
-            ready, detail = chain.ens_parent_ready(parent)
-            record("ens parent", parent if ready else detail,
-                   f"{parent} has a subregistry", ready,
-                   "register the parent at https://app.ens.dev/ and create one "
-                   "subname under it -- that is what provisions the subregistry")
-        except chain.ChainError as error:
-            record("ens parent", f"error: {error}", f"{parent} resolves", False)
-
     bodies = _bodies()
     record("enrolled bodies", len(bodies), f"at least {MIN_BODIES}",
            len(bodies) >= MIN_BODIES, "run /enrol, or check GENESIS_REFERENCES")
@@ -197,7 +186,6 @@ async def state() -> dict:
         "bodyStatus": body_status,
         "threshold": prnu.PCE_THRESHOLD,
         "chain": status,
-        "ensParent": parent or None,
         "registry": {"resettable": resettable, "epoch": epoch},
     }
     _STATE_CACHE["at"], _STATE_CACHE["payload"] = _time.time(), payload

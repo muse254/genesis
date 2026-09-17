@@ -275,10 +275,10 @@ genesis/
 ├── contracts/            # Solidity + Foundry
 │   ├── src/Registry.sol      # ERC-7053 commit() + body registry
 │   └── test/
-├── identity/             # ENSv2 on Sepolia — body subname registration
+├── identity/             # ENSv2 on Sepolia — removed for Colosseum (tag ethonline-submission)
 ├── subgraph/             # The Graph — index registrations, resolve image → record
 ├── scoring/              # FastAPI — HTTP wrapper around the scorer
-├── cre/                  # Chainlink CRE — confidential scoring (BUILT, simulation)
+├── cre/                  # Chainlink CRE — removed for Colosseum (tag ethonline-submission)
 │   ├── payload.py        # client side: crop, residual, int8 — never K
 │   ├── enclave.py        # the correlation, mirrored in TypeScript
 │   ├── backend.py        # the flag: cre | local, and what each is worth
