@@ -42,7 +42,8 @@ Work happens on `colosseum` only. `main`, `ethonline` and the tag
 - [ ] 20+ photographs registered, each resolvable from the public verify page
 - [ ] README for a stranger: verify an image in 60 seconds without `BUILD.md`; `adversarial.md` linked prominently
 - [ ] README and `docs/claims.md` point at the Base address, not Sepolia; the "test registry" caveat updated for a production registry
-- [x] Say what happened to CRE: code removed, `docs/cre.md` and the README say so
+- [x] Say what happened to CRE: code removed; `docs/cre.md` and `docs/security.md` say so
+- [x] README rewritten for Colosseum: intro, how it works, maths references (474 → 124 lines)
 - [ ] Push
 
 ## Week 2 — 24–30 Sept
