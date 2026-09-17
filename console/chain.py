@@ -18,14 +18,54 @@ from dataclasses import dataclass
 import httpx
 from eth_utils import keccak
 
-RPC_URL = os.environ.get("SEPOLIA_RPC_URL") or "https://ethereum-sepolia-rpc.publicnode.com"
+#: Every chain the registry is deployed to, keyed by `GENESIS_CHAIN`. One
+#: place, so the chain id, the RPC and both explorers cannot disagree.
+#: Base mainnet is production (COLOSSEUM.md D1); Sepolia is the ETHOnline
+#: deployment, kept readable because its records are real.
+CHAINS = {
+    "base": {
+        "name": "Base",
+        "chainId": 8453,
+        "rpc": "https://mainnet.base.org",
+        "etherscan": "https://basescan.org",
+        "blockscout": "https://base.blockscout.com",
+    },
+    "base-sepolia": {
+        "name": "Base Sepolia",
+        "chainId": 84532,
+        "rpc": "https://sepolia.base.org",
+        "etherscan": "https://sepolia.basescan.org",
+        "blockscout": "https://base-sepolia.blockscout.com",
+    },
+    "sepolia": {
+        "name": "Sepolia",
+        "chainId": 11155111,
+        "rpc": "https://ethereum-sepolia-rpc.publicnode.com",
+        "etherscan": "https://sepolia.etherscan.io",
+        "blockscout": "https://eth-sepolia.blockscout.com",
+    },
+}
+
+CHAIN_KEY = (os.environ.get("GENESIS_CHAIN") or "sepolia").strip().lower()
+if CHAIN_KEY not in CHAINS:
+    raise RuntimeError(f"GENESIS_CHAIN={CHAIN_KEY!r}; expected one of {sorted(CHAINS)}")
+CHAIN = CHAINS[CHAIN_KEY]
+
+#: `RPC_URL` is the name now; `SEPOLIA_RPC_URL` is honoured only on Sepolia,
+#: so an old `.env` cannot quietly point a Base console at the wrong chain.
+RPC_URL = (
+    os.environ.get("RPC_URL")
+    or (os.environ.get("SEPOLIA_RPC_URL") if CHAIN_KEY == "sepolia" else None)
+    or CHAIN["rpc"]
+)
 REGISTRY = (os.environ.get("REGISTRY_ADDRESS") or "").strip()
 
-#: Sepolia. A demo that silently talked to the wrong chain would look like it
-#: worked, so `/state` reports this and the console shows it before recording.
-EXPECTED_CHAIN_ID = 11155111
+#: A demo that silently talked to the wrong chain would look like it worked,
+#: so `/state` reports this and the console shows it before recording.
+EXPECTED_CHAIN_ID = CHAIN["chainId"]
+CHAIN_NAME = CHAIN["name"]
 
-EXPLORER = "https://eth-sepolia.blockscout.com"
+EXPLORER = CHAIN["blockscout"]
 
 
 class ChainError(RuntimeError):
@@ -88,7 +128,8 @@ class ImageRecord:
 class BodyRecord:
     fingerprint_commitment: str
     owner: str
-    ens_node: str
+    #: `ingest/hashing.py:body_commitment`; all zeros when none was committed.
+    body_commitment: str
     revoked: bool
 
 
@@ -122,7 +163,7 @@ def body(body_id: str) -> BodyRecord | None:
     return BodyRecord(
         fingerprint_commitment="0x" + _word(raw, 0).hex(),
         owner="0x" + _word(raw, 1)[12:].hex(),
-        ens_node="0x" + _word(raw, 2).hex(),
+        body_commitment="0x" + _word(raw, 2).hex(),
         revoked=bool(_uint(raw, 3)),
     )
 
@@ -174,6 +215,9 @@ def status() -> dict:
         "chainId": chain_id,
         "expectedChainId": EXPECTED_CHAIN_ID,
         "onExpectedChain": chain_id == EXPECTED_CHAIN_ID,
+        "chainName": CHAIN_NAME,
+        "etherscan": ETHERSCAN,
+        "blockscout": EXPLORER,
         "blockNumber": int(_rpc("eth_blockNumber", []), 16),
         "registry": REGISTRY or None,
     }
@@ -189,7 +233,7 @@ def explorer_url(tx_or_address: str, kind: str = "tx") -> str:
 
 #: The second explorer, on purpose. The registry is verified on both, so a
 #: reader who distrusts one has another that serves the same ABI.
-ETHERSCAN = "https://sepolia.etherscan.io"
+ETHERSCAN = CHAIN["etherscan"]
 
 #: Where the subgraph can actually be looked at. The query endpoint in `.env`
 #: answers POSTs and is no use in a browser; the Studio page is the one a

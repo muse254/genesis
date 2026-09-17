@@ -59,7 +59,7 @@ async def health() -> dict:
 #: teaches a presenter to ignore the gate.
 #:
 #: Gas: the demo sends four transactions -- registerBody, registerImage,
-#: commitSession, commit -- which on Sepolia costs far under 0.01 ETH. The
+#: commitSession, commit -- which on Sepolia or Base costs far under 0.01 ETH. The
 #: handoff asked for 0.05, which the deployer's 0.0484 would fail for no real
 #: reason.
 #:
@@ -68,7 +68,7 @@ async def health() -> dict:
 #: hardware nobody has.
 MIN_BALANCE_WEI = 10**16          # 0.01 ETH
 MIN_BODIES = 1
-MAX_BLOCK_AGE = 60                # seconds; Sepolia blocks are ~12s
+MAX_BLOCK_AGE = 60                # seconds; Sepolia blocks are ~12s, Base ~2s
 
 
 #: `/state` is polled, and every call makes roughly eight sequential
@@ -110,8 +110,8 @@ async def state() -> dict:
 
     try:
         status = chain.status()
-        record("chain id", status["chainId"], f"{chain.EXPECTED_CHAIN_ID} Sepolia",
-               status["onExpectedChain"], "point SEPOLIA_RPC_URL at Sepolia")
+        record("chain id", status["chainId"], f"{chain.EXPECTED_CHAIN_ID} {chain.CHAIN_NAME}",
+               status["onExpectedChain"], f"point RPC_URL at {chain.CHAIN_NAME}")
         record("registry", status["registry"] or "unset", "contract address set",
                bool(status["registry"]), "set REGISTRY_ADDRESS in .env")
         try:
@@ -122,8 +122,8 @@ async def state() -> dict:
         except chain.ChainError as error:
             record("block", f"error: {error}", "advancing", False, "switch RPC endpoint")
     except chain.ChainError as error:
-        record("chain id", f"unreachable: {error}", f"{chain.EXPECTED_CHAIN_ID} Sepolia",
-               False, "check SEPOLIA_RPC_URL")
+        record("chain id", f"unreachable: {error}", f"{chain.EXPECTED_CHAIN_ID} {chain.CHAIN_NAME}",
+               False, "check RPC_URL")
         status = {}
 
     deployer = os.environ.get("DEPLOYER_ADDRESS")
@@ -132,7 +132,7 @@ async def state() -> dict:
             wei = chain.balance(deployer)
             record("deployer gas", f"{wei / 1e18:.4f} ETH",
                    f"at least {MIN_BALANCE_WEI / 1e18:.2f} ETH", wei >= MIN_BALANCE_WEI,
-                   "top up from a Sepolia faucet")
+                   f"fund the deployer with {chain.CHAIN_NAME} ETH")
         except chain.ChainError as error:
             record("deployer gas", f"error: {error}", "balance readable", False)
     else:
@@ -385,7 +385,7 @@ def _verify(path: Path, progress=None) -> dict:
                 "owner": on_chain_body.owner if on_chain_body else None,
                 "commitment": on_chain_body.fingerprint_commitment if on_chain_body else None,
                 "revoked": on_chain_body.revoked if on_chain_body else None,
-                "ensName": os.environ.get("ENS_PARENT_NAME"),
+                "bodyCommitment": on_chain_body.body_commitment if on_chain_body else None,
             }
             payload["registration"] = {
                 "registeredAt": registration.registered_at,

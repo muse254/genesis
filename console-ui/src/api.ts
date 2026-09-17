@@ -36,7 +36,15 @@ export interface State {
   bodies: string[];
   bodyStatus?: BodyStatus[];
   threshold: number;
-  chain: { chainId?: number; blockNumber?: number; registry?: string | null };
+  chain: {
+    chainId?: number;
+    chainName?: string;
+    onExpectedChain?: boolean;
+    blockNumber?: number;
+    registry?: string | null;
+    etherscan?: string;
+    blockscout?: string;
+  };
   ensParent: string | null;
   /**
    * Whether this registry can be wiped, read from the contract's own
@@ -115,7 +123,8 @@ export interface VerifyResult {
     owner?: string | null;
     commitment?: string | null;
     revoked?: boolean | null;
-    ensName?: string | null;
+    /** Keyed camera commitment; all zeros when none was committed. */
+    bodyCommitment?: string | null;
   } | null;
   registration: {
     registeredAt: number;
@@ -158,8 +167,13 @@ let seenRegistry: string | null = null;
 
 export const registryAddress = (): string | null => seenRegistry;
 
-/** Sepolia, matching `console/chain.py`. */
-export const ETHERSCAN = "https://sepolia.etherscan.io";
+/**
+ * The Etherscan-family explorer for whichever chain the server is on. Read
+ * from `/state` rather than hardcoded, because `console/chain.py` owns the
+ * chain choice (`GENESIS_CHAIN`); until a state call lands this is the
+ * Sepolia one the console has always shown.
+ */
+export let ETHERSCAN = "https://sepolia.etherscan.io";
 
 /** Where the indexed events can be queried. `console/chain.py` agrees. */
 export const GRAPH_STUDIO = "https://thegraph.com/studio/subgraph/genesis";
@@ -190,6 +204,7 @@ export const api = {
   state: async () => {
     const state = await call<State>("/state");
     seenRegistry = state.chain?.registry ?? null;
+    if (state.chain?.etherscan) ETHERSCAN = state.chain.etherscan;
     return state;
   },
 
@@ -221,11 +236,11 @@ export const api = {
    * race -- `bodyId` derives from SHA-256(K), so a leaked reference lets
    * someone else claim the slot -- which is why it comes before anything else.
    */
-  registerBody(name: string, ensLabel: string) {
+  registerBody(name: string, bodyCommitment: string) {
     const form = new FormData();
     form.append("name", name);
-    form.append("ens_label", ensLabel);
-    return call<{ bodyId: string; ensName: string; txHash: string; blockNumber: number;
+    form.append("body_commitment", bodyCommitment);
+    return call<{ bodyId: string; bodyCommitment: string; txHash: string; blockNumber: number;
                   explorerUrl: string; links?: ReferenceLink[] }>(
       "/register-body", { method: "POST", body: form },
     );

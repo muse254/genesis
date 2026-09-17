@@ -181,7 +181,7 @@ def cast_send(args: list[str]) -> dict:
 
 
 @router.post("/register-body")
-async def register_body(name: str = Form(...), ens_label: str = Form(...)) -> dict:
+async def register_body(name: str = Form(...), body_commitment: str = Form("")) -> dict:
     """Demo step 2a.
 
     Done before anything else because `registerBody` is a race: `bodyId`
@@ -202,17 +202,24 @@ async def register_body(name: str = Form(...), ens_label: str = Form(...)) -> di
             "impossible by design; the slot is claimed.",
         )
 
-    parent = os.environ.get("ENS_PARENT_NAME", "cam.osoro.eth")
-    ens_node = ens_namehash(f"{ens_label}.{parent}")
+    # The keyed camera commitment (`ingest/hashing.py:body_commitment`),
+    # computed on the photographer's machine by `python -m ingest commit-body`.
+    # It arrives already hashed: this endpoint never sees the serial or the key.
+    # Blank means none, and there is no setter -- a commitment is worth
+    # something only because it predates any dispute.
+    camera = body_commitment.strip().lower().removeprefix("0x")
+    if camera and (len(camera) != 64 or any(c not in "0123456789abcdef" for c in camera)):
+        raise HTTPException(422, "body_commitment must be 32 bytes of hex, or blank")
+    camera = "0x" + (camera or "0" * 64)
 
     receipt = cast_send([
         "registerBody(bytes32,bytes32,bytes32)",
         "0x" + body_id,
         "0x" + body["commitment"],
-        ens_node,
+        camera,
     ])
     _invalidate_state()
-    return {"bodyId": "0x" + body_id, "ensName": f"{ens_label}.{parent}", **receipt}
+    return {"bodyId": "0x" + body_id, "bodyCommitment": camera, **receipt}
 
 
 @router.post("/register-image")

@@ -212,9 +212,50 @@ def test_register_body_refuses_a_slot_that_is_taken(client, monkeypatch):
     monkeypatch.setattr(reg, "_bodies", console_app._bodies)
     monkeypatch.setattr(chain, "body", lambda b: chain.BodyRecord("0xcc", "0xsomeone", "0x0", False))
 
-    r = client.post("/register-body", data={"name": "r10", "ens_label": "r10-4471"})
+    r = client.post("/register-body", data={"name": "r10"})
     assert r.status_code == 409
     assert "0xsomeone" in r.json()["detail"]
+
+
+def test_register_body_refuses_a_malformed_camera_commitment(client, monkeypatch):
+    """Checked before any gas is spent: a truncated hex string would be padded
+    by `cast` into a commitment nobody can ever reproduce."""
+    monkeypatch.setattr(
+        console_app, "_bodies",
+        lambda: {"b1": {"name": "r10", "commitment": "cc", "planes": {}, "meta": {}}},
+    )
+    from console import registry as reg
+
+    monkeypatch.setattr(reg, "_bodies", console_app._bodies)
+    monkeypatch.setattr(chain, "body", lambda b: None)
+    sent = []
+    monkeypatch.setattr(reg, "cast_send", lambda args: sent.append(args) or {})
+
+    r = client.post("/register-body", data={"name": "r10", "body_commitment": "0xabc"})
+    assert r.status_code == 422
+    assert sent == []
+
+
+def test_register_body_sends_the_camera_commitment_or_zero(client, monkeypatch):
+    monkeypatch.setattr(
+        console_app, "_bodies",
+        lambda: {"b1": {"name": "r10", "commitment": "cc", "planes": {}, "meta": {}}},
+    )
+    from console import registry as reg
+
+    monkeypatch.setattr(reg, "_bodies", console_app._bodies)
+    monkeypatch.setattr(chain, "body", lambda b: None)
+    sent = []
+    monkeypatch.setattr(reg, "cast_send", lambda args: sent.append(args) or {"txHash": "0x1"})
+
+    camera = "AB" * 32
+    r = client.post("/register-body", data={"name": "r10", "body_commitment": "0x" + camera})
+    assert r.status_code == 200
+    assert sent[-1][-1] == "0x" + camera.lower()
+    assert r.json()["bodyCommitment"] == "0x" + camera.lower()
+
+    client.post("/register-body", data={"name": "r10"})
+    assert sent[-1][-1] == "0x" + "0" * 64
 
 
 def test_register_image_refuses_below_threshold(client, monkeypatch):

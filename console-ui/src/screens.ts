@@ -19,7 +19,7 @@ import {
   type State,
   type VerifyResult,
 } from "./api";
-import { el, escape, rail, stageStrip, verdictCard } from "./components";
+import { el, escape, rail, short, stageStrip, verdictCard } from "./components";
 
 type Render = (host: HTMLElement) => void;
 
@@ -447,9 +447,13 @@ async function drawBodyStep(host: HTMLElement, ledger: HTMLElement): Promise<voi
       <p><b>${escape(pending.name)}</b> is enrolled on this machine and the registry has
          no record of it. A photograph cannot attach to a body the chain has never heard
          of, so this comes first.</p>
-      <label>ENS label
-        <input class="ens-label" value="${escape(pending.name)}" spellcheck="false" />
+      <label>Camera commitment <small class="hint">optional · from
+        <span class="mono">python -m ingest commit-body</span></small>
+        <input class="body-commitment" placeholder="0x… (32 bytes), or leave blank"
+               spellcheck="false" />
       </label>
+      <p class="hint">A keyed hash of make, model and serial. It cannot be added
+         later: its value is that it predates any dispute.</p>
       <button class="body-go">Register this body</button>
       <div class="body-out"></div>
     </div>`);
@@ -459,18 +463,18 @@ async function drawBodyStep(host: HTMLElement, ledger: HTMLElement): Promise<voi
   const out = panel.querySelector(".body-out") as HTMLElement;
 
   button.addEventListener("click", async () => {
-    const label = (panel.querySelector(".ens-label") as HTMLInputElement).value.trim();
-    if (!label) {
-      out.innerHTML = `<span class="bad">The ENS label cannot be empty.</span>`;
+    const camera = (panel.querySelector(".body-commitment") as HTMLInputElement).value.trim();
+    if (camera && !/^(0x)?[0-9a-fA-F]{64}$/.test(camera)) {
+      out.innerHTML = `<span class="bad">The camera commitment must be 32 bytes of hex, or blank.</span>`;
       return;
     }
     button.disabled = true;
     button.textContent = "registering…";
     try {
-      const receipt = await api.registerBody(pending.name, label);
+      const receipt = await api.registerBody(pending.name, camera);
       panel.innerHTML = `
         <p><b>${escape(pending.name)}</b> registered as
-           <span class="mono">${escape(receipt.ensName)}</span>, block
+           <span class="mono">${escape(short(receipt.bodyId))}</span>, block
            ${escape(receipt.blockNumber)}.</p>
         <p class="mono txlink"><a href="${escape(receipt.explorerUrl)}" target="_blank"
            rel="noreferrer">view transaction ↗</a></p>

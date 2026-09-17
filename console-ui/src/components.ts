@@ -10,7 +10,7 @@
  * ink, and colour lives only on the verdict block.
  */
 
-import { ENS_APP, ETHERSCAN, GRAPH_STUDIO, readContractUrl, registryAddress } from "./api";
+import { ETHERSCAN, GRAPH_STUDIO, readContractUrl, registryAddress } from "./api";
 import type { Signal, Stage, Verdict, VerifyResult } from "./api";
 
 /**
@@ -46,7 +46,7 @@ export const escape = (value: unknown): string =>
     ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!,
   );
 
-const short = (hash: string, head = 10) =>
+export const short = (hash: string, head = 10) =>
   hash.length > head + 6 ? `${hash.slice(0, head)}…${hash.slice(-4)}` : hash;
 
 export const utc = (seconds: number) =>
@@ -125,15 +125,13 @@ export function verdictCard(result: VerifyResult): HTMLElement {
           `target="_blank" rel="noreferrer">${escape(short(result.body.owner, 8))} ↗</a>`,
       );
     }
-    if (result.body.ensName) {
-      // The operator's parent, not this body's name. The registry stores an
-      // `ensNode` and a namehash is one-way, so nothing on chain turns back
-      // into the body's own subname -- calling this "Identity" implied it did.
+    if (result.body.bodyCommitment && /[1-9a-f]/i.test(result.body.bodyCommitment.slice(2))) {
+      // A keyed commitment to make, model and serial. It proves nothing on
+      // its own; it is what a photographer reveals against in a dispute.
       row(
-        "Fleet namespace",
-        `<a class="mono" href="${escape(`${ENS_APP}/${result.body.ensName}`)}" ` +
-          `target="_blank" rel="noreferrer">${escape(result.body.ensName)} ↗</a>` +
-          ` <small class="hint">bodies are subnames of this</small>`,
+        "Camera commitment",
+        onChain(result.body.bodyCommitment, "bodies(bytes32)", short(result.body.bodyCommitment)) +
+          ` <small class="hint">revealed only in a dispute</small>`,
       );
     }
   }

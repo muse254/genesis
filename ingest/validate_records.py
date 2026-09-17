@@ -203,7 +203,7 @@ def test_erc7053_commit_is_deterministic_and_carries_the_score():
 
 #: Regression vector. A change to the field order, the length-prefixing or
 #: BODY_COMMITMENT_VERSION moves this, and every commitment already written
-#: into a `genesis.body` resolver record stops verifying.
+#: into a registry body record stops verifying.
 PINNED_BODY_COMMITMENT = "dfdc609697348023fbe729c63fc9450e6d382342173570f059764e717a80e093"
 
 
@@ -269,3 +269,26 @@ def test_the_body_commitment_scheme_is_versioned():
     base = dict(make="Canon", model="EOS R10", serial="1", owner="o")
     # Pinned: if this digest moves, every prior commitment has been invalidated.
     assert hashing.body_commitment(key, **base).hex() == PINNED_BODY_COMMITMENT
+
+
+def test_commit_body_cli_matches_the_library_and_keeps_its_key(tmp_path, capsys):
+    """The CLI is what photographers run, so it must agree with the function
+    the reveal is checked against, and create its key private."""
+    from ingest.__main__ import main
+
+    key_file = tmp_path / "k.key"
+    argv = ["commit-body", "--make", "Canon", "--model", "EOS R10",
+            "--serial", "473034005088", "--owner", "osoro", "--key-file", str(key_file)]
+    assert main(argv) == 0
+    printed = capsys.readouterr().out.strip()
+
+    assert key_file.stat().st_mode & 0o777 == 0o600
+    key = key_file.read_bytes()
+    expected = hashing.body_commitment(
+        key, make="Canon", model="EOS R10", serial="473034005088", owner="osoro"
+    )
+    assert printed == "0x" + expected.hex()
+
+    # Same key file, same answer: the reveal depends on it.
+    assert main(argv) == 0
+    assert capsys.readouterr().out.strip() == printed

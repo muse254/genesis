@@ -42,7 +42,7 @@ app.innerHTML = `
     <footer class="chrome">
       <span class="dot" data-dot="scorer"><i></i>SCORER</span>
       <span class="dot" data-dot="rpc"><i></i>RPC</span>
-      <span class="dot" data-dot="ens"><i></i>ENS</span>
+      <span class="dot" data-dot="index"><i></i>INDEX</span>
       <span class="standing">FINGERPRINT STAYS ON THIS MACHINE — ONLY HASHES LEAVE IT</span>
     </footer>
   </div>`;
@@ -82,20 +82,23 @@ async function heartbeat() {
       state.checks.find((c) => c.check.includes(needle))?.go ?? false;
     set("scorer", state.bodies.length > 0);
     set("rpc", has("chain id") && has("block"));
-    set("ens", has("ens"));
+    set("index", has("perceptual index"));
     // Read the chain id rather than asserting it. The header said SEPOLIA
     // whatever it was connected to, which on a demo about provenance is the
     // wrong thing to be casual about -- an anvil run would have been captioned
     // as a public testnet.
     const chainId = state.chain?.chainId;
-    const network =
-      chainId === 11155111 ? "SEPOLIA" : chainId ? `CHAIN ${chainId}` : "NO CHAIN";
+    const network = !chainId
+      ? "NO CHAIN"
+      : state.chain.onExpectedChain && state.chain.chainName
+        ? state.chain.chainName.toUpperCase()
+        : `CHAIN ${chainId}`;
     app.querySelector(".meta")!.textContent =
       `LOCALHOST:5173 · ${network} · ${new Date().toISOString().slice(11, 19)} UTC`;
   } catch {
     set("scorer", false);
     set("rpc", false);
-    set("ens", false);
+    set("index", false);
     app.querySelector(".meta")!.textContent = "LOCALHOST:5173 · CONSOLE UNREACHABLE";
   }
 }

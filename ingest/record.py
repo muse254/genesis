@@ -36,7 +36,7 @@ class BodyRecord:
 
     fingerprint_commitment: bytes  # hash of K -- never K itself
     owner: str
-    ens_node: bytes
+    body_commitment: bytes  # ingest.hashing.body_commitment, or zero for none
     revoked: bool = False
 
 
