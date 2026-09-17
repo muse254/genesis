@@ -9,10 +9,12 @@ Pillow>=10.0         # JPEG export/re-ingest for Gate B; feeds the pHash
 fastapi>=0.110
 uvicorn[standard]>=0.29
 python-multipart>=0.0.9
+httpx>=0.27          # console chain reads over JSON-RPC
 
 # Record construction
 eth-hash[pycryptodome]>=0.7
 eth-keys>=0.5
+eth-utils>=4.0       # keccak for selectors in console/chain.py
 
 # Dev
 pytest>=8.0

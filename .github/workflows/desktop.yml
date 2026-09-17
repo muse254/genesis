@@ -1,0 +1,67 @@
+# Build the Genesis desktop app for every platform and attach the installers
+# to a draft GitHub release. Draft on purpose: a person publishes it.
+#
+# Run it from the Actions tab (workflow_dispatch), or push a tag such as
+# `desktop-v0.1.0`.
+name: desktop
+
+on:
+  workflow_dispatch:
+  push:
+    tags: ["desktop-v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: macos-latest     # Apple silicon
+          - platform: windows-latest
+          - platform: ubuntu-22.04
+    runs-on: ${{ matrix.platform }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Linux system libraries
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Python dependencies
+        run: python -m pip install -r requirements.txt pyinstaller
+
+      - name: Console UI dependencies
+        run: npm ci --prefix console-ui
+
+      - name: Backend sidecar
+        shell: bash
+        run: desktop/scripts/build-sidecar.sh
+
+      - uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          projectPath: desktop
+          tauriScript: npx --yes @tauri-apps/cli@2
+          tagName: ${{ github.ref_type == 'tag' && github.ref_name || 'desktop-v__VERSION__' }}
+          releaseName: Genesis desktop v__VERSION__
+          releaseBody: |
+            Unsigned builds. macOS: right-click the app and choose Open the first time.
+            Windows: choose "More info" then "Run anyway" on the SmartScreen prompt.
+          releaseDraft: true
+          prerelease: true

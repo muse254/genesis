@@ -9,7 +9,13 @@
  * eventually disagree about the same image.
  */
 
-const BASE = import.meta.env.VITE_CONSOLE_URL ?? "http://127.0.0.1:8100";
+/** The desktop app injects its backend's port before any script runs
+ *  (`desktop/src-tauri/src/lib.rs`); a browser session uses the env or the
+ *  historical default. */
+const BASE =
+  (window as { __GENESIS_CONSOLE__?: string }).__GENESIS_CONSOLE__ ??
+  import.meta.env.VITE_CONSOLE_URL ??
+  "http://127.0.0.1:8100";
 
 export type Verdict = "registered" | "derived" | "fingerprint-only" | "no-record";
 

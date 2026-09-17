@@ -16,7 +16,7 @@ Work happens on `colosseum` only. `main`, `ethonline` and the tag
 - [x] `python -m ingest commit-body`
 - [x] Colosseum project created — name Genesis, chain Base, category Identity & Privacy, brief description
 - [x] **D4 — K lives only on the photographer's machine**; the hosted service runs `GENESIS_PUBLIC=1` and holds none. TEE and ZK scoring are future work (`docs/security.md`, "Where K lives")
-- [ ] **D5 — desktop app with Tauri**: decided 17 Sept; scope and week still to settle (see "Desktop app" below)
+- [x] **D5 — desktop app with Tauri, built before the mainnet tests**; gasless onboarding through an app key and our relayer (ERC-2771), invite codes; every platform via CI
 
 ## Week 1 — 17–23 Sept · Go live
 
@@ -42,7 +42,7 @@ Work happens on `colosseum` only. `main`, `ethonline` and the tag
 - [ ] 20+ photographs registered, each resolvable from the public verify page
 - [ ] README for a stranger: verify an image in 60 seconds without `BUILD.md`; `adversarial.md` linked prominently
 - [ ] README and `docs/claims.md` point at the Base address, not Sepolia; the "test registry" caveat updated for a production registry
-- [ ] Say what happened to CRE: `docs/cre.md`, the README status table and console screen 07 marked as ETHOnline prior work, not in this build
+- [x] Say what happened to CRE: code removed, `docs/cre.md` and the README say so
 - [ ] Push
 
 ## Week 2 — 24–30 Sept
@@ -113,9 +113,15 @@ what `docs/security.md` wants.
 
 Open before building:
 
-- [ ] Python sidecar: bundle `console/` (rawpy, numpy, scipy, PyWavelets) with PyInstaller or similar; measure the size
-- [ ] Signing transactions without `cast` and a `.env` key: OS keychain key, or an external wallet
-- [ ] Platforms: macOS first; Windows for the week-3 photographers?
-- [ ] Code signing: an Apple Developer account is $99/year, over the plan's whole budget; unsigned builds trip Gatekeeper and SmartScreen
+- [x] Python sidecar frozen with PyInstaller: 49 MB; verifies a CR3 against Base Sepolia (`desktop/`)
+- [x] App shell: free port injected into the page, backend exits with the app, Genesis icons
+- [x] CI for macOS, Windows, Linux into a draft release (`.github/workflows/desktop.yml`) — not yet run
+- [ ] Cold start is 13–34 s: try a one-dir sidecar
+- [ ] Onboarding screens for photographers; hide the presenter-only screens (pre-flight, reset)
+- [ ] App key in the OS keychain with a recovery phrase; signs ERC-2771 requests instead of calling `cast`
+- [ ] Registry: ERC-2771 forwarder support (before the mainnet deploy)
+- [ ] Relayer service: invite codes, per-body quotas, pays gas; hosted
+- [ ] Code signing: deferred; unsigned installers with instructions on the landing page
+- [ ] Landing page on GitHub Pages: user journey, screenshots, download links
 - [ ] Which week: it is the week-3 onboarding path, so it has to exist before 1 Oct
 - [ ] Strip the presenter-only screens (pre-flight, reset, 07 confidential) from the shipped app
