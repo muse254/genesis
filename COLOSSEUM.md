@@ -47,6 +47,16 @@ cameras, and the registry is on mainnet.**
 
 Budget: Base gas, one host for the scorer, one domain. Under $100.
 
+**Decided 17 September:**
+
+- **D1 — Base mainnet.**
+- **D2 — ENS is dropped this round; the body commitment moves into the
+  Registry.** A mainnet deploy is a fresh contract anyway, so `security.md`'s
+  reason for using the resolver ("adding a field means redeploying and
+  abandoning the live registration") no longer applies. `identity/` stays in
+  the repo as prior work and leaves the week-1 path.
+- **D3 — ~3h/day.** The plan stands as written.
+
 ---
 
 ## 3. Non-goals — binding
