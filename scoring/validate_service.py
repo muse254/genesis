@@ -50,7 +50,50 @@ def _png(planes, path):
 
 def test_health_reports_what_it_holds(client):
     api, _ = client
-    assert api.get("/health").json() == {"status": "ok", "bodies": 1}
+    assert api.get("/health").json() == {"status": "ok", "public": False, "bodies": 1}
+
+
+@pytest.fixture
+def public(client, monkeypatch):
+    """The same machine, run as the hosted instance."""
+    api, body = client
+    monkeypatch.setattr(service, "PUBLIC", True)
+    return api, body
+
+
+def test_the_public_service_loads_no_fingerprint(public, tmp_path):
+    """Even with a reference on disk, public mode must not load it: the
+    hosted instance holds no K, by construction rather than by omission."""
+    from fingerprint import validate_synthetic as sim
+
+    api, body = public
+    assert api.get("/health").json() == {"status": "ok", "public": True, "bodies": 0}
+
+    frame = {c: sim.simulate_exposure(k, seed=9000 + c) for c, k in body.items()}
+    path = _png(frame, tmp_path / "frame.png")
+    with path.open("rb") as handle:
+        result = api.post("/lookup", files={"file": ("frame.png", handle, "image/png")}).json()
+
+    assert result["candidates"] == []
+    assert result["verdict"] == "no-match"
+    assert result["imageHash"].startswith("0x") and len(result["imageHash"]) == 66
+    assert result["perceptualHash"].startswith("0x")
+
+
+def test_the_public_service_refuses_to_score(public, tmp_path):
+    api, _ = public
+    path = _png({c: np.full((16, 16), 0.5, np.float32) for c in range(4)}, tmp_path / "grey.png")
+    for route in ("/score", "/score/confidential"):
+        with path.open("rb") as handle:
+            response = api.post(route, files={"file": ("grey.png", handle, "image/png")})
+        assert response.status_code == 403, route
+
+
+def test_the_public_service_will_not_start_beside_a_reference(client, monkeypatch):
+    """The fixture put a reference in REFERENCES; public mode must refuse it."""
+    monkeypatch.setattr(service, "PUBLIC", True)
+    with pytest.raises(RuntimeError, match="must never hold K"):
+        service._refuse_references_in_public_mode()
 
 
 def test_lookup_matches_the_body_that_took_it(client, tmp_path):

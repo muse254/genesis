@@ -6,10 +6,15 @@ PCE score and a registry lookup.
 
     uvicorn scoring.app:app --reload
 
-This service is the trust hole in the design, and it is on purpose. The
-Chainlink CRE confidential workflow (BUILD.md sec.11) eventually replaces
-it: published algorithm, secret reference, signed score. That is the honest
-reason CRE is in the architecture rather than a sponsor tick.
+This service is the trust hole in the design when it holds references, and
+it is on purpose: whoever runs it holds K and you take its word for a PCE.
+The Chainlink CRE workflow was the ETHOnline answer and never ran outside
+the simulator; it is not in the Colosseum build (COLOSSEUM.md sec.3).
+
+So the hosted instance runs with ``GENESIS_PUBLIC=1`` and holds no K at
+all. It hashes pixels and nothing else. Scoring happens on the
+photographer's machine, where the RAW archive and K already are
+(`docs/security.md`, "Where K lives").
 
 Chain reads are deliberately NOT here. The page does those with viem, so
 this service never becomes the thing that decides what is on chain -- it
@@ -33,6 +38,22 @@ from ingest import hashing, record
 #: leaves this machine; only scores and hashes go out over HTTP.
 REFERENCES = Path(os.environ.get("GENESIS_REFERENCES", "data/references"))
 
+#: The hosted, public instance. It loads no reference, refuses to score, and
+#: refuses to start beside one: a public host that merely *happened* not to be
+#: configured with K is one mistaken copy away from holding it.
+PUBLIC = os.environ.get("GENESIS_PUBLIC", "").strip() == "1"
+
+
+def _refuse_references_in_public_mode() -> None:
+    if PUBLIC and REFERENCES.is_dir() and any(REFERENCES.glob("*.npz")):
+        raise RuntimeError(
+            f"GENESIS_PUBLIC=1 but {REFERENCES} holds references. A public host "
+            "must never hold K; move them off this machine."
+        )
+
+
+_refuse_references_in_public_mode()
+
 app = FastAPI(title="Genesis scoring service")
 
 #: The verify page is served from a different origin -- Vite on 5173, or
@@ -51,7 +72,16 @@ app.add_middleware(
 
 @app.get("/health")
 async def health() -> dict:
-    return {"status": "ok", "bodies": len(_bodies())}
+    return {"status": "ok", "public": PUBLIC, "bodies": len(_bodies())}
+
+
+def _refuse_if_public() -> None:
+    if PUBLIC:
+        raise HTTPException(
+            403,
+            "this is the public service and it holds no fingerprints; scoring "
+            "runs on the photographer's own machine",
+        )
 
 
 #: The loaded references, and the directory signature they were loaded from.
@@ -85,6 +115,8 @@ def _bodies() -> dict:
     So it re-checks the directory signature instead. The reload cost is paid
     only when the directory has actually changed.
     """
+    if PUBLIC:
+        return {}
     signature = _signature()
     if _BODY_CACHE["signature"] == signature:
         return _BODY_CACHE["bodies"]
@@ -252,6 +284,7 @@ async def score(file: UploadFile = File(...), body: str | None = Query(default=N
     among 126 sensors. That distinction is the whole answer to PRNU-Bench's
     73.65% (BUILD.md sec.2).
     """
+    _refuse_if_public()
     bodies = _bodies()
     if not bodies:
         raise HTTPException(503, f"no enrolled fingerprints in {REFERENCES}")
@@ -276,6 +309,10 @@ async def score(file: UploadFile = File(...), body: str | None = Query(default=N
 @app.post("/lookup")
 async def lookup(file: UploadFile = File(...)) -> dict:
     """Flow C: exact pixel-hash hit, else pHash candidates then PRNU re-score.
+
+    In public mode ``candidates`` is always empty and ``verdict`` is always
+    ``no-match``: the hashes are the whole answer, and the caller resolves
+    them against the chain.
 
     Returns the hashes for the caller to resolve on chain and, when nothing
     resolves exactly, the PRNU verdict against every body this service holds.
@@ -328,6 +365,7 @@ async def score_confidential(
     is 89 MB and does not fit an enclave -- so `/score` remains the path for
     delivered images and this one refuses rather than quietly scoring worse.
     """
+    _refuse_if_public()
     from cre import backend as confidential
 
     bodies = _bodies()

@@ -460,9 +460,14 @@ two fingerprints in one image, noise-floor physics, demosaic/CFA consistency,
 and a hot-pixel defect map. None is a control until it has a measured
 false-positive rate on a corpus with many bodies and many scenes.
 
-**A deployed confidential workflow.** CRE runs on simulation today, which is
-what the criteria accept. A deployed workflow is what produces a DON-signed
-report and a true `attested: true`; it needs private-beta enrolment.
+**A verifiable score.** Today the PCE in a registration is reported by the
+owner's own machine, and the public service scores nothing because it holds no
+K. There are two ways to make the score checkable. A confidential VM (Intel
+TDX, attestation verified on Base) would prove the published scorer produced
+the number. A zero-knowledge proof would prove it without trusting any
+hardware. Neither defends against a planted fingerprint, and both are costed in
+`docs/security.md`. The Chainlink CRE workflow built for ETHOnline ran only in
+the simulator and is not part of this build.
 
 **A Merkle commitment over the body fields**, so a camera serial can be
 revealed in a dispute without also revealing geolocation. Worth building once

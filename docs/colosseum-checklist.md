@@ -15,7 +15,7 @@ Work happens on `colosseum` only. `main`, `ethonline` and the tag
 - [x] Console, ingest, subgraph, MCP, verify page follow `GENESIS_CHAIN` and the rename
 - [x] `python -m ingest commit-body`
 - [x] Colosseum project created — name Genesis, chain Base, category Identity & Privacy, brief description
-- [ ] **D4 — where K lives for scoring** (see "Scoring without Chainlink" below)
+- [x] **D4 — K lives only on the photographer's machine**; the hosted service runs `GENESIS_PUBLIC=1` and holds none. TEE and ZK scoring are future work (`docs/security.md`, "Where K lives")
 - [ ] **D5 — desktop app with Tauri**: decided 17 Sept; scope and week still to settle (see "Desktop app" below)
 
 ## Week 1 — 17–23 Sept · Go live
@@ -29,8 +29,10 @@ Work happens on `colosseum` only. `main`, `ethonline` and the tag
 - [ ] Subgraph on Base: `subgraph.yaml` network `base`, new address, `startBlock`; deployed and **published** —
       the Studio development URL is capped at 3,000 queries/day and is for testing only; a published
       subgraph queried with an API key has 100,000 free queries/month, then $2 per 100,000
-- [ ] Scoring service hosted: HTTPS on a real domain, health check green, survives reboot
-- [ ] Verify page public, pointed at Base; both Flow C branches live (exact hash, pHash + re-score)
+- [x] Scoring service has a public mode: no K, hashes only, refuses to start beside a reference
+- [ ] Scoring service hosted with `GENESIS_PUBLIC=1`: HTTPS on a real domain, health check green, survives reboot
+- [x] Verify page takes body identity from the chain record, and labels the stored PCE as owner-reported
+- [ ] Verify page public, pointed at Base; both Flow C branches live (exact hash; pHash via the subgraph, no re-score)
 - [ ] R10 body registered on mainnet with a camera commitment
 - [ ] 20+ photographs registered, each resolvable from the public verify page
 - [ ] README for a stranger: verify an image in 60 seconds without `BUILD.md`; `adversarial.md` linked prominently
@@ -42,7 +44,7 @@ Work happens on `colosseum` only. `main`, `ethonline` and the tag
 
 - [ ] Hot-pixel and defect map — `adversarial.md` §"Proposals, ranked", tier 1 item 2 (items 1 and 3 shipped 8 Sept)
 - [ ] MCP server real, not sketched: runs against the Base subgraph, `verify_image` / `lookup_body` / `image_lineage` answer from live data
-- [ ] MCP: an agent can check an image it holds, not only a hash it already knows (decide how — through the hosted scorer)
+- [ ] MCP: an agent can check an image it holds, not only a hash it already knows (through the public service's hashes)
 - [ ] MCP: install instructions a stranger can follow; one recorded agent session
 - [ ] Push
 
@@ -88,10 +90,11 @@ What the public verify page needs K for, and what it does not:
 | `derived` — pHash finds the original via the subgraph | No, for the match; yes, for the PCE shown beside it |
 | `fingerprint-only` / `no-record` for an unregistered image | Yes |
 
-**D4, open:** a hosted scorer means K on a server. `docs/claims.md` already
-assumes RAW files leak and rests the claim on the owner's registration, so a
-leaked K does not break claim 1 — but custody of strangers' references in
-week 3 is a responsibility, and `docs/security.md` must say where K lives.
+**D4, decided 17 Sept:** no server holds K. The public verify page shows the
+first two verdicts; fingerprint scoring happens on the photographer's machine.
+A verifiable score — confidential VM or zero-knowledge proof — is future work,
+costed in `docs/security.md`, and neither would defend against a planted
+fingerprint.
 
 ## Desktop app
 

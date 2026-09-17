@@ -167,8 +167,10 @@ export async function verifyImage(file: File): Promise<VerifyResult> {
   const exact = await lookupByPixelHash(lookup.imageHash);
   const best = lookup.candidates[0];
 
+  // Identity comes from the record on chain, never from the scorer: the
+  // public scoring service holds no fingerprints and returns no candidates.
   if (exact) {
-    const identity = best ? await identityOf(best.bodyId) : undefined;
+    const identity = await identityOf(exact.bodyId);
     return {
       verdict: "registered",
       resettableRegistry: await registryIsResettable(),
@@ -191,7 +193,7 @@ export async function verifyImage(file: File): Promise<VerifyResult> {
   if (near) {
     const parent = await lookupByPixelHash(near.imageHash);
     if (parent) {
-      const identity = best ? await identityOf(best.bodyId) : undefined;
+      const identity = await identityOf(parent.bodyId);
       return {
         verdict: "derived",
         resettableRegistry: await registryIsResettable(),
@@ -245,6 +247,7 @@ async function lookupByPixelHash(hash: `0x${string}`) {
   if (/^0x0+$/.test(record[0])) return undefined;
 
   return {
+    bodyId: record[2] as `0x${string}`,
     modificationLevel: Number(record[3]) as 0 | 1 | 2,
     pceScore: Number(record[6]),
     registeredAt: new Date(Number(record[7]) * 1000).toISOString(),
@@ -384,7 +387,7 @@ function render(result: VerifyResult): void {
     section.className = "no-record";
     rows.push("<h2>No record</h2>");
     rows.push(
-      `<p>This does not resolve to any body we hold${
+      `<p>No registration matches this image${
         result.pceScore !== undefined
           ? `: best score ${result.pceScore.toFixed(1)} against a threshold of ${result.threshold}`
           : ""
@@ -454,7 +457,12 @@ function render(result: VerifyResult): void {
     if (result.bodyName) say("Body", result.bodyName);
     sayIdentity(result, say);
     if (result.pceScore !== undefined) {
-      say("PCE", `${result.pceScore.toFixed(1)} (threshold ${result.threshold})`);
+      // Read off the record, and the record's score is whatever the owner's
+      // machine reported: the contract does not check it (docs/security.md).
+      say(
+        "PCE at registration",
+        `${result.pceScore.toFixed(1)} (threshold ${result.threshold}) — reported by the owner`,
+      );
     }
     say("Matched by", result.verdict === "registered" ? "exact pixel hash" : result.method ?? "PRNU");
     if (result.orientation && result.orientation !== "0 deg") {

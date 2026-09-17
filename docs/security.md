@@ -141,6 +141,65 @@ produces a real attestation: the local backend signs with a key on the machine
 that holds K, and the CRE simulator is not an enclave. `attested` is False on
 every path that can be run, and only a deployed workflow may set it True.
 
+## Where K lives, and what the public service may do
+
+Decided 17 September for Colosseum, after dropping CRE (`COLOSSEUM.md` §3).
+
+**K lives only on the photographer's machine.** Enrolment and scoring run
+there, in the console and the desktop app, next to the RAW archive that
+produced K. No server holds a reference.
+
+**The hosted scoring service holds nothing.** It runs with `GENESIS_PUBLIC=1`:
+it loads no reference, answers `/score` and `/score/confidential` with 403,
+and refuses to start if a reference is present in its directory. Its only job
+is to hash pixels (`imageHash`, `perceptualHash`) for the verify page, which
+resolves them against the chain itself.
+
+So the public verify page gives these verdicts, and only these:
+
+| Verdict | What it rests on |
+| --- | --- |
+| `registered` | The pixel hash is on chain, signed by the body's owner |
+| `derived` | The perceptual hash finds a registered original via the subgraph; the chain confirms it |
+| `no-record` | Nothing matched. Not a finding about the image |
+
+It never says `fingerprint-only`, because it cannot score, and it never shows
+a fresh PCE for a derived copy. Both of those need K.
+
+**The PCE stored in a registration is self-reported.** `registerImage` takes
+`pceScore` from the caller and does not check it. It is the owner's claim
+about their own photograph, and the verify page labels it "reported by the
+owner". It is not a measurement anyone else made. This costs little, because
+the claim was never the score: a PCE is forgeable (see the table above), and
+the boundary is the owner's signature and the registration time.
+
+### Why not score in the cloud
+
+It was considered and deferred, not missed.
+
+- **On chain** is not feasible: the EVM has no floating point, and a PCE is
+  wavelet denoising plus FFT cross-correlation over millions of photosites.
+- **A confidential VM** (Intel TDX, for example on Phala Cloud, with the quote
+  verified on chain through Automata's DCAP contracts on Base) would run the
+  scorer unmodified on the full frame. It would prove the published code
+  produced the score and keep K sealed from the operator. Cost is about $43 a
+  month at Phala's July 2026 rate for a small instance, left running. It is
+  future work.
+- **A zero-knowledge proof** (RISC Zero or SP1) would prove the score came from
+  the image with hash H and the fingerprint with commitment C, without
+  revealing K and without trusting hardware. That would retire the
+  self-reported score. The full frame is estimated at hours of proving, and the
+  256² crop that is cheap to prove is the size at which the weakest genuine
+  frame already fails. Needs a measurement before any commitment, and a
+  Merkle commitment over K. Future work.
+
+**None of these defends against the threat that matters.** Each proves that a
+computation ran correctly on the pixels it was given. None proves where the
+pixels came from, and the forgery in `docs/adversarial.md` happens before any
+scorer sees them. A verifiable score of a planted fingerprint is still a
+planted fingerprint. So the boundary stays where it was: the owner's key and
+the first-registration time.
+
 ## Binding a body to a physical camera
 
 `ingest/hashing.py:body_commitment`, `python -m ingest commit-body`, and the
