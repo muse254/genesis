@@ -143,10 +143,12 @@ every path that can be run, and only a deployed workflow may set it True.
 
 ## Binding a body to a physical camera
 
-`ingest/hashing.py:body_commitment` and the `genesis.body` resolver record.
+`ingest/hashing.py:body_commitment`, `python -m ingest commit-body`, and the
+`bodyCommitment` field of the registry's body record.
 
 At enrolment the photographer commits to make, model, serial and owner under
-HMAC-SHA256, and the commitment goes in the body subname's resolver records.
+HMAC-SHA256, and the commitment is written into the body record by
+`registerBody`.
 If a claim is ever contested they reveal the serial and the key, and anyone
 recomputes and compares. That the commitment predates the dispute is the whole
 value of it.
@@ -156,10 +158,26 @@ are ten digits, roughly 2^33. `SHA-256(serial)` is enumerable in seconds, so
 publishing one would publish the serial of every registered body. Keyed, the
 space is unreachable without the key.
 
-**Why the resolver and not the contract.** `Registry.registerBody` takes a
-bodyId, a fingerprint commitment and an ENS node; adding a field means
-redeploying and abandoning the live registration. The resolver is also where
-this honestly belongs — it is identity, which is what the name is for.
+**Why the contract and not the resolver.** Through ETHOnline this lived in the
+ENS body subname's resolver records, because `registerBody` took an ENS node
+and adding a field would have meant abandoning the live Sepolia registration.
+For Colosseum, ENS is dropped (`COLOSSEUM.md`, D2) and the Base mainnet
+registry is a new deployment anyway. So the commitment takes the slot the ENS
+node held. The ABI types are unchanged, and the commitment now sits under the
+same first-registration timestamp as the body itself, which is the timestamp
+a dispute depends on.
+
+**Immutable and optional.** There is no setter. A commitment added after a
+dispute begins proves nothing, so the only one worth having is the one written
+at registration. A body registered with zero has no camera binding, and can
+never gain one.
+
+**The key is the photographer's.** `commit-body` creates a 32-byte key at
+`~/.genesis/body-commitment.key`, mode 0600, and prompts for the serial so it
+stays out of shell history. Only the digest leaves the machine. A lost key
+means the commitment can never be revealed. A leaked key makes the serial
+enumerable again, but it still doesn't let anyone forge a commitment that
+predates the dispute.
 
 **What it does not do.** Nothing against forgery, and nothing about any
 image. A serial read out of a file is worth nothing: `docs/adversarial.md`
