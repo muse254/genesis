@@ -68,6 +68,8 @@ Work happens on `colosseum` only. `main`, `ethonline` and the tag
 - [ ] Demo video: register, strip, resize, re-encode, still resolves; then a forgery caught
 - [ ] Pitch covers: the insight sentence, the adversarial work, the Nikon paragraph, the paywall map, PRNU for the archive and C2PA for new captures, the market
 - [ ] Name the prior art before a judge does: Birthmark Standard (arXiv 2602.04933), OpenOrigins (Galaxy-backed); nearest Colosseum projects `decentracam`, `certana`, `here.`
+- [x] Go-to-market written: `docs/go-to-market.md` (competitions → licensing/print → agencies buying from freelancers; not a fake-news pitch)
+- [ ] Update its demand-validation section with what week 3 actually produced
 - [ ] Every sentence checked against `docs/claims.md`
 - [ ] **LICENSE** chosen and committed — open-source status is scored
 - [x] CI green on every push: pytest ≥75% coverage, Foundry with 10k fuzz runs and Registry at 100% coverage, Slither, subgraph, MCP, web, desktop clippy (17 Sept)
