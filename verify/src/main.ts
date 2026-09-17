@@ -85,7 +85,7 @@ const SUBGRAPH = import.meta.env.VITE_SUBGRAPH_URL as string | undefined;
 
 /**
  * Bits of the 64-bit pHash allowed to differ. Measured: on a real photograph
- * the hash moves zero bits from 1800px q95 down to 400px q60 (`AI-USE.md`),
+ * the hash moves zero bits from 1800px q95 down to 400px q60 (`docs/gates.md`, Gate B),
  * so this is slack rather than a tuned figure. Widening it starts attaching
  * registrations to unrelated photographs, which is a worse failure than
  * missing a match.

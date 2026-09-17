@@ -9,6 +9,7 @@
 use std::sync::Mutex;
 
 use tauri::{Manager, RunEvent, WebviewUrl, WebviewWindowBuilder};
+#[cfg(not(debug_assertions))]
 use tauri_plugin_shell::{process::CommandChild, ShellExt};
 
 /// A free loopback port for the console API, chosen at launch. A fixed port
@@ -26,6 +27,7 @@ const WEBVIEW_ORIGINS: &str =
 /// The running backend, so it can be stopped when the app exits rather than
 /// left holding the port.
 enum Backend {
+  #[cfg(not(debug_assertions))]
   Sidecar(CommandChild),
   #[cfg(debug_assertions)]
   Dev(std::process::Child),
@@ -103,7 +105,7 @@ pub fn run() {
         .title("Genesis")
         .inner_size(1280.0, 820.0)
         .min_inner_size(960.0, 640.0)
-        .initialization_script(&format!(
+        .initialization_script(format!(
           "window.__GENESIS_CONSOLE__ = 'http://127.0.0.1:{port}';"
         ))
         .build()?;
@@ -115,6 +117,7 @@ pub fn run() {
       if let RunEvent::Exit = event {
         if let Some(backend) = app.state::<BackendState>().0.lock().unwrap().take() {
           match backend {
+            #[cfg(not(debug_assertions))]
             Backend::Sidecar(child) => {
               let _ = child.kill();
             }

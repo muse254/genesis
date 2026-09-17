@@ -295,6 +295,12 @@ templates — and every one of them read `no-record` before this.
 
 ## Gate B — does it survive the web?
 
+**The perceptual hash does not move.** On a real photograph the 64-bit pHash
+moves zero bits from 1800px quality 95 down to 400px quality 60. A test that
+had declared it broken used a 64×48 noise field, which moved 16 bits under a
+resize because it has no low-frequency structure to hold on to. This is why
+`MAX_HAMMING` (10 bits) is slack rather than a tuned figure.
+
 Export one enrolled frame at Flickr dimensions (~1800px, JPEG q80). Test it
 against the fingerprint **with crop-and-scale search**.
 

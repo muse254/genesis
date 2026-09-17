@@ -375,3 +375,138 @@ contract RegistryResetTest is Test {
         assertEq(registry.epoch(), 1);
     }
 }
+
+/// @notice Every guard in the registry, each tripped once, plus fuzzed
+///         versions of the two rules the security model rests on.
+contract RegistryGuardsTest is Test {
+    Registry internal registry;
+    address internal photographer = address(0xA11CE);
+
+    bytes32 internal constant COMMITMENT = keccak256("K for body one");
+    bytes32 internal bodyId;
+
+    function setUp() public {
+        registry = new Registry(false);
+        bodyId = registry.deriveBodyId(COMMITMENT);
+        vm.prank(photographer);
+        registry.registerBody(bodyId, COMMITMENT, bytes32(0));
+    }
+
+    function _image(bytes32 imageHash) internal view returns (Registry.ImageRecord memory) {
+        return Registry.ImageRecord({
+            imageHash: imageHash,
+            perceptualHash: bytes32(uint256(1)),
+            bodyId: bodyId,
+            modificationLevel: 0,
+            parentImageHash: bytes32(0),
+            metadataHmac: bytes32(0),
+            pceScore: 1895,
+            registeredAt: uint64(block.timestamp)
+        });
+    }
+
+    function test_registerBody_refusesAnEmptyCommitment() public {
+        bytes32 id = registry.deriveBodyId(bytes32(0));
+        vm.expectRevert("empty commitment");
+        registry.registerBody(id, bytes32(0), bytes32(0));
+    }
+
+    function test_revokeBody_refusesAnUnknownBody() public {
+        vm.expectRevert("unknown body");
+        registry.revokeBody(keccak256("never registered"));
+    }
+
+    function test_revokeBody_refusesTwice() public {
+        vm.startPrank(photographer);
+        registry.revokeBody(bodyId);
+        vm.expectRevert("already revoked");
+        registry.revokeBody(bodyId);
+        vm.stopPrank();
+    }
+
+    function test_registerImage_refusesAnUnknownBody() public {
+        Registry.ImageRecord memory record = _image(keccak256("pixels"));
+        record.bodyId = keccak256("never registered");
+        vm.prank(photographer);
+        vm.expectRevert("unknown body");
+        registry.registerImage(record);
+    }
+
+    function test_registerImage_refusesAnEmptyHash() public {
+        vm.prank(photographer);
+        vm.expectRevert("empty image hash");
+        registry.registerImage(_image(bytes32(0)));
+    }
+
+    /// First registration wins, which is what makes the date worth anything.
+    function test_registerImage_refusesADuplicate() public {
+        vm.startPrank(photographer);
+        registry.registerImage(_image(keccak256("pixels")));
+        vm.expectRevert("image already registered");
+        registry.registerImage(_image(keccak256("pixels")));
+        vm.stopPrank();
+    }
+
+    function test_commitSession_refusesAnEmptyRoot() public {
+        vm.expectRevert("empty root");
+        registry.commitSession(keccak256("s"), bytes32(0), 1);
+    }
+
+    function test_commitSession_refusesAnEmptySession() public {
+        vm.expectRevert("empty session");
+        registry.commitSession(keccak256("s"), keccak256("root"), 0);
+    }
+
+    function test_commitLogs_indexesInOrder() public {
+        registry.commit("ipfs://a", "");
+        registry.commit("ipfs://b", "");
+        registry.commit("ipfs://a", "");
+        assertEq(registry.commitLogs("ipfs://a", 0), 0);
+        assertEq(registry.commitLogs("ipfs://a", 1), 2);
+        assertEq(registry.commitLogs("ipfs://b", 0), 1);
+    }
+
+    // --- fuzzed ---------------------------------------------------------
+
+    /// The one boundary: nobody but the owner attributes an image to a body.
+    function testFuzz_onlyTheOwnerRegistersImages(address caller, bytes32 imageHash) public {
+        vm.assume(caller != photographer);
+        vm.assume(imageHash != bytes32(0));
+        vm.prank(caller);
+        vm.expectRevert("not the body owner");
+        registry.registerImage(_image(imageHash));
+    }
+
+    /// No id can be chosen: any id that does not derive from the commitment
+    /// is refused.
+    function testFuzz_bodyIdMustDerive(bytes32 commitment, bytes32 chosenId) public {
+        vm.assume(commitment != bytes32(0));
+        vm.assume(chosenId != registry.deriveBodyId(commitment));
+        vm.expectRevert("bodyId must derive from commitment");
+        registry.registerBody(chosenId, commitment, bytes32(0));
+    }
+
+    function testFuzz_modificationLevelAboveTwoIsRefused(uint8 level) public {
+        level = uint8(bound(level, 3, type(uint8).max));
+        Registry.ImageRecord memory record = _image(keccak256("pixels"));
+        record.modificationLevel = level;
+        vm.prank(photographer);
+        vm.expectRevert("modification level out of range");
+        registry.registerImage(record);
+    }
+
+    /// Whatever the owner commits, the camera commitment reads back unchanged
+    /// and the owner is whoever sent the transaction.
+    function testFuzz_bodyRecordRoundTrips(address owner, bytes32 commitment, bytes32 camera) public {
+        vm.assume(commitment != bytes32(0) && commitment != COMMITMENT);
+        bytes32 id = registry.deriveBodyId(commitment);
+        vm.prank(owner);
+        registry.registerBody(id, commitment, camera);
+        (bytes32 storedCommitment, address storedOwner, bytes32 storedCamera, bool revoked) =
+            registry.bodies(id);
+        assertEq(storedCommitment, commitment);
+        assertEq(storedOwner, owner);
+        assertEq(storedCamera, camera);
+        assertFalse(revoked);
+    }
+}

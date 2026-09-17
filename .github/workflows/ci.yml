@@ -1,0 +1,167 @@
+# Tests and coverage for every part of the repo, on every push and PR.
+# Each job writes its numbers to the run summary.
+name: ci
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  python:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: python -m pip install -r requirements.txt pytest-cov
+      - name: pytest with coverage
+        # 76% on 17 Sept; the floor stops it sliding, raise it as it rises.
+        run: >
+          python -m pytest -q
+          --cov=fingerprint --cov=ingest --cov=scoring --cov=console
+          --cov-report=term --cov-report=xml --cov-fail-under=75
+          | tee pytest.txt
+      - name: Summary
+        if: always()
+        run: |
+          echo '### Python' >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          grep -E '^(TOTAL|[0-9]+ passed)' pytest.txt >> "$GITHUB_STEP_SUMMARY" || true
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: python-coverage
+          path: coverage.xml
+
+  contracts:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: contracts
+    env:
+      FOUNDRY_DISABLE_NIGHTLY_WARNING: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: foundry-rs/foundry-toolchain@v1
+      - name: Dependencies (lib/ is not committed; versions match the local tree)
+        run: |
+          git clone --depth 1 --branch v1.16.2 https://github.com/foundry-rs/forge-std lib/forge-std
+          git clone --depth 1 --branch v5.7.0 https://github.com/OpenZeppelin/openzeppelin-contracts lib/openzeppelin-contracts
+      - run: forge build --sizes
+      - name: Tests, with fuzzing at 10,000 runs
+        run: forge test -vv
+        env:
+          FOUNDRY_FUZZ_RUNS: "10000"
+      - name: Coverage (Registry must stay at 100% of lines)
+        run: |
+          forge coverage --report summary --report lcov | tee coverage.txt
+          line=$(grep 'src/Registry.sol' coverage.txt)
+          echo "$line"
+          echo "$line" | grep -q '| 100.00% ([0-9]*/[0-9]*) *|' || { echo "Registry line coverage dropped below 100%"; exit 1; }
+      - name: Summary
+        if: always()
+        run: |
+          echo '### Contracts' >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          grep -E 'File|Registry.sol|Total' coverage.txt >> "$GITHUB_STEP_SUMMARY" || true
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: contracts-lcov
+          path: contracts/lcov.info
+
+  slither:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: foundry-rs/foundry-toolchain@v1
+      - name: Dependencies
+        run: |
+          git clone --depth 1 --branch v1.16.2 https://github.com/foundry-rs/forge-std contracts/lib/forge-std
+          git clone --depth 1 --branch v5.7.0 https://github.com/OpenZeppelin/openzeppelin-contracts contracts/lib/openzeppelin-contracts
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m pip install slither-analyzer
+      - name: Slither (zero findings on 17 Sept; any new one fails the job)
+        working-directory: contracts
+        run: slither . --filter-paths "lib/|test/|script/" --fail-low
+
+  subgraph:
+    runs-on: ubuntu-22.04
+    defaults:
+      run:
+        working-directory: subgraph
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: npm ci
+      - run: npx graph codegen
+      - run: npx graph build
+      - run: npx graph test
+
+  mcp:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: mcp
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: npm ci
+      - run: npm run build
+      - run: npm test
+
+  web:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        app: [console-ui, verify]
+    defaults:
+      run:
+        working-directory: ${{ matrix.app }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: npm ci
+      - run: npx tsc --noEmit -p .
+      - run: npm run build
+
+  desktop:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Linux system libraries
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Frontend the shell bundles
+        run: npm ci --prefix console-ui && npm run build --prefix console-ui
+      - name: Placeholder sidecar (tauri-build requires the file to exist)
+        run: |
+          mkdir -p desktop/src-tauri/binaries
+          touch "desktop/src-tauri/binaries/genesis-console-$(rustc -vV | awk '/^host:/ {print $2}')"
+      - name: Clippy
+        working-directory: desktop/src-tauri
+        run: cargo clippy --all-targets -- -D warnings

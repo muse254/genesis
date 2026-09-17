@@ -23,7 +23,7 @@ SUBGRAPH_URL = (
 
 #: Bits of the 64-bit pHash allowed to differ. Measured: on a real photograph
 #: the hash moves *zero* bits from 1800px quality 95 down to 400px quality 60
-#: (`AI-USE.md`), so this is slack rather than a tuned figure. Too wide and
+#: (`docs/gates.md`, Gate B), so this is slack rather than a tuned figure. Too wide and
 #: unrelated photographs start colliding, which would attach a registration to
 #: the wrong image -- a far worse failure than missing a match.
 MAX_HAMMING = 10
