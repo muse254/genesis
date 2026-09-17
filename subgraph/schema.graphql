@@ -1,7 +1,8 @@
 type Body @entity {
   id: Bytes!
   owner: Bytes!
-  ensNode: Bytes!
+  "Keyed commitment to make, model and serial; zero when none was committed"
+  bodyCommitment: Bytes!
   fingerprintCommitment: Bytes!
   revoked: Boolean!
   registeredAt: BigInt!

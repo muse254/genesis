@@ -18,7 +18,7 @@
  */
 
 import { createPublicClient, http, type Address } from "viem";
-import { anvil, sepolia } from "viem/chains";
+import { anvil, base, baseSepolia, sepolia } from "viem/chains";
 
 /**
  * Four outcomes, and the gap between the middle two is the product.
@@ -78,7 +78,9 @@ export interface VerifyResult {
 const SCORING = import.meta.env.VITE_SCORING_URL ?? "http://127.0.0.1:8000";
 const REGISTRY = import.meta.env.VITE_REGISTRY_ADDRESS as Address | undefined;
 const RPC = import.meta.env.VITE_RPC_URL ?? "http://127.0.0.1:8545";
-const CHAIN = import.meta.env.VITE_CHAIN === "sepolia" ? sepolia : anvil;
+/** Same keys as `GENESIS_CHAIN` in `console/chain.py`. Anything else is anvil. */
+const CHAINS = { base, "base-sepolia": baseSepolia, sepolia } as const;
+const CHAIN = CHAINS[import.meta.env.VITE_CHAIN as keyof typeof CHAINS] ?? anvil;
 const SUBGRAPH = import.meta.env.VITE_SUBGRAPH_URL as string | undefined;
 
 /**
@@ -123,7 +125,7 @@ const REGISTRY_ABI = [
     outputs: [
       { name: "fingerprintCommitment", type: "bytes32" },
       { name: "owner", type: "address" },
-      { name: "ensNode", type: "bytes32" },
+      { name: "bodyCommitment", type: "bytes32" },
       { name: "revoked", type: "bool" },
     ],
   },
@@ -254,12 +256,11 @@ async function lookupByPixelHash(hash: `0x${string}`) {
  *
  * `docs/claims.md` derives "body X is registered to identity Y" from the two
  * claims, and until now the page showed X and never Y. It could not read Y off
- * the registry either: `ensNode` is a namehash, and a namehash is one-way, so
- * nothing on chain turns back into a name.
+ * the registry either: the body record holds commitments, not names.
  *
- * A reverse record does, and it is resolved live rather than configured --
- * ENS's criteria forbid a hardcoded value, and a hardcoded name here would be
- * exactly the decorative lookup the prize excludes.
+ * A reverse record does, and it is resolved live rather than configured.
+ * On a chain viem knows no ENS resolver for (Base, since D2 in COLOSSEUM.md)
+ * the lookup throws, is caught, and the owner shows as an address.
  *
  * **Forward-checked.** A reverse record is self-asserted: anyone may point
  * their address at `vitalik.eth`. It counts only if the name resolves back to

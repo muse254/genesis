@@ -35,7 +35,7 @@ export const tools = [
   {
     name: "lookup_body",
     description:
-      "Resolve an ENS body name (e.g. r10-4471.cam.osoro.eth) to its registry record, including revocation status.",
+      "Look up a camera body's registry record, including revocation status, by body id or by its camera commitment.",
   },
   {
     name: "image_lineage",
@@ -69,10 +69,10 @@ export function createServer(client = new SubgraphClient(SUBGRAPH_URL)): McpServ
     {
       body: z
         .string()
-        .describe("A body id, or the namehash of an ENS name such as r10-4471.cam.osoro.eth"),
+        .describe("A body id, or a camera commitment (python -m ingest commit-body), 0x-prefixed"),
     },
     async ({ body }) =>
-      text(describeBody((await client.bodyById(body)) ?? (await client.bodyByEnsNode(body)), body)),
+      text(describeBody((await client.bodyById(body)) ?? (await client.bodyByCommitment(body)), body)),
   );
 
   server.tool(
@@ -90,7 +90,7 @@ export async function verifyImage(hash: string, client = new SubgraphClient(SUBG
 }
 
 export async function lookupBody(query: string, client = new SubgraphClient(SUBGRAPH_URL)) {
-  const record = (await client.bodyById(query)) ?? (await client.bodyByEnsNode(query));
+  const record = (await client.bodyById(query)) ?? (await client.bodyByCommitment(query));
   return describeBody(record, query);
 }
 

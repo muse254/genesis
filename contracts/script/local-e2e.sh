@@ -47,11 +47,13 @@ ADDRESS=$(forge create "$ROOT/contracts/src/Registry.sol:Registry" \
   | awk '/Deployed to:/ {print $3}')
 echo "   $ADDRESS"
 
-BODY=$(g bodyId); # namehash, not keccak of the string -- EIP-137 is recursive.
-ENS=$(cast namehash "r10-4471.cam.osoro.eth")
+BODY=$(g bodyId)
+# A stand-in camera commitment. The real one comes from
+# `python -m ingest commit-body`, under a key that never leaves the machine.
+CAMERA=$(cast keccak "local-e2e camera commitment")
 echo "== registering the body"
 cast send "$ADDRESS" "registerBody(bytes32,bytes32,bytes32)" \
-  "$BODY" "$(g commitment)" "$ENS" --rpc-url "$RPC" --private-key "$PK" >/dev/null
+  "$BODY" "$(g commitment)" "$CAMERA" --rpc-url "$RPC" --private-key "$PK" >/dev/null
 
 IMAGE_HASH=$(g imageHash)
 echo "== registering the photograph"

@@ -10,7 +10,8 @@
 export interface BodyRecord {
   id: string;
   owner: string;
-  ensNode: string;
+  /** Keyed commitment to make, model and serial; zero when none was committed. */
+  bodyCommitment: string;
   fingerprintCommitment: string;
   revoked: boolean;
   registeredAt: string;
@@ -35,7 +36,7 @@ const IMAGE_FIELDS = `
   modificationLevel
   pceScore
   registeredAt
-  body { id owner ensNode fingerprintCommitment revoked registeredAt }
+  body { id owner bodyCommitment fingerprintCommitment revoked registeredAt }
   parent { id }
   derivatives { id modificationLevel }
 `;
@@ -91,14 +92,19 @@ export class SubgraphClient {
     return data.images;
   }
 
-  async bodyByEnsNode(ensNode: string): Promise<BodyRecord | null> {
+  /**
+   * The body a revealed camera commitment belongs to. What a dispute starts
+   * from: the photographer recomputes the commitment from serial and key, and
+   * this says which registration it was committed in.
+   */
+  async bodyByCommitment(commitment: string): Promise<BodyRecord | null> {
     const data = await this.query<{ bodies: BodyRecord[] }>(
-      `query ByEns($node: Bytes!) {
-         bodies(where: { ensNode: $node }, first: 1) {
-           id owner ensNode fingerprintCommitment revoked registeredAt
+      `query ByCommitment($commitment: Bytes!) {
+         bodies(where: { bodyCommitment: $commitment }, first: 1) {
+           id owner bodyCommitment fingerprintCommitment revoked registeredAt
          }
        }`,
-      { node: ensNode.toLowerCase() },
+      { commitment: commitment.toLowerCase() },
     );
     return data.bodies[0] ?? null;
   }
@@ -106,7 +112,7 @@ export class SubgraphClient {
   async bodyById(id: string): Promise<BodyRecord | null> {
     const data = await this.query<{ body: BodyRecord | null }>(
       `query Body($id: ID!) {
-         body(id: $id) { id owner ensNode fingerprintCommitment revoked registeredAt }
+         body(id: $id) { id owner bodyCommitment fingerprintCommitment revoked registeredAt }
        }`,
       { id: id.toLowerCase() },
     );
@@ -143,7 +149,6 @@ export function describeImage(record: ImageRecord | null, hash: string): string 
     // fingerprint can be planted by anyone holding one RAW file off the body
     // (docs/adversarial.md), the owner included. See docs/claims.md.
     `Registered by the owner of body ${record.body.id}`,
-    `  ENS node             ${record.body.ensNode}`,
     `  Owner                ${record.body.owner}`,
     `  PCE score            ${record.pceScore}`,
     `  Modification level   ${LEVELS[record.modificationLevel] ?? record.modificationLevel}`,
@@ -186,7 +191,7 @@ export function describeBody(record: BodyRecord | null, query: string): string {
 
   return [
     `Body ${record.id}`,
-    `  ENS node               ${record.ensNode}`,
+    `  Camera commitment      ${record.bodyCommitment}`,
     `  Owner                  ${record.owner}`,
     `  Fingerprint commitment ${record.fingerprintCommitment}`,
     `  Status                 ${record.revoked ? "REVOKED" : "active"}`,

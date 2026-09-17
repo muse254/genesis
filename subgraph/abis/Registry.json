@@ -45,7 +45,7 @@
     "internalType": "address"
    },
    {
-    "name": "ensNode",
+    "name": "bodyCommitment",
     "type": "bytes32",
     "internalType": "bytes32"
    },
@@ -255,7 +255,7 @@
     "internalType": "bytes32"
    },
    {
-    "name": "ensNode",
+    "name": "bodyCommitment",
     "type": "bytes32",
     "internalType": "bytes32"
    }
@@ -416,7 +416,7 @@
     "internalType": "address"
    },
    {
-    "name": "ensNode",
+    "name": "bodyCommitment",
     "type": "bytes32",
     "indexed": false,
     "internalType": "bytes32"

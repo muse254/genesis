@@ -92,7 +92,7 @@ function bodyRegistered(): BodyRegistered {
       ethereum.Value.fromAddress(Address.fromString("0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266")),
     ),
     new ethereum.EventParam(
-      "ensNode",
+      "bodyCommitment",
       ethereum.Value.fromFixedBytes(Bytes.fromHexString("0x" + "aa".repeat(32))),
     ),
   ];

@@ -91,12 +91,13 @@ export function handleBodyRegistered(event: BodyRegistered): void {
 
   let body = new Body(event.params.bodyId);
 
-  // The event has the owner and the ENS node; the commitment is storage.
+  // The event has the owner and the camera commitment; the fingerprint
+  // commitment is storage.
   let registry = Registry.bind(event.address);
   let stored = registry.try_bodies(event.params.bodyId);
 
   body.owner = event.params.owner;
-  body.ensNode = event.params.ensNode;
+  body.bodyCommitment = event.params.bodyCommitment;
   body.fingerprintCommitment = stored.reverted
     ? Bytes.empty()
     : stored.value.getFingerprintCommitment();

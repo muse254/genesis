@@ -20,7 +20,7 @@ import {
 const BODY = {
   id: "0xb5ed056e",
   owner: "0xf39fd6e5",
-  ensNode: "0xaaaa",
+  bodyCommitment: "0xaaaa",
   fingerprintCommitment: "0xbb3e3a38",
   revoked: false,
   registeredAt: "1757000000",
