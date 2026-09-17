@@ -11,12 +11,12 @@ contract RegistryTest is Test {
     address internal stranger = address(0xB0B);
 
     bytes32 internal constant COMMITMENT = keccak256("K for body one");
-    bytes32 internal constant ENS_NODE = keccak256("r10-4471.cam.osoro.eth");
+    bytes32 internal constant BODY_COMMITMENT = keccak256("HMAC(Canon, EOS R10, serial, owner)");
 
     bytes32 internal bodyId;
 
     event Commit(address indexed recorder, string assetCid, string commitData);
-    event BodyRegistered(bytes32 indexed bodyId, address indexed owner, bytes32 ensNode);
+    event BodyRegistered(bytes32 indexed bodyId, address indexed owner, bytes32 bodyCommitment);
     event BodyRevoked(bytes32 indexed bodyId);
     event ImageRegistered(bytes32 indexed imageHash, bytes32 indexed bodyId, uint32 pceScore);
 
@@ -28,7 +28,7 @@ contract RegistryTest is Test {
 
     function _register() internal {
         vm.prank(photographer);
-        registry.registerBody(bodyId, COMMITMENT, ENS_NODE);
+        registry.registerBody(bodyId, COMMITMENT, BODY_COMMITMENT);
     }
 
     function _image(bytes32 imageHash, bytes32 parent)
@@ -50,21 +50,33 @@ contract RegistryTest is Test {
 
     function test_registerBody() public {
         vm.expectEmit(true, true, false, true);
-        emit BodyRegistered(bodyId, photographer, ENS_NODE);
+        emit BodyRegistered(bodyId, photographer, BODY_COMMITMENT);
         _register();
 
-        (bytes32 commitment, address owner, bytes32 ensNode, bool revoked) = registry.bodies(bodyId);
+        (bytes32 commitment, address owner, bytes32 camera, bool revoked) = registry.bodies(bodyId);
         assertEq(commitment, COMMITMENT);
         assertEq(owner, photographer);
-        assertEq(ensNode, ENS_NODE);
+        assertEq(camera, BODY_COMMITMENT);
         assertFalse(revoked);
+    }
+
+    /// @dev The camera commitment is optional: a body without one is still a
+    ///      body, it just cannot later be tied to a camera anyone can produce.
+    function test_registerBody_withoutBodyCommitment() public {
+        vm.prank(photographer);
+        registry.registerBody(bodyId, COMMITMENT, bytes32(0));
+
+        (bytes32 commitment, address owner, bytes32 camera,) = registry.bodies(bodyId);
+        assertEq(commitment, COMMITMENT);
+        assertEq(owner, photographer);
+        assertEq(camera, bytes32(0));
     }
 
     function test_registerBody_revertsOnDuplicate() public {
         _register();
         vm.prank(stranger);
         vm.expectRevert("body already registered");
-        registry.registerBody(bodyId, COMMITMENT, ENS_NODE);
+        registry.registerBody(bodyId, COMMITMENT, BODY_COMMITMENT);
     }
 
     /// @dev The id is not a free choice: it follows from the commitment, so
@@ -72,7 +84,7 @@ contract RegistryTest is Test {
     function test_registerBody_revertsWhenIdDoesNotDerive() public {
         vm.prank(photographer);
         vm.expectRevert("bodyId must derive from commitment");
-        registry.registerBody(keccak256("an id I liked"), COMMITMENT, ENS_NODE);
+        registry.registerBody(keccak256("an id I liked"), COMMITMENT, BODY_COMMITMENT);
     }
 
     function test_revokeBody_onlyOwner() public {
@@ -224,7 +236,7 @@ contract RegistryResetTest is Test {
     address internal stranger = address(0xB0B);
 
     bytes32 internal constant COMMITMENT = keccak256("K for body one");
-    bytes32 internal constant ENS_NODE = keccak256("r10-4471.cam.osoro.eth");
+    bytes32 internal constant BODY_COMMITMENT = keccak256("HMAC(Canon, EOS R10, serial, owner)");
 
     event RegistryReset(uint64 indexed previousEpoch, uint64 indexed newEpoch, address indexed by);
 
@@ -232,7 +244,7 @@ contract RegistryResetTest is Test {
         registry = new Registry(true);
         bodyId = registry.deriveBodyId(COMMITMENT);
         vm.prank(photographer);
-        registry.registerBody(bodyId, COMMITMENT, ENS_NODE);
+        registry.registerBody(bodyId, COMMITMENT, BODY_COMMITMENT);
     }
 
     /// The reason it exists: `bodyId` derives from SHA-256(K), so the same
@@ -243,12 +255,12 @@ contract RegistryResetTest is Test {
 
         vm.prank(photographer);
         vm.expectRevert("body already registered");
-        registry.registerBody(bodyId, COMMITMENT, ENS_NODE);
+        registry.registerBody(bodyId, COMMITMENT, BODY_COMMITMENT);
 
         registry.resetAll();
 
         vm.prank(photographer);
-        registry.registerBody(bodyId, COMMITMENT, ENS_NODE);
+        registry.registerBody(bodyId, COMMITMENT, BODY_COMMITMENT);
         (, address owner,,) = registry.bodies(bodyId);
         assertEq(owner, photographer);
     }
@@ -260,10 +272,10 @@ contract RegistryResetTest is Test {
 
         registry.resetAll();
 
-        (bytes32 commitment, address owner, bytes32 node, bool revoked) = registry.bodies(bodyId);
+        (bytes32 commitment, address owner, bytes32 camera, bool revoked) = registry.bodies(bodyId);
         assertEq(commitment, bytes32(0));
         assertEq(owner, address(0));
-        assertEq(node, bytes32(0));
+        assertEq(camera, bytes32(0));
         assertEq(revoked, false);
     }
 
@@ -328,7 +340,11 @@ contract RegistryResetTest is Test {
         vm.expectRevert("test mode is testnet-only");
         new Registry(true);
 
-        vm.chainId(8453); // Base, and any other chain nobody listed
+        vm.chainId(8453); // Base mainnet, the production target
+        vm.expectRevert("test mode is testnet-only");
+        new Registry(true);
+
+        vm.chainId(42161); // and any other chain nobody listed
         vm.expectRevert("test mode is testnet-only");
         new Registry(true);
     }
@@ -338,6 +354,17 @@ contract RegistryResetTest is Test {
         vm.chainId(1);
         Registry registry = new Registry(false);
         assertEq(registry.testMode(), false);
+
+        vm.chainId(8453);
+        registry = new Registry(false);
+        assertEq(registry.testMode(), false);
+    }
+
+    /// Base Sepolia is where the Base mainnet deploy is rehearsed.
+    function test_test_mode_is_allowed_on_base_sepolia() public {
+        vm.chainId(84532);
+        Registry registry = new Registry(true);
+        assertEq(registry.testMode(), true);
     }
 
     function test_reset_is_announced() public {

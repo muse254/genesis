@@ -19,10 +19,17 @@ contract Registry {
     /// @notice One enrolled camera body.
     /// @dev fingerprintCommitment is a hash of K. K itself never goes on
     ///      chain -- a published reference is a published forgery kit.
+    ///
+    ///      bodyCommitment binds the body to a camera someone can physically
+    ///      produce: an HMAC over make, model, serial and owner from
+    ///      `ingest/hashing.py:body_commitment`, never the serial in clear.
+    ///      Zero when the photographer chose not to commit one. It takes the
+    ///      slot the ENS node used to occupy, so the ABI types are unchanged
+    ///      (`docs/security.md`, "Binding a body to a physical camera").
     struct BodyRecord {
         bytes32 fingerprintCommitment;
         address owner;
-        bytes32 ensNode;
+        bytes32 bodyCommitment;
         bool revoked;
     }
 
@@ -73,10 +80,10 @@ contract Registry {
     ///         subgraph. Records from a previous epoch read as absent, which
     ///         is exactly how an unregistered hash has always read.
     function bodies(bytes32 bodyId) external view returns (
-        bytes32 fingerprintCommitment, address owner, bytes32 ensNode, bool revoked
+        bytes32 fingerprintCommitment, address owner, bytes32 bodyCommitment, bool revoked
     ) {
         BodyRecord storage body = _bodies[epoch][bodyId];
-        return (body.fingerprintCommitment, body.owner, body.ensNode, body.revoked);
+        return (body.fingerprintCommitment, body.owner, body.bodyCommitment, body.revoked);
     }
 
     function images(bytes32 imageHash) external view returns (
@@ -105,7 +112,7 @@ contract Registry {
     }
 
     event Commit(address indexed recorder, string assetCid, string commitData);
-    event BodyRegistered(bytes32 indexed bodyId, address indexed owner, bytes32 ensNode);
+    event BodyRegistered(bytes32 indexed bodyId, address indexed owner, bytes32 bodyCommitment);
     event BodyRevoked(bytes32 indexed bodyId);
     event ImageRegistered(bytes32 indexed imageHash, bytes32 indexed bodyId, uint32 pceScore);
     event SessionCommitted(bytes32 indexed sessionId, bytes32 merkleRoot, uint32 frameCount);
@@ -121,6 +128,7 @@ contract Registry {
         if (enableTestMode) {
             require(
                 block.chainid == 11155111 // Sepolia
+                    || block.chainid == 84532 // Base Sepolia
                     || block.chainid == 17000 // Holesky
                     || block.chainid == 31337 // anvil
                     || block.chainid == 1337, // ganache
@@ -188,7 +196,10 @@ contract Registry {
         return keccak256(abi.encodePacked(RECORD_VERSION, "body", fingerprintCommitment));
     }
 
-    function registerBody(bytes32 bodyId, bytes32 fingerprintCommitment, bytes32 ensNode) external {
+    /// @param bodyCommitment Optional; zero for none. There is no setter, on
+    ///        purpose: the commitment is worth something only because it
+    ///        predates any dispute, and one added later would not.
+    function registerBody(bytes32 bodyId, bytes32 fingerprintCommitment, bytes32 bodyCommitment) external {
         require(fingerprintCommitment != bytes32(0), "empty commitment");
         require(bodyId == deriveBodyId(fingerprintCommitment), "bodyId must derive from commitment");
         require(_bodies[epoch][bodyId].fingerprintCommitment == bytes32(0), "body already registered");
@@ -196,11 +207,11 @@ contract Registry {
         _bodies[epoch][bodyId] = BodyRecord({
             fingerprintCommitment: fingerprintCommitment,
             owner: msg.sender,
-            ensNode: ensNode,
+            bodyCommitment: bodyCommitment,
             revoked: false
         });
 
-        emit BodyRegistered(bodyId, msg.sender, ensNode);
+        emit BodyRegistered(bodyId, msg.sender, bodyCommitment);
     }
 
     /// @notice Revocation matters: a sold or stolen body must stop
