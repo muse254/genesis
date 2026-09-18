@@ -1,4 +1,12 @@
 /**
+ * SUPERSEDED as the app's entry point by `app.ts` (17 Sept, the Colosseum
+ * rebuild): a five-item sidebar replaces this eight-screen presenter flow.
+ * `index.html` now points at `app.ts`. Kept, unreferenced, because it still
+ * carries the verdict-grammar reference (`screens.ts`) and the ETHOnline
+ * recording chrome, and because it was never asked to be deleted.
+ */
+
+/**
  * The console shell: chrome, screen switching, presenter shortcuts.
  *
  * The stage fills the viewport. The handoff draws 1280x720 because that is
