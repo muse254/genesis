@@ -129,7 +129,10 @@ Open before building:
       looked fine the whole time. Two more CORS/plist issues fixed along the way (real, not the
       cause): WKWebView needs `allow_private_network=True` on both FastAPI services, and the bundle
       needs `NSLocalNetworkUsageDescription` in Info.plist.
-- [ ] Cold start is 13–34 s: try a one-dir sidecar
+- [x] Cold start fixed properly (18 Sept): the sidecar process is gone, replaced by an embedded
+      Python interpreter (PyO3) in the app's own process — 2s cold start, down from 13–35s.
+      Proven on macOS only; Windows and Linux follow the same pattern, unverified — see
+      `desktop/PACKAGING.md`
 - [ ] Onboarding screens for photographers; hide the presenter-only screens (pre-flight, reset) —
       largely done by the sidebar rebuild; recheck against `console/app.py`'s `/reset` (not exposed
       in the new UI, confirm nothing else presenter-only leaked through)
