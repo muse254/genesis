@@ -120,8 +120,19 @@ Open before building:
 - [x] Python sidecar frozen with PyInstaller: 49 MB; verifies a CR3 against Base Sepolia (`desktop/`)
 - [x] App shell: free port injected into the page, backend exits with the app, Genesis icons
 - [x] CI for macOS, Windows, Linux into a draft release (`.github/workflows/desktop.yml`) — not yet run
+- [x] Sidebar UI (18 Sept): five destinations (Home, Photos, Verify, Cameras, Settings) replace the
+      eight-screen presenter console. Negative/Survival/Verdict merged into one Verify, using the
+      same four-verdict card verbatim. `main.ts`/`screens.ts` superseded, kept for reference.
+- [x] Fixed the real "Load failed" bug: the frozen backend cold-starts in 13–35s but the page fired
+      its first fetches immediately with no retry. `app.ts` now waits on `/health` before rendering.
+      Found by rebuilding and reading the actual `.app`, not by curling the backend directly — that
+      looked fine the whole time. Two more CORS/plist issues fixed along the way (real, not the
+      cause): WKWebView needs `allow_private_network=True` on both FastAPI services, and the bundle
+      needs `NSLocalNetworkUsageDescription` in Info.plist.
 - [ ] Cold start is 13–34 s: try a one-dir sidecar
-- [ ] Onboarding screens for photographers; hide the presenter-only screens (pre-flight, reset)
+- [ ] Onboarding screens for photographers; hide the presenter-only screens (pre-flight, reset) —
+      largely done by the sidebar rebuild; recheck against `console/app.py`'s `/reset` (not exposed
+      in the new UI, confirm nothing else presenter-only leaked through)
 - [ ] App key in the OS keychain with a recovery phrase; signs ERC-2771 requests instead of calling `cast`
 - [ ] Registry: ERC-2771 forwarder support (before the mainnet deploy)
 - [ ] Relayer service: invite codes, per-body quotas, pays gas; hosted
