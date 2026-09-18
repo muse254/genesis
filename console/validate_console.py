@@ -1057,3 +1057,24 @@ def test_the_suite_cannot_touch_the_operators_references():
     used = Path(os.environ["GENESIS_REFERENCES"]).resolve()
     assert used != live, "GENESIS_REFERENCES points at the real references directory"
     assert not str(used).startswith(str(live)), f"{used} is inside {live}"
+
+
+def test_the_desktop_app_s_webview_can_preflight_across_the_private_network(client):
+    """WKWebView preflights every cross-origin request from the app's
+    tauri:// page to this loopback server as Private Network Access, and
+    fails closed -- silently, as a bare "Load failed" with nothing in this
+    server's log -- if the preflight is refused. Starlette refuses it by
+    default; `allow_private_network=True` is the whole fix, and this is the
+    regression a browser catches that no unit test run through requests or
+    TestClient's default OPTIONS handling would.
+    """
+    response = client.options(
+        "/state",
+        headers={
+            "Origin": "http://127.0.0.1:5173",
+            "Access-Control-Request-Method": "GET",
+            "Access-Control-Request-Private-Network": "true",
+        },
+    )
+    assert response.status_code == 200
+    assert response.headers["access-control-allow-private-network"] == "true"

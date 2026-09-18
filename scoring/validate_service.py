@@ -175,3 +175,18 @@ def test_the_browser_can_actually_call_this(client):
     )
     assert response.status_code == 200
     assert response.headers["access-control-allow-origin"] in ("*", "http://localhost:5173")
+
+
+def test_the_desktop_app_s_webview_can_preflight_across_the_private_network(client):
+    """Same fix as `console/app.py`, same reason: see that test's docstring."""
+    api, _ = client
+    response = api.options(
+        "/lookup",
+        headers={
+            "Origin": "http://localhost:5173",
+            "Access-Control-Request-Method": "POST",
+            "Access-Control-Request-Private-Network": "true",
+        },
+    )
+    assert response.status_code == 200
+    assert response.headers["access-control-allow-private-network"] == "true"

@@ -67,6 +67,9 @@ app.add_middleware(
     allow_origins=os.environ.get("GENESIS_ALLOW_ORIGINS", "*").split(","),
     allow_methods=["GET", "POST"],
     allow_headers=["*"],
+    # See the identical note in console/app.py: without this, a WKWebView
+    # caller (the desktop app) gets a private-network preflight refused.
+    allow_private_network=True,
 )
 
 

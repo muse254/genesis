@@ -40,6 +40,12 @@ app.add_middleware(
     ).split(","),
     allow_methods=["GET", "POST"],
     allow_headers=["*"],
+    # WKWebView (the desktop app's webview) preflights every request from its
+    # tauri:// page to this loopback server as Private Network Access and
+    # fails closed without this -- Starlette answers 400 "Disallowed CORS
+    # private-network" otherwise, which surfaces in the app as a bare "Load
+    # failed" with nothing in this server's own log to point at why.
+    allow_private_network=True,
 )
 
 

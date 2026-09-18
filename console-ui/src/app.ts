@@ -693,7 +693,36 @@ async function heartbeat() {
   }
 }
 
+/**
+ * The desktop build's backend is a frozen Python one-file binary that
+ * unpacks itself on every launch -- measured at 13 to 35 seconds cold
+ * (`desktop/README.md`). The page loads and runs its scripts long before
+ * that finishes, and a plain `getState()` failure at that point looks
+ * identical to a genuinely dead console. So the first render waits for
+ * `/health` to actually answer, with its own visible state, rather than
+ * showing "unreachable" for something that is simply still starting.
+ */
+async function waitForBackend(): Promise<void> {
+  const started = Date.now();
+  content.innerHTML = `
+    <div class="empty-state" style="margin-top:120px">
+      <p>Starting the imaging engine…</p>
+    </div>`;
+  for (;;) {
+    try {
+      const response = await fetch(`${(window as { __GENESIS_CONSOLE__?: string }).__GENESIS_CONSOLE__ ?? "http://127.0.0.1:8100"}/health`);
+      if (response.ok) return;
+    } catch {
+      /* not listening yet */
+    }
+    if (Date.now() - started > 60_000) return; // give up waiting; let the real error show
+    await new Promise((resolve) => setTimeout(resolve, 400));
+  }
+}
+
 const initial = location.hash.slice(1) as ViewId;
-show(VIEWS.some((v) => v.id === initial) ? initial : currentView, false);
-heartbeat();
+waitForBackend().then(() => {
+  show(VIEWS.some((v) => v.id === initial) ? initial : currentView, false);
+  heartbeat();
+});
 setInterval(heartbeat, 15_000);

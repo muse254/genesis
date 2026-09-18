@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <!--
+    Merged into the generated Info.plist by tauri-bundler.
+
+    The app's own page is served from the tauri:// scheme, so WebKit treats
+    every fetch it makes to the loopback backend (127.0.0.1, a random port
+    chosen at launch -- src/lib.rs) as a connection to a different, "unknown"
+    address space, and both macOS and WebKit's own Private Network Access
+    checks require this key before they allow it. Without it the request
+    fails closed with no prompt and no explanation, surfacing in the page as
+    a bare "Load failed".
+  -->
+  <key>NSLocalNetworkUsageDescription</key>
+  <string>Genesis runs its imaging engine as a local helper process on this
+    Mac and talks to it over localhost. No data leaves this device for this.</string>
+</dict>
+</plist>
