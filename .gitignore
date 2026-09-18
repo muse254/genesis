@@ -68,3 +68,4 @@ data/catalogue.db
 # pytest-cov
 .coverage
 coverage.xml
+desktop/.venv312/

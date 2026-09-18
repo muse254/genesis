@@ -1,5 +1,10 @@
 #!/usr/bin/env bash
 #
+# SUPERSEDED (18 Sept) by desktop/scripts/bundle-python.sh: the imaging core
+# is embedded in the Rust process now (PyO3), not a sidecar this script
+# freezes. Kept, unreferenced, for the reason desktop/sidecar/genesis_console.py
+# gives -- see desktop/PACKAGING.md.
+#
 # Freeze the console backend into the sidecar the Tauri app bundles.
 #
 #   desktop/scripts/build-sidecar.sh

@@ -1,6 +1,13 @@
 # Build the Genesis desktop app for every platform and attach the installers
 # to a draft GitHub release. Draft on purpose: a person publishes it.
 #
+# The Python imaging core is embedded (PyO3), not a sidecar process --
+# desktop/src-tauri/src/lib.rs -- so there is nothing to spawn at runtime,
+# only a Python runtime to bundle at build time (bundle-python.sh). Proven
+# on macOS: 2s cold start, a real CR3 decoded through the bundled runtime
+# (17 Sept). The Linux and Windows steps below follow the same script and
+# have not been run; the first real run here is their actual test.
+#
 # Run it from the Actions tab (workflow_dispatch), or push a tag such as
 # `desktop-v0.1.0`.
 name: desktop
@@ -42,15 +49,22 @@ jobs:
 
       - uses: dtolnay/rust-toolchain@stable
 
-      - name: Python dependencies
-        run: python -m pip install -r requirements.txt pyinstaller
+      - uses: astral-sh/setup-uv@v3
 
       - name: Console UI dependencies
         run: npm ci --prefix console-ui
 
-      - name: Backend sidecar
+      - name: Bundle the Python runtime (fetched + populated, not built)
         shell: bash
-        run: desktop/scripts/build-sidecar.sh
+        run: desktop/scripts/bundle-python.sh
+
+      # PyO3 links against Python at compile time (desktop/src-tauri/.cargo/
+      # config.toml); actions/setup-python's own `python3.12` is fine on
+      # macOS and Linux, but does not exist under that name on Windows.
+      - name: Point PyO3 at this runner's Python (Windows)
+        if: runner.os == 'Windows'
+        shell: bash
+        run: echo "PYO3_PYTHON=python" >> "$GITHUB_ENV"
 
       - uses: tauri-apps/tauri-action@v0
         env:

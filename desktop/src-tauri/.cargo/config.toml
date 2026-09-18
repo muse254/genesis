@@ -1,0 +1,5 @@
+# PyO3 (build.rs of the pyo3-ffi crate) reads this to find the Python it
+# links against and embeds. Must be 3.12 -- the version rawpy, numpy and
+# scipy are proven against in this project (desktop/scripts/*, CI).
+[env]
+PYO3_PYTHON = "python3.12"

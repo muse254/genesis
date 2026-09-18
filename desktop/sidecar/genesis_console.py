@@ -1,4 +1,13 @@
-"""Entry point for the desktop app's backend.
+"""Entry point for the desktop app's backend -- as a separate process.
+
+SUPERSEDED (18 Sept): the imaging core now runs embedded in the Rust process
+itself (PyO3, `desktop/src-tauri/src/lib.rs` + `embedded_runner.py`), not as
+a PyInstaller-frozen subprocess. That removed a real bug class (the sidecar
+took 13-35s to cold-start, unpacking itself on every launch, and the page had
+no way to know when it was actually ready) along with the process boundary
+entirely -- see `desktop/PACKAGING.md`. Kept, unreferenced, because nothing
+here was asked to delete it and the *pattern* (one loopback HTTP server) is
+still exactly what the embedded runner also does.
 
 Runs the console API on loopback. The Tauri shell sets the data paths and the
 allowed origins through the environment (`desktop/src-tauri/src/lib.rs`), and

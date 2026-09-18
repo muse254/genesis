@@ -25,9 +25,10 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ],
-    "externalBin": [
-      "binaries/genesis-console"
-    ],
+    "resources": {
+      "resources/python-runtime": "python-runtime",
+      "resources/app-src": "app-src"
+    },
     "shortDescription": "Register photographs against the camera that took them"
   }
 }
