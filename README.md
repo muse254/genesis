@@ -121,4 +121,6 @@ and verifies with Peak to Correlation Energy (PCE).
 ---
 
 Built for ETHOnline 2026; that submission is preserved at the
-[`ethonline-submission`](../../tree/ethonline-submission) tag.
+[`ethonline-submission`](../../tree/ethonline-submission) tag, pinned to
+commit [`1e2f392`](../../tree/1e2f392) so it stays reachable even if the tag
+ever moves.
