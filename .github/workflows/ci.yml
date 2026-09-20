@@ -163,6 +163,13 @@ jobs:
           node-version: "22"
       - name: Frontend the shell bundles
         run: npm ci --prefix console-ui && npm run build --prefix console-ui
+      # tauri-build's own build script checks that tauri.conf.json's
+      # bundle.resources paths exist, even for a plain `cargo clippy` that
+      # never touches them -- this is a lint pass, not the real thing
+      # (.github/workflows/desktop.yml runs the actual bundle-python.sh and
+      # builds for real), so empty directories satisfy it for free.
+      - name: Placeholder resources (tauri-build only checks they exist)
+        run: mkdir -p desktop/src-tauri/resources/app-src desktop/src-tauri/resources/python-runtime
       - name: Clippy
         working-directory: desktop/src-tauri
         run: cargo clippy --all-targets -- -D warnings
