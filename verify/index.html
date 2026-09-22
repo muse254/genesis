@@ -4,13 +4,38 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Genesis — verify</title>
+    <link rel="icon" href="./brand/genesis-mark-ink.png" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;600;700;800&display=swap" />
     <style>
-      :root { color-scheme: light dark; --ink: #1c1c1a; --paper: #fbfbf9; --line: #d8d6d0; }
+      /*
+       * Same header chrome as site/style.css and dashboard/index.html: the
+       * lockup logo, the 2px bottom border, the nav back to the other two
+       * pages. Duplicated rather than shared as a file because these are
+       * three independent Vite builds that only meet at deploy time
+       * (.github/workflows/pages.yml assembles them side by side) -- there
+       * is no bundler step that spans them to import a common stylesheet
+       * from. Keep the three copies in sync by hand if this changes.
+       */
+      :root {
+        color-scheme: light dark;
+        --ink: #1c1c1a; --paper: #fbfbf9; --line: #d8d6d0; --secondary: #6f6c66;
+        --ui: Archivo, ui-sans-serif, system-ui, -apple-system, sans-serif;
+      }
       @media (prefers-color-scheme: dark) {
-        :root { --ink: #ececea; --paper: #161614; --line: #37342e; }
+        :root { --ink: #ececea; --paper: #161614; --line: #37342e; --secondary: #a6a39c; }
       }
       body { margin: 0; background: var(--paper); color: var(--ink);
              font: 16px/1.55 ui-sans-serif, system-ui, -apple-system, sans-serif; }
+      header.top { border-bottom: 2px solid var(--ink); }
+      header.top .wrap { max-width: 42rem; margin: 0 auto; padding: 16px 1.25rem;
+        display: flex; align-items: center; gap: 14px; }
+      header.top img { height: 22px; width: auto; display: block; }
+      header.top nav { margin-left: auto; display: flex; gap: 18px; }
+      header.top nav a { font: 600 13px/1 var(--ui); color: var(--secondary); text-decoration: none;
+        letter-spacing: .02em; }
+      header.top nav a:hover, header.top nav a[aria-current="page"] { color: var(--ink); }
       main { max-width: 42rem; margin: 0 auto; padding: 3rem 1.25rem; }
       h1 { font-size: 1.6rem; margin: 0 0 .35rem; letter-spacing: -.01em; }
       .lede { margin: 0 0 2rem; opacity: .75; }
@@ -41,6 +66,16 @@
     </style>
   </head>
   <body>
+    <header class="top">
+      <div class="wrap">
+        <a href="../"><img src="./brand/genesis-lockup-horizontal-ink.png" alt="Genesis" /></a>
+        <nav>
+          <a href="../">Home</a>
+          <a href="./" aria-current="page">Verify</a>
+          <a href="../dashboard/">Dashboard</a>
+        </nav>
+      </div>
+    </header>
     <!--
       One page. An upload control and a result. No framework.
       viem for chain reads, fetch to the scoring service.

@@ -39,7 +39,7 @@ header.top nav a {
   text-decoration: none;
   letter-spacing: .02em;
 }
-header.top nav a:hover { color: var(--ink); }
+header.top nav a:hover, header.top nav a[aria-current="page"] { color: var(--ink); }
 
 main { padding: 56px 0 80px; }
 
