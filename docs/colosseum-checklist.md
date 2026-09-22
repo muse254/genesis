@@ -140,6 +140,11 @@ Open before building:
 - [ ] Registry: ERC-2771 forwarder support (before the mainnet deploy)
 - [ ] Relayer service: invite codes, per-body quotas, pays gas; hosted
 - [ ] Code signing: deferred; unsigned installers with instructions on the landing page
-- [ ] Landing page on GitHub Pages: user journey, screenshots, download links
+- [x] Landing page on GitHub Pages: download links pulled live from the
+      Releases API (`site/`), plus a no-login dashboard (`dashboard/`) that
+      reads any address's bodies/images straight off the subgraph -- there's
+      no account to log into since nothing behind it is private. Both
+      deploy alongside `verify/` via `.github/workflows/pages.yml`.
+      Screenshots and a real user-journey pass still open.
 - [ ] Which week: it is the week-3 onboarding path, so it has to exist before 1 Oct
 - [ ] Strip the presenter-only screens (pre-flight, reset, 07 confidential) from the shipped app

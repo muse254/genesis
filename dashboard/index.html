@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Genesis — dashboard</title>
+    <style>
+      :root { color-scheme: light dark; --ink: #1c1c1a; --paper: #fbfbf9; --line: #d8d6d0; --secondary: #6f6c66; }
+      @media (prefers-color-scheme: dark) {
+        :root { --ink: #ececea; --paper: #161614; --line: #37342e; --secondary: #a6a39c; }
+      }
+      body { margin: 0; background: var(--paper); color: var(--ink);
+             font: 16px/1.55 ui-sans-serif, system-ui, -apple-system, sans-serif; }
+      main { max-width: 48rem; margin: 0 auto; padding: 3rem 1.25rem; }
+      h1 { font-size: 1.6rem; margin: 0 0 .35rem; letter-spacing: -.01em; }
+      .lede { margin: 0 0 2rem; opacity: .75; max-width: 56ch; }
+      form { display: flex; gap: .6rem; margin-bottom: .6rem; }
+      input[type=text] { flex: 1 1 auto; padding: .7rem .9rem; border: 1.5px solid var(--line);
+        border-radius: .5rem; background: transparent; color: inherit; font: inherit;
+        font-variant-numeric: tabular-nums; }
+      button { padding: .7rem 1.1rem; border: 1.5px solid var(--ink); border-radius: .5rem;
+        background: var(--ink); color: var(--paper); font: 600 .9rem/1 inherit; cursor: pointer; }
+      button.ghost { background: transparent; color: var(--ink); }
+      .toolbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; }
+      .status { font-size: .875rem; opacity: .7; min-height: 1.2em; }
+      .status.error { color: #b3261e; }
+      section.body-card { border: 1px solid var(--line); border-radius: .6rem; padding: 1.1rem 1.25rem;
+        margin-bottom: 1.25rem; }
+      section.body-card.revoked { border-left: 4px solid #b3261e; }
+      section.body-card h2 { font-size: 1.05rem; margin: 0 0 .5rem; font-family: ui-monospace, monospace; }
+      .row { display: flex; gap: 1rem; padding: .25rem 0; border-top: 1px solid var(--line); font-size: .875rem; }
+      .row:first-of-type { border-top: 0; }
+      dt, .k { flex: 0 0 9.5rem; opacity: .7; }
+      dd, .v { margin: 0; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+      table.images { width: 100%; border-collapse: collapse; margin-top: .9rem; font-size: .8rem; }
+      table.images th, table.images td { text-align: left; padding: .35rem .5rem; border-top: 1px solid var(--line);
+        font-variant-numeric: tabular-nums; }
+      table.images td.hash { font-family: ui-monospace, monospace; overflow-wrap: anywhere; }
+      a { color: inherit; }
+      footer { margin-top: 2.5rem; padding-top: 1rem; border-top: 1px solid var(--line);
+        font-size: .875rem; opacity: .7; }
+    </style>
+  </head>
+  <body>
+    <!--
+      Look up any address, no login. There is nothing behind this that isn't
+      already public on the subgraph -- a body's owner, its commitments, its
+      registered images -- so gating it behind a wallet signature would add
+      friction without adding privacy. Wallet-connect below is a convenience
+      for filling in "mine," not an access check.
+    -->
+    <main>
+      <h1>Dashboard</h1>
+      <p class="lede">
+        Look up the cameras and photographs registered under any address. This
+        reads the same public subgraph the verify page and the MCP server do —
+        nothing here is private, so there is nothing to log into.
+      </p>
+      <form id="lookup-form">
+        <input id="address" type="text" placeholder="0x… owner address" autocomplete="off" spellcheck="false" />
+        <button type="submit">Look up</button>
+        <button type="button" id="connect" class="ghost">Use my wallet</button>
+      </form>
+      <div class="toolbar">
+        <span class="status" id="status"></span>
+      </div>
+      <div id="results"></div>
+      <footer>
+        <p>
+          Data comes straight from The Graph; a subgraph is an index, not an
+          authority, so treat what's shown here as a pointer to verify on
+          chain or on the <a id="verify-link" href="../verify/">verify page</a>, not as the record itself.
+        </p>
+      </footer>
+    </main>
+    <script type="module" src="./src/main.ts"></script>
+  </body>
+</html>

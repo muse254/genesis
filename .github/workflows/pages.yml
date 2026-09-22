@@ -1,12 +1,13 @@
 # Publishes the static site to GitHub Pages: the landing/download page at
-# the root (site/, no build step) and the verify SPA underneath it at
-# /verify/ (verify/, a Vite build -- verify/vite.config.ts sets a relative
-# base so it works nested at that depth).
+# the root (site/, no build step), the verify SPA at /verify/, and the
+# dashboard at /dashboard/ -- both Vite builds, both with a relative base
+# (their vite.config.ts) so they work nested at that depth.
 #
 # Everything here is static: the landing page reads GitHub's Releases API
-# client-side (site/app.js) and the verify page reads the chain client-side
-# (verify/src/main.ts) -- neither needs a server of its own, so both fit on
-# Pages.
+# client-side (site/app.js), the verify page reads the chain client-side
+# (verify/src/main.ts), and the dashboard reads the subgraph client-side
+# (dashboard/src/main.ts) -- none of them need a server of their own, so
+# all three fit on Pages.
 name: pages
 
 on:
@@ -15,6 +16,7 @@ on:
     paths:
       - "site/**"
       - "verify/**"
+      - "dashboard/**"
       - ".github/workflows/pages.yml"
   workflow_dispatch:
 
@@ -38,6 +40,26 @@ jobs:
 
       - name: Verify page
         working-directory: verify
+        # Public config only (an RPC URL, a contract address, a subgraph
+        # URL) -- nothing here is a secret, and none of it can be, since it
+        # all has to be readable by a browser that already fetched this
+        # page. Sepolia rehearsal values (verify/.env.example) until the
+        # Base mainnet deploy lands (docs/colosseum-checklist.md, Week 1).
+        env:
+          VITE_RPC_URL: https://ethereum-sepolia-rpc.publicnode.com
+          VITE_REGISTRY_ADDRESS: "0xd1bbDB8A6BfD25563d2e6444fA41E4C5230Ed3C9"
+          VITE_CHAIN: sepolia
+          VITE_SUBGRAPH_URL: https://api.studio.thegraph.com/query/1758974/genesis/v0.0.4
+        run: |
+          npm ci
+          npx tsc --noEmit -p .
+          npm run build
+
+      - name: Dashboard
+        working-directory: dashboard
+        env:
+          VITE_SUBGRAPH_URL: https://api.studio.thegraph.com/query/1758974/genesis/v0.0.4
+          VITE_EXPLORER_URL: https://sepolia.basescan.org
         run: |
           npm ci
           npx tsc --noEmit -p .
@@ -49,6 +71,8 @@ jobs:
           cp -r site/. _site/
           mkdir -p _site/verify
           cp -r verify/dist/. _site/verify/
+          mkdir -p _site/dashboard
+          cp -r dashboard/dist/. _site/dashboard/
 
       - uses: actions/upload-pages-artifact@v3
         with:
