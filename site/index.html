@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Genesis -- download the desktop app</title>
+  <meta name="description" content="Register your photographs against the camera that took them. Download the Genesis desktop app." />
+  <link rel="icon" href="assets/genesis-mark-ink.png" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header class="top">
+    <div class="wrap">
+      <img src="assets/genesis-lockup-horizontal-ink.png" alt="Genesis" />
+      <nav>
+        <a href="https://github.com/muse254/genesis">Source</a>
+        <a href="https://muse254.github.io/genesis/verify/">Verify a photo</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <h1 class="hero">Register your photographs against the camera that took them</h1>
+    <p class="lede">
+      Genesis learns your camera's sensor fingerprint from RAW files already on your
+      machine, then lets you register photographs under your own signature on a public,
+      on-chain record. The fingerprint and the RAW archive never leave your computer --
+      only hashes and commitments do. Get the desktop app below.
+    </p>
+
+    <div class="downloads" id="downloads">
+      <span class="label">Download</span>
+      <p class="notice pulse">Checking github.com/muse254/genesis for the latest build&hellip;</p>
+    </div>
+
+    <span class="label">How it works</span>
+    <ol class="steps">
+      <li>
+        <div class="step-body">
+          <h3>Enrol your camera, once</h3>
+          <p>Point the app at ~40 RAW files already on your machine. It computes your
+            sensor's noise fingerprint locally and commits to it on Base -- the fingerprint
+            itself never leaves your computer.</p>
+        </div>
+      </li>
+      <li>
+        <div class="step-body">
+          <h3>Register a photograph</h3>
+          <p>The app hashes the image and scores it against your fingerprint, then
+            records the registration under your camera's on-chain identity.</p>
+        </div>
+      </li>
+      <li>
+        <div class="step-body">
+          <h3>Anyone can check a copy later</h3>
+          <p>A stripped, resized or re-posted copy can still be traced back to the
+            original registration from the public <a href="https://muse254.github.io/genesis/verify/">verify page</a> --
+            no account, no login.</p>
+        </div>
+      </li>
+    </ol>
+
+    <p class="notice">
+      Unsigned builds for now: macOS will ask you to right-click and choose "Open" the
+      first time; Windows will show a SmartScreen prompt -- choose "More info" then
+      "Run anyway". Code signing is on the roadmap, not yet done.
+    </p>
+  </main>
+
+  <footer class="bottom">
+    <div class="wrap">
+      Genesis is built for Colosseum's Crypto World's Fair 2026. What we certify, and what
+      we deliberately don't, is in
+      <a href="https://github.com/muse254/genesis/blob/main/docs/claims.md">docs/claims.md</a>.
+      We attacked our own system -- see
+      <a href="https://github.com/muse254/genesis/blob/main/docs/adversarial.md">docs/adversarial.md</a>.
+    </div>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,65 @@
+# Publishes the static site to GitHub Pages: the landing/download page at
+# the root (site/, no build step) and the verify SPA underneath it at
+# /verify/ (verify/, a Vite build -- verify/vite.config.ts sets a relative
+# base so it works nested at that depth).
+#
+# Everything here is static: the landing page reads GitHub's Releases API
+# client-side (site/app.js) and the verify page reads the chain client-side
+# (verify/src/main.ts) -- neither needs a server of its own, so both fit on
+# Pages.
+name: pages
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "site/**"
+      - "verify/**"
+      - ".github/workflows/pages.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Verify page
+        working-directory: verify
+        run: |
+          npm ci
+          npx tsc --noEmit -p .
+          npm run build
+
+      - name: Assemble _site
+        run: |
+          mkdir -p _site
+          cp -r site/. _site/
+          mkdir -p _site/verify
+          cp -r verify/dist/. _site/verify/
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
