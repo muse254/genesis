@@ -18,13 +18,11 @@
        * is no bundler step that spans them to import a common stylesheet
        * from. Keep the three copies in sync by hand if this changes.
        */
+      /* Light only, matching site/style.css -- not a dark/light choice the
+         reader gets to make per-page. */
       :root {
-        color-scheme: light dark;
         --ink: #1c1c1a; --paper: #fbfbf9; --line: #d8d6d0; --secondary: #6f6c66;
         --ui: Archivo, ui-sans-serif, system-ui, -apple-system, sans-serif;
-      }
-      @media (prefers-color-scheme: dark) {
-        :root { --ink: #ececea; --paper: #161614; --line: #37342e; --secondary: #a6a39c; }
       }
       body { margin: 0; background: var(--paper); color: var(--ink);
              font: 16px/1.55 ui-sans-serif, system-ui, -apple-system, sans-serif; }
@@ -53,7 +51,6 @@
       #result.no-record { border-left-color: var(--line); }
       #result.error { border-left-color: #b3261e; }
       #result.pixels-only h2 { color: #7a600e; }
-      @media (prefers-color-scheme: dark) { #result.pixels-only h2 { color: #d8b442; } }
       #result.working { border-left-color: var(--line); opacity: .7; }
       #result h2 { font-size: 1.05rem; margin: 0 0 .75rem; }
       dl { margin: 0; }

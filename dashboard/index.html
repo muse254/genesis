@@ -10,14 +10,11 @@
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;600;700;800&display=swap" />
     <style>
       /* Same header chrome as site/style.css and verify/index.html -- see
-         the comment there for why this is copied rather than shared. */
+         the comment there for why this is copied rather than shared.
+         Light only, matching the landing page. */
       :root {
-        color-scheme: light dark;
         --ink: #1c1c1a; --paper: #fbfbf9; --line: #d8d6d0; --secondary: #6f6c66;
         --ui: Archivo, ui-sans-serif, system-ui, -apple-system, sans-serif;
-      }
-      @media (prefers-color-scheme: dark) {
-        :root { --ink: #ececea; --paper: #161614; --line: #37342e; --secondary: #a6a39c; }
       }
       body { margin: 0; background: var(--paper); color: var(--ink);
              font: 16px/1.55 ui-sans-serif, system-ui, -apple-system, sans-serif; }
