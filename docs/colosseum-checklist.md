@@ -30,7 +30,14 @@ Work happens on `colosseum` only. `main`, `ethonline` and the tag
 - [ ] Verify page driven in a browser against the Base Sepolia registry
 - [ ] Deploy to Base mainnet, `REGISTRY_TEST_MODE` unset (false)
 - [ ] Verified on Basescan; address and deploy tx pinned in README and `.env.example`
-- [ ] Subgraph on Base Sepolia for the rehearsal (`base-sepolia` is supported by Studio)
+- [x] Subgraph on Base Sepolia for the rehearsal — `genesis` v0.1.0-base-sepolia
+      (22 Sept), indexing the rehearsal registry from its actual deploy block
+      (46937327). Found by the dashboard's first real query: every
+      `VITE_SUBGRAPH_URL` in the repo, and `SUBGRAPH_URL`/`REGISTRY_ADDRESS`
+      in `.env`, had been left pointed at the ETHOnline subgraph/registry on
+      Ethereum Sepolia the whole time -- a different chain, a different
+      contract, silently answering with someone else's data instead of
+      erroring. All repointed at the Base Sepolia deployment.
 - [ ] Subgraph on Base: `subgraph.yaml` network `base`, new address, `startBlock`; deployed and **published** —
       the Studio development URL is capped at 3,000 queries/day and is for testing only; a published
       subgraph queried with an API key has 100,000 free queries/month, then $2 per 100,000

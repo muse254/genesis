@@ -169,11 +169,15 @@ false-positive rate, and a second enrolment so the test runs both ways.
       repo — they show nothing secret, but neither do they prove anything a
       re-run does not
 - [x] `graph test` — 5 matchstick tests still green after the deployment
-- [x] Deployed to Subgraph Studio, 8 September 2026 — `genesis` v0.0.1, now v0.0.4,
-      queries at `api.studio.thegraph.com/query/1758974/genesis/v0.0.5`.
+- [x] Deployed to Subgraph Studio, 8 September 2026 — `genesis` v0.0.1, then v0.0.4
+      as of this entry, indexing the ETHOnline registry on Ethereum Sepolia.
       Synced past the registration blocks with `hasIndexingErrors: false`,
       and the body and image read back with the same owner, commitment and
-      PCE the chain returns directly
+      PCE the chain returns directly. Superseded for Colosseum: v0.0.5 is the
+      same Ethereum-Sepolia deployment after the `bodyCommitment` rename;
+      `v0.1.0-base-sepolia` (22 September 2026) is the one that actually
+      indexes the Colosseum rehearsal registry on Base Sepolia and is what
+      everything now points at (`docs/colosseum-checklist.md`)
 
 **8. Scoring service and verify page.** Done bar the chain read.
 

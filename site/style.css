@@ -152,6 +152,37 @@ ol.steps li .step-body p {
   margin: 0;
 }
 
+/* --- System status ------------------------------------------------------ */
+
+.health {
+  border: 2px solid var(--ink);
+  padding: 4px 24px;
+  margin-bottom: 40px;
+}
+
+.health-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 0;
+  border-top: 1px solid var(--hairline);
+}
+.health-row:first-child { border-top: 0; }
+
+.health-row .dot {
+  flex: 0 0 9px;
+  width: 9px;
+  height: 9px;
+  background: var(--mid);
+}
+.health-row .dot.up { background: var(--registered); }
+.health-row .dot.down { background: var(--error); }
+.health-row .dot.unknown { background: var(--pixels); }
+
+.health-row .name { font: 700 13.5px/1 var(--ui); flex: 0 0 auto; min-width: 12rem; }
+.health-row .detail { font: 12.5px/1.4 var(--mono); color: var(--secondary); }
+.health-row .detail a { color: inherit; }
+
 footer.bottom {
   border-top: 1px solid var(--hairline);
   padding: 24px 0 40px;

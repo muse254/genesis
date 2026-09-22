@@ -43,13 +43,15 @@ jobs:
         # Public config only (an RPC URL, a contract address, a subgraph
         # URL) -- nothing here is a secret, and none of it can be, since it
         # all has to be readable by a browser that already fetched this
-        # page. Sepolia rehearsal values (verify/.env.example) until the
-        # Base mainnet deploy lands (docs/colosseum-checklist.md, Week 1).
+        # page. Base Sepolia rehearsal values (verify/.env.example) until
+        # the Base mainnet deploy lands (docs/colosseum-checklist.md, Week
+        # 1) -- not Ethereum Sepolia, which is the ETHOnline registry, a
+        # different contract this project no longer points at.
         env:
-          VITE_RPC_URL: https://ethereum-sepolia-rpc.publicnode.com
-          VITE_REGISTRY_ADDRESS: "0xd1bbDB8A6BfD25563d2e6444fA41E4C5230Ed3C9"
-          VITE_CHAIN: sepolia
-          VITE_SUBGRAPH_URL: https://api.studio.thegraph.com/query/1758974/genesis/v0.0.5
+          VITE_RPC_URL: https://sepolia.base.org
+          VITE_REGISTRY_ADDRESS: "0x0C0F3Ec87339F985c509c01dEE8474BB8f5b0EB2"
+          VITE_CHAIN: base-sepolia
+          VITE_SUBGRAPH_URL: https://api.studio.thegraph.com/query/1758974/genesis/v0.1.0-base-sepolia
         run: |
           npm ci
           npx tsc --noEmit -p .
@@ -58,7 +60,7 @@ jobs:
       - name: Dashboard
         working-directory: dashboard
         env:
-          VITE_SUBGRAPH_URL: https://api.studio.thegraph.com/query/1758974/genesis/v0.0.5
+          VITE_SUBGRAPH_URL: https://api.studio.thegraph.com/query/1758974/genesis/v0.1.0-base-sepolia
           VITE_EXPLORER_URL: https://sepolia.basescan.org
         run: |
           npm ci
