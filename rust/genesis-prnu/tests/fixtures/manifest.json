@@ -1,0 +1,285 @@
+{
+  "wavelet": "db8",
+  "wavelet_levels": 4,
+  "wiener_windows": [
+    3,
+    5,
+    7,
+    9
+  ],
+  "sigma": 0.00784313725490196,
+  "saturation_level": 0.99,
+  "cases": {
+    "case_64x64": {
+      "shape": [
+        64,
+        64
+      ],
+      "seed": 1601980086,
+      "plane_file": "case_64x64_plane.npy",
+      "levels": 2,
+      "wavedec2": [
+        {
+          "level": 0,
+          "band": "approx",
+          "file": "case_64x64_wavedec2_L0_approx.npy",
+          "shape": [
+            27,
+            27
+          ]
+        },
+        {
+          "level": 1,
+          "band": "h",
+          "file": "case_64x64_wavedec2_L1_h.npy",
+          "shape": [
+            27,
+            27
+          ]
+        },
+        {
+          "level": 1,
+          "band": "v",
+          "file": "case_64x64_wavedec2_L1_v.npy",
+          "shape": [
+            27,
+            27
+          ]
+        },
+        {
+          "level": 1,
+          "band": "d",
+          "file": "case_64x64_wavedec2_L1_d.npy",
+          "shape": [
+            27,
+            27
+          ]
+        },
+        {
+          "level": 2,
+          "band": "h",
+          "file": "case_64x64_wavedec2_L2_h.npy",
+          "shape": [
+            39,
+            39
+          ]
+        },
+        {
+          "level": 2,
+          "band": "v",
+          "file": "case_64x64_wavedec2_L2_v.npy",
+          "shape": [
+            39,
+            39
+          ]
+        },
+        {
+          "level": 2,
+          "band": "d",
+          "file": "case_64x64_wavedec2_L2_d.npy",
+          "shape": [
+            39,
+            39
+          ]
+        }
+      ],
+      "noise_residual_file": "case_64x64_noise_residual.npy"
+    },
+    "case_128x128": {
+      "shape": [
+        128,
+        128
+      ],
+      "seed": 2078193162,
+      "plane_file": "case_128x128_plane.npy",
+      "levels": 3,
+      "wavedec2": [
+        {
+          "level": 0,
+          "band": "approx",
+          "file": "case_128x128_wavedec2_L0_approx.npy",
+          "shape": [
+            29,
+            29
+          ]
+        },
+        {
+          "level": 1,
+          "band": "h",
+          "file": "case_128x128_wavedec2_L1_h.npy",
+          "shape": [
+            29,
+            29
+          ]
+        },
+        {
+          "level": 1,
+          "band": "v",
+          "file": "case_128x128_wavedec2_L1_v.npy",
+          "shape": [
+            29,
+            29
+          ]
+        },
+        {
+          "level": 1,
+          "band": "d",
+          "file": "case_128x128_wavedec2_L1_d.npy",
+          "shape": [
+            29,
+            29
+          ]
+        },
+        {
+          "level": 2,
+          "band": "h",
+          "file": "case_128x128_wavedec2_L2_h.npy",
+          "shape": [
+            43,
+            43
+          ]
+        },
+        {
+          "level": 2,
+          "band": "v",
+          "file": "case_128x128_wavedec2_L2_v.npy",
+          "shape": [
+            43,
+            43
+          ]
+        },
+        {
+          "level": 2,
+          "band": "d",
+          "file": "case_128x128_wavedec2_L2_d.npy",
+          "shape": [
+            43,
+            43
+          ]
+        },
+        {
+          "level": 3,
+          "band": "h",
+          "file": "case_128x128_wavedec2_L3_h.npy",
+          "shape": [
+            71,
+            71
+          ]
+        },
+        {
+          "level": 3,
+          "band": "v",
+          "file": "case_128x128_wavedec2_L3_v.npy",
+          "shape": [
+            71,
+            71
+          ]
+        },
+        {
+          "level": 3,
+          "band": "d",
+          "file": "case_128x128_wavedec2_L3_d.npy",
+          "shape": [
+            71,
+            71
+          ]
+        }
+      ],
+      "noise_residual_file": "case_128x128_noise_residual.npy"
+    },
+    "case_65x97": {
+      "shape": [
+        65,
+        97
+      ],
+      "seed": 2050375371,
+      "plane_file": "case_65x97_plane.npy",
+      "levels": 2,
+      "wavedec2": [
+        {
+          "level": 0,
+          "band": "approx",
+          "file": "case_65x97_wavedec2_L0_approx.npy",
+          "shape": [
+            27,
+            35
+          ]
+        },
+        {
+          "level": 1,
+          "band": "h",
+          "file": "case_65x97_wavedec2_L1_h.npy",
+          "shape": [
+            27,
+            35
+          ]
+        },
+        {
+          "level": 1,
+          "band": "v",
+          "file": "case_65x97_wavedec2_L1_v.npy",
+          "shape": [
+            27,
+            35
+          ]
+        },
+        {
+          "level": 1,
+          "band": "d",
+          "file": "case_65x97_wavedec2_L1_d.npy",
+          "shape": [
+            27,
+            35
+          ]
+        },
+        {
+          "level": 2,
+          "band": "h",
+          "file": "case_65x97_wavedec2_L2_h.npy",
+          "shape": [
+            40,
+            56
+          ]
+        },
+        {
+          "level": 2,
+          "band": "v",
+          "file": "case_65x97_wavedec2_L2_v.npy",
+          "shape": [
+            40,
+            56
+          ]
+        },
+        {
+          "level": 2,
+          "band": "d",
+          "file": "case_65x97_wavedec2_L2_d.npy",
+          "shape": [
+            40,
+            56
+          ]
+        }
+      ],
+      "noise_residual_file": "case_65x97_noise_residual.npy"
+    }
+  },
+  "two_plane_case": {
+    "shape": [
+      96,
+      80
+    ],
+    "seed_a": 1001,
+    "seed_b": 2002,
+    "candidate_files": [
+      "two_plane_candidate_0.npy",
+      "two_plane_candidate_1.npy"
+    ],
+    "reference_files": [
+      "two_plane_reference_0.npy",
+      "two_plane_reference_1.npy"
+    ],
+    "cross_correlation_file": "two_plane_cc_0.npy",
+    "pce_of_cc_0": 3207.9789155181693,
+    "score": 6350.723220267274
+  }
+}

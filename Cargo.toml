@@ -1,0 +1,8 @@
+[workspace]
+resolver = "2"
+members = ["rust/genesis-prnu"]
+# desktop/src-tauri stays a standalone crate, not a workspace member, until a
+# later phase (docs/wasm-scoring-plan.md, Phase 6) explicitly decides to move
+# it in. Without this it would be swept into this workspace implicitly (it has
+# no [workspace] table of its own) and fail to build outside it.
+exclude = ["desktop/src-tauri"]
