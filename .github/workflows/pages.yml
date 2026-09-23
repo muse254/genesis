@@ -1,13 +1,16 @@
 # Publishes the static site to GitHub Pages: the landing/download page at
-# the root (site/, no build step), the verify SPA at /verify/, and the
-# dashboard at /dashboard/ -- both Vite builds, both with a relative base
-# (their vite.config.ts) so they work nested at that depth.
+# the root (site/, no build step), the verify SPA at /verify/, the
+# dashboard at /dashboard/, and the local scoring page at /score/ -- three
+# Vite builds (verify/dashboard/score), all with a relative base (their
+# vite.config.ts) so they work nested at that depth.
 #
 # Everything here is static: the landing page reads GitHub's Releases API
 # client-side (site/app.js), the verify page reads the chain client-side
-# (verify/src/main.ts), and the dashboard reads the subgraph client-side
-# (dashboard/src/main.ts) -- none of them need a server of their own, so
-# all three fit on Pages.
+# (verify/src/main.ts), the dashboard reads the subgraph client-side
+# (dashboard/src/main.ts), and the score page runs a WASM module compiled
+# from rust/genesis-prnu-wasm entirely in the browser (score/src/main.ts,
+# docs/wasm-scoring-plan.md Phase 5) -- none of them need a server of
+# their own, so all four fit on Pages.
 name: pages
 
 on:
@@ -17,6 +20,9 @@ on:
       - "site/**"
       - "verify/**"
       - "dashboard/**"
+      - "score/**"
+      - "rust/**"
+      - "Cargo.toml"
       - ".github/workflows/pages.yml"
   workflow_dispatch:
 
@@ -37,6 +43,12 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+      - uses: jetli/wasm-pack-action@v0.4.0
+        with:
+          version: "latest"
 
       - name: Verify page
         working-directory: verify
@@ -67,6 +79,18 @@ jobs:
           npx tsc --noEmit -p .
           npm run build
 
+      - name: Score page
+        working-directory: score
+        # No secrets or env config here (unlike verify/dashboard): scoring
+        # is entirely client-side against files the visitor picks locally,
+        # so there's nothing for this page to be configured with. `npm run
+        # build`'s `prebuild` script runs `wasm-pack build` against
+        # rust/genesis-prnu-wasm (see score/README.md) before `vite build`.
+        run: |
+          npm ci
+          npx tsc --noEmit -p .
+          npm run build
+
       - name: Assemble _site
         run: |
           mkdir -p _site
@@ -75,6 +99,8 @@ jobs:
           cp -r verify/dist/. _site/verify/
           mkdir -p _site/dashboard
           cp -r dashboard/dist/. _site/dashboard/
+          mkdir -p _site/score
+          cp -r score/dist/. _site/score/
 
       - uses: actions/upload-pages-artifact@v3
         with:

@@ -2,12 +2,16 @@
 //! `fingerprint/prnu.py` (everything except enrolment, RAW decoding, and
 //! `commitment()`, which stay Python-only -- see `docs/wasm-scoring-plan.md`).
 //!
-//! This crate currently implements Phases 0-2 of that plan: the `db8`
-//! wavelet transform ([`wavelet`]) and the Mihcak wavelet-Wiener denoiser
-//! ([`noise`], `noise_residual`). Correlation/PCE/`score` (Phase 3) and
-//! image/K-file I/O (Phase 4) are not yet ported.
+//! This crate implements Phases 0-4 of that plan: the `db8` wavelet
+//! transform ([`wavelet`]), the Mihcak wavelet-Wiener denoiser ([`noise`],
+//! `noise_residual`), FFT cross-correlation/PCE/`score` ([`correlation`]),
+//! and delivered-image/K-file I/O ([`image_decode`], [`kfile`]).
 
+pub mod correlation;
+pub mod image_decode;
+pub mod kfile;
 pub mod noise;
 pub mod wavelet;
 
+pub use correlation::{cross_correlation, pce, pce_of, score};
 pub use noise::noise_residual;

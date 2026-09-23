@@ -15,6 +15,7 @@ that directory's README.md for what each file is.
 
 from __future__ import annotations
 
+import hashlib
 import json
 from pathlib import Path
 
@@ -84,7 +85,11 @@ def main() -> None:
 
     # --- per-case fixtures ---------------------------------------------------
     for case_name, shape in CASES.items():
-        seed = abs(hash(case_name)) % (2**31)
+        # A stable hash, not Python's `hash()` -- that's salted per-process
+        # (PYTHONHASHSEED) and made every fixture (including this seed
+        # field, which is metadata only, not re-derived by any test)
+        # non-reproducible across runs of this script.
+        seed = int(hashlib.sha256(case_name.encode()).hexdigest(), 16) % (2**31)
         sensor = simulate_sensor(shape=shape, seed=seed)
         plane = simulate_exposure(sensor, seed=seed + 1)
 
@@ -145,6 +150,61 @@ def main() -> None:
         "cross_correlation_file": "two_plane_cc_0.npy",
         "pce_of_cc_0": pce_0,
         "score": score_value,
+    }
+
+    # --- Phase 4: end-to-end K (.npz) + delivered PNG + score -----------------
+    # Mirrors validate_synthetic.py's _four_plane_body/enrol pattern and
+    # test_delivered_image_maps_back_to_the_photosite_lattice: a synthetic
+    # four-plane body, enrolled into a real save_fingerprint() .npz, then a
+    # held-out exposure rendered as a small RGB PNG the way a demosaic would,
+    # sampled back through the same CFA pattern. This is the fixture that
+    # proves the whole Rust pipeline (npz read + PNG decode + CFA sample +
+    # score) against one real Python score() call, not just each piece
+    # in isolation.
+    from PIL import Image
+
+    from fingerprint.validate_synthetic import FRAMES
+
+    pattern = [[0, 1], [3, 2]]  # RGGB, as LibRaw reports for the R10
+    e2e_shape = (48, 40)  # -> 96x80 RGB delivered image (2x demosaic upscale)
+    channels = {0: 0, 1: 1, 2: 2, 3: 1}
+
+    body = {c: simulate_sensor(shape=e2e_shape, seed=500 + c) for c in range(4)}
+    enrolment_frames = [
+        {c: simulate_exposure(k, seed=600 + 10 * n + c) for c, k in body.items()}
+        for n in range(FRAMES)
+    ]
+    k = prnu.postprocess(prnu.estimate_fingerprint(enrolment_frames))
+
+    k_path = OUT / "e2e_fingerprint.npz"
+    meta = {"cfa_pattern": pattern, "frames": FRAMES, "synthetic": True}
+    prnu.save_fingerprint(k_path, k, meta)
+
+    # Held-out exposure -> demosaiced RGB image, exactly like
+    # test_delivered_image_maps_back_to_the_photosite_lattice but with real
+    # (non-constant) per-plane content instead of flat swatches.
+    held_out = {c: simulate_exposure(kk, seed=9000 + c) for c, kk in body.items()}
+    ph, pw = e2e_shape
+    rgb = np.zeros((ph * 2, pw * 2, 3), dtype=np.float32)
+    pos = {0: (0, 0), 1: (0, 1), 2: (1, 1), 3: (1, 0)}
+    for c, (i, j) in pos.items():
+        rgb[i::2, j::2, channels[c]] = held_out[c]
+
+    image_path = OUT / "e2e_delivered.png"
+    Image.fromarray((np.clip(rgb, 0.0, 1.0) * 255).astype(np.uint8)).save(image_path)
+
+    # Ground truth: run the same load_delivered_planes + score path Rust has
+    # to reproduce, over the files just written.
+    delivered_planes = prnu.load_delivered_planes(image_path, pattern, channels)
+    e2e_score = prnu.score(delivered_planes, k, mask_saturated=True)
+
+    manifest["e2e_case"] = {
+        "shape": list(e2e_shape),
+        "k_file": k_path.name,
+        "image_file": image_path.name,
+        "cfa_pattern": pattern,
+        "channels": channels,
+        "score": e2e_score,
     }
 
     (OUT / "manifest.json").write_text(json.dumps(manifest, indent=2))

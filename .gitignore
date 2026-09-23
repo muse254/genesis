@@ -17,6 +17,11 @@ __pycache__/
 # camera never took (docs/adversarial.md). So the frames are covered here too,
 # not just the .npz. These never leave the machine.
 *.npz
+# Exception: a synthetic K built from a deterministic fake sensor for the
+# Rust port's Phase 4 parity test (rust/genesis-prnu/tests/parity.rs) --
+# not derived from any real body, so it carries none of the risk above.
+# See rust/genesis-prnu/tests/fixtures/README.md.
+!rust/genesis-prnu/tests/fixtures/e2e_fingerprint.npz
 data/references/
 data/flats/
 data/shoots/

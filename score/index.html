@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Genesis — score</title>
+    <link rel="icon" href="./brand/genesis-mark-ink.png" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;600;700;800&display=swap" />
+    <style>
+      /*
+       * Same header chrome as site/style.css, verify/index.html and
+       * dashboard/index.html: the lockup logo, the 2px bottom border, the
+       * nav across all four pages. Duplicated rather than shared as a
+       * file because these are four independent Vite builds that only
+       * meet at deploy time (.github/workflows/pages.yml assembles them
+       * side by side) -- there is no bundler step that spans them to
+       * import a common stylesheet from. Keep the four copies in sync by
+       * hand if this changes.
+       */
+      /* Light only, matching the other three pages -- not a dark/light
+         choice the reader gets to make per-page. */
+      :root {
+        --ink: #1c1c1a; --paper: #fbfbf9; --line: #d8d6d0; --secondary: #6f6c66;
+        --ui: Archivo, ui-sans-serif, system-ui, -apple-system, sans-serif;
+      }
+      body { margin: 0; background: var(--paper); color: var(--ink);
+             font: 16px/1.55 ui-sans-serif, system-ui, -apple-system, sans-serif; }
+      header.top { border-bottom: 2px solid var(--ink); }
+      header.top .wrap { max-width: 42rem; margin: 0 auto; padding: 16px 1.25rem;
+        display: flex; align-items: center; gap: 14px; }
+      header.top img { height: 22px; width: auto; display: block; }
+      header.top nav { margin-left: auto; display: flex; gap: 18px; }
+      header.top nav a { font: 600 13px/1 var(--ui); color: var(--secondary); text-decoration: none;
+        letter-spacing: .02em; }
+      header.top nav a:hover, header.top nav a[aria-current="page"] { color: var(--ink); }
+      main { max-width: 42rem; margin: 0 auto; padding: 3rem 1.25rem; }
+      h1 { font-size: 1.6rem; margin: 0 0 .35rem; letter-spacing: -.01em; }
+      .lede { margin: 0 0 2rem; opacity: .75; }
+      .field { margin-bottom: 1.25rem; }
+      .field label { display: block; font: 600 13px/1 var(--ui); margin-bottom: .5rem; }
+      .field .hint { font-size: .8rem; opacity: .65; margin: .25rem 0 0; }
+      .k-hint { color: #0a6b3a; font-weight: 700; }
+      input[type=file] { display: block; width: 100%; padding: 1.25rem 1rem;
+        border: 1.5px dashed var(--line); border-radius: .6rem; background: transparent;
+        color: inherit; cursor: pointer; }
+      button { font: 600 14px/1 var(--ui); padding: .75rem 1.25rem; border-radius: .5rem;
+        border: 1px solid var(--ink); background: var(--ink); color: var(--paper);
+        cursor: pointer; }
+      button:disabled { opacity: .4; cursor: not-allowed; }
+      #result { margin-top: 1.75rem; padding: 1.1rem 1.25rem; border: 1px solid var(--line);
+        border-radius: .6rem; border-left-width: 4px; }
+      #result.pass { border-left-color: #0a8f4d; }
+      #result.fail { border-left-color: #b3261e; }
+      #result.working { border-left-color: var(--line); opacity: .7; }
+      #result.error { border-left-color: #b3261e; }
+      #result h2 { font-size: 1.05rem; margin: 0 0 .75rem; }
+      dl { margin: 0; }
+      .row { display: flex; gap: 1rem; padding: .3rem 0; border-top: 1px solid var(--line); }
+      .row:first-of-type { border-top: 0; }
+      dt { flex: 0 0 9.5rem; opacity: .7; }
+      dd { margin: 0; font-variant-numeric: tabular-nums; }
+      .caveat, footer p { font-size: .875rem; opacity: .7; }
+      footer { margin-top: 2.5rem; padding-top: 1rem; border-top: 1px solid var(--line); }
+    </style>
+  </head>
+  <body>
+    <header class="top">
+      <div class="wrap">
+        <a href="../"><img src="./brand/genesis-lockup-horizontal-ink.png" alt="Genesis" /></a>
+        <nav>
+          <a href="../">Home</a>
+          <a href="../verify/">Verify</a>
+          <a href="./" aria-current="page">Score</a>
+          <a href="../dashboard/">Dashboard</a>
+          <a href="https://github.com/muse254/genesis">Source</a>
+        </nav>
+      </div>
+    </header>
+    <!--
+      A local, offline PCE score against your own enrolled fingerprint.
+      Everything below runs in this tab: a small Rust/WASM module (built
+      from rust/genesis-prnu, the same scoring core as the Python
+      reference and the desktop app) decodes the photo, reads the K file,
+      and computes the PCE -- nothing is uploaded anywhere. See
+      docs/security.md, "Where K lives".
+    -->
+    <main>
+      <h1>Score a photo against your fingerprint</h1>
+      <p class="lede">
+        Runs entirely on this device. Nothing here is uploaded, sent to a
+        server, or logged anywhere -- not the fingerprint file, not the
+        photo.
+      </p>
+
+      <div class="field">
+        <label for="kfile">Your fingerprint file (.npz)</label>
+        <input id="kfile" type="file" accept=".npz" />
+        <p class="hint">
+          This is your own enrolled sensor fingerprint (<code>K</code>), the
+          file the desktop app wrote when you enrolled your camera. It is
+          <strong>never uploaded anywhere</strong> -- it stays in this
+          browser tab's memory for this session only, and is used solely to
+          compute the score below, entirely on this device.
+        </p>
+        <p class="hint" id="k-status"></p>
+      </div>
+
+      <div class="field">
+        <label for="photo">Photo to score</label>
+        <input id="photo" type="file" accept="image/jpeg,image/png,image/tiff" />
+        <p class="hint">A JPEG, PNG, or TIFF at (close to) the camera's native resolution.</p>
+      </div>
+
+      <button id="score-btn" disabled>Score</button>
+
+      <section id="result" hidden></section>
+
+      <footer>
+        <p>
+          PCE (Peak-to-Correlation-Energy) measures how strongly a photo's
+          noise correlates with your camera's sensor fingerprint. Genesis's
+          measured decision threshold is <code>PCE_THRESHOLD = 100.0</code>
+          (<code>fingerprint/prnu.py</code>) -- comfortably above the null
+          scores seen against unrelated bodies, comfortably below genuine
+          matches, but resting on limited evidence (see
+          <code>docs/gates.md</code>). A PCE on its own is not a
+          verdict you can show someone else: it is forgeable, and only an
+          on-chain registration (the <a href="../verify/">Verify</a> page)
+          is.
+        </p>
+      </footer>
+    </main>
+    <script type="module" src="./src/main.ts"></script>
+  </body>
+</html>

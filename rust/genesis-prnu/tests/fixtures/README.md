@@ -57,7 +57,26 @@ the Rust port is checked against.
 - `manifest.json`'s `two_plane_case` block — `pce_of_cc_0` (the scalar
   `_pce_of` of `two_plane_cc_0.npy`) and `score` (the full
   `fingerprint.prnu.score(candidate, reference, mask_saturated=True)`
-  scalar over both planes). These are dumped now for a *later* session's
-  Phase 3 (correlation/PCE/score porting) — this session (Phases 0-2) does
-  not implement or check against them, only the wavelet-transform and
-  `noise_residual` fixtures above.
+  scalar over both planes). Checked by Phase 3's
+  `cross_correlation_matches_python_reference`/`score_matches_python_reference`
+  tests in `tests/parity.rs`.
+- `e2e_fingerprint.npz` — a real `save_fingerprint()` output: a synthetic
+  four-CFA-plane body (`_four_plane_body`-style, `FRAMES` enrolment
+  exposures, `estimate_fingerprint` + `postprocess`), with
+  `meta = {"cfa_pattern": [[0,1],[3,2]], "frames": ..., "synthetic": true}`.
+  Exercises Phase 4's `.npz` zip-container + `meta.npy` unicode-scalar
+  reader end to end, matching the real on-disk K format
+  `fingerprint/fingerprint.py`/`console/app.py` write.
+- `e2e_delivered.png` — a held-out exposure of that same synthetic body,
+  rendered as a small (96x80) demosaiced RGB PNG the way
+  `test_delivered_image_maps_back_to_the_photosite_lattice` in
+  `validate_synthetic.py` builds one, using the same RGGB `cfa_pattern` and
+  the default `channels` (`{0: 0, 1: 1, 2: 2, 3: 1}`).
+- `manifest.json`'s `e2e_case` block — `score`, the real
+  `fingerprint.prnu.score(prnu.load_delivered_planes(image, pattern,
+  channels), k, mask_saturated=True)` over `e2e_delivered.png` against
+  `e2e_fingerprint.npz`. Checked by Phase 4's
+  `e2e_score_matches_python_reference` test, which reads the `.npz` and
+  decodes the PNG entirely in Rust (no Python involved on that side) --
+  this is the fixture that proves the whole pipeline, not just each piece
+  in isolation.
