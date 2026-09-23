@@ -60,11 +60,14 @@ Work happens on `colosseum` only. `main`, `ethonline` and the tag
 - [ ] MCP: an agent can check an image it holds, not only a hash it already knows (through the public service's hashes)
 - [ ] MCP: install instructions a stranger can follow; one recorded agent session
 - [ ] Push
-- [ ] Stretch, not yet scheduled: Rust port of the scoring core (not
-      enrolment), compiled to WASM for in-browser scoring and reusable
-      natively by the desktop app in place of the PyO3-embedded Python
-      interpreter — plan, phase breakdown and a session-starting prompt in
-      `docs/wasm-scoring-plan.md`
+- [x] Rust port of the scoring core (not enrolment), compiled to WASM for
+      in-browser scoring — Phases 0-5 done: `rust/genesis-prnu` (noise
+      residual, cross-correlation, PCE, score, delivered-image decode,
+      read-only `.npz` K reading), `rust/genesis-prnu-wasm`, and the
+      client-side local-scoring page `score/`. Phase 6, reusing it natively
+      from the desktop app in place of the PyO3-embedded Python interpreter,
+      is undecided/in progress in a separate effort — not done here. Plan
+      and phase breakdown in `docs/wasm-scoring-plan.md`
 
 ## Week 3 — 1–7 Oct · Traction
 

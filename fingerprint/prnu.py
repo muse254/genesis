@@ -11,6 +11,11 @@ assumes delivered RGB and must be adapted rather than imported.
 
 Canonical behaviour reference: Binghamton DDE Lab MATLAB implementation.
 
+This module is not the only implementation of the pipeline any more: the
+scoring subset (noise residual, cross-correlation, PCE, score) has been
+ported to Rust and compiled to WASM in `rust/genesis-prnu`, parity-tested
+against this file. Enrolment and RAW decode remain Python-only here.
+
 References
 ----------
 [F09] J. Fridrich, "Digital Image Forensics Using Sensor Noise", IEEE Signal

@@ -41,6 +41,12 @@ that exists; in-camera signing (C2PA) covers what is shot from now on.
 
 ## How it works
 
+The scoring stages below (`score against K`, in Register and Verify) also
+have a second, client-side implementation in Rust/WASM, used by the
+local-scoring page at [`score/`](score/) — see
+[`docs/wasm-scoring-plan.md`](docs/wasm-scoring-plan.md). RAW decode and
+enrolment remain Python-only.
+
 ```mermaid
 flowchart TB
   subgraph Enrol["Enrol · once per camera · desktop app"]

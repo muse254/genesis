@@ -11,10 +11,17 @@
  * a registered photo, stripped of metadata, resized, re-encoded as a web
  * JPEG — and it still resolves.
  *
- * Division of labour: the scoring service does the imaging, because PRNU is
- * Python and a wavelet decomposition of a 24-megapixel raw is not something
- * to ship to a phone. This page does the chain reads, so the service never
- * becomes the thing that decides what is on chain.
+ * Division of labour: the scoring service does the imaging, not because PRNU
+ * can't run in a browser (it does now, see score/ — a client-side, Rust/WASM
+ * implementation) but because /lookup's job is different: it has to search
+ * an unknown photo against *every* enrolled body's K, and shipping every
+ * photographer's K to a browser would violate the "K never leaves the
+ * machine it was enrolled on" invariant (docs/security.md, "Where K lives").
+ * That's a custody-of-secrets problem specific to searching across many
+ * bodies, not a language or performance one — score/ doesn't have it,
+ * because it only ever scores against the one K its own visitor already
+ * holds. This page does the chain reads, so the service never becomes the
+ * thing that decides what is on chain.
  */
 
 import { createPublicClient, http, type Address } from "viem";

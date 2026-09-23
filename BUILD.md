@@ -185,9 +185,22 @@ flowchart TB
   B5 -.->|events indexed| C2
 ```
 
+Flow B's scoring stage (`residual → PCE against K`) also has a second,
+WASM-only implementation now, for the local-scoring use case where a
+photographer scores against a K they hold themselves rather than searching
+across every enrolled body's. See `docs/wasm-scoring-plan.md` and `score/`.
+
 Enrol and register are a CLI on the photographer's machine — that is where the
-RAW archive and K already are. Verify is the one browser surface, and it posts
-to the scoring service because the scorer is Python (§8).
+RAW archive and K already are. Verify is the one browser surface for
+*lookup* — identifying an unknown photo against every enrolled body's K — and
+it posts to the scoring service rather than scoring in-browser because that
+job needs every photographer's K in one place to search, which would violate
+the "K never leaves the machine it was enrolled on" invariant if it ran
+client-side (§8, and `docs/security.md`, "Where K lives"). That is a
+custody-of-secrets constraint specific to lookup, not a language or
+performance one — `score/` scores client-side in Rust/WASM against the one K
+its own visitor already holds, precisely because it doesn't have this
+problem.
 
 **Flow C's lower branch is the differentiator.** An exact pixel hash dies the
 moment a platform re-encodes or resizes. Everything that has actually been out
@@ -264,6 +277,8 @@ If step 4 works, the pitch writes itself. If it doesn't, see Gate B.
 ```
 genesis/
 ├── fingerprint/          # Python — the imaging core  (BUILT)
+│                         #   enrolment + RAW decode stay Python-only; the
+│                         #   scoring subset also exists in rust/genesis-prnu
 │   ├── prnu.py           # CFA split, wavelet Wiener, ML estimator, PCE
 │   ├── fingerprint.py    # CLI: enroll · test · pair · demo
 │   ├── validate_synthetic.py
@@ -288,9 +303,13 @@ genesis/
 └── BUILD.md
 ```
 
-**Language split is not stylistic.** Python for imaging — `rawloader` in Rust
-cannot read CR3 at all, and the raw plus wavelet ecosystem only exists in
-Python. Solidity for contracts. Rust anywhere else you like.
+**Language split is not purely stylistic.** RAW decode and enrolment stay
+Python — `rawloader` in Rust cannot read CR3 at all, and there is no Rust
+equivalent of `rawpy`/LibRaw. The scoring half (wavelet residual, PCE,
+cross-correlation) has since been ported to Rust and compiled to WASM
+(`rust/genesis-prnu`, parity-tested against this file — see
+`docs/wasm-scoring-plan.md`), so that ecosystem argument no longer holds for
+scoring on its own. Solidity for contracts. Rust anywhere else you like.
 
 ---
 
@@ -314,9 +333,12 @@ Reference implementations to **adapt, not import**: `polimi-ispl/prnu-python`
 (built for RGB — needs a CFA front end) and the Binghamton MATLAB original
 (canonical behaviour when something looks wrong).
 
-**Do not reach for Rust here.** `rawloader` handles CR2 and CRW but not CR3, and
-the wavelet ecosystem does not exist. This is the one place Python is not a
-preference.
+**Do not reach for Rust for RAW decode.** `rawloader` handles CR2 and CRW but
+not CR3, and there is still no Rust equivalent of `rawpy`/LibRaw. This is the
+one place Python is not a preference. The wavelet/PCE ecosystem this section
+also used to cite has since been ported (`rust/genesis-prnu`), so that part
+of the argument is scoring-specific history now, not a live constraint —
+see `docs/wasm-scoring-plan.md`.
 
 ### Contracts
 
@@ -352,8 +374,13 @@ preference.
 
 ### Scoring service
 
-The verify page cannot run PRNU in the browser — the scorer is Python and there
-is no practical WASM path in 13 days.
+The verify page posts to the scoring service rather than scoring in the
+browser — not because a WASM path is impractical (`score/` now ships one,
+see `docs/wasm-scoring-plan.md`), but because verify's `/lookup` has to search
+across every enrolled body's K to identify an unknown photo, and shipping
+every photographer's K to a browser would violate the "K never leaves the
+machine it was enrolled on" invariant. See §4 and `docs/security.md`, "Where
+K lives".
 
 | Tool | Why |
 | --- | --- |
