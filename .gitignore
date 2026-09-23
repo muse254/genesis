@@ -9,7 +9,9 @@ __pycache__/
 
 # Rust
 /target/
-/Cargo.lock
+# Cargo.lock is committed, not ignored: desktop/src-tauri (a shipping
+# application, not just a library) is a workspace member, and an
+# application's lockfile should be reproducible in git.
 
 # Fingerprints and enrolment data. A published reference is a published
 # forgery kit — and so is a single RAW file: measured on this body, one frame

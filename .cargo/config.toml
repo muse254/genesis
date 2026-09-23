@@ -1,0 +1,10 @@
+# Mirrors desktop/src-tauri/.cargo/config.toml. Cargo discovers `.cargo/
+# config.toml` by walking *up* from the current working directory, not from
+# each workspace member's manifest path -- so `cargo check --workspace` (or
+# `cargo test --workspace`) run from the repo root never saw the
+# desktop-local config and picked up whatever `python3` resolves to on this
+# machine instead (3.14, newer than PyO3 0.23 supports), breaking the build.
+# Duplicating the pin here means it applies no matter which directory cargo
+# is invoked from.
+[env]
+PYO3_PYTHON = "python3.12"
