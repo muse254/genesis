@@ -1,0 +1,115 @@
+{
+  "pillow": "12.3.0",
+  "libjpeg_turbo": "3.1.4.1",
+  "cases": [
+    {
+      "file": "png_97x65.png",
+      "kind": "png",
+      "expect": "match",
+      "imageHash": "0xc02462a2e3ec3be8761c52a3bf4572a832168bb654e3f683ecda6d53a301813f",
+      "perceptualHash": "0xd5832df125922f93"
+    },
+    {
+      "file": "png_180x260.png",
+      "kind": "png",
+      "expect": "match",
+      "imageHash": "0xa6e21f705ab4181809bde6e5b325dc3801b37456b7fbb47a639df4ad4b819629",
+      "perceptualHash": "0xd181288e33973df5"
+    },
+    {
+      "file": "png_32x32.png",
+      "kind": "png",
+      "expect": "match",
+      "imageHash": "0x951434b0fa73ac6587b4759c0acecc9951d537a157842c1b730398eb40858e9d",
+      "perceptualHash": "0xec11197f27503ee4"
+    },
+    {
+      "file": "png_32x300.png",
+      "kind": "png",
+      "expect": "match",
+      "imageHash": "0xa20e587f6e6442adc238e0a612d08df58d025de1db08138b10433b8973ea9551",
+      "perceptualHash": "0xea1c9d47a750cd0e"
+    },
+    {
+      "file": "png_1001x33.png",
+      "kind": "png",
+      "expect": "match",
+      "imageHash": "0x2f2f3fff2851a093620bf66a1fb1733d6e966eefac33b23f6fc1409324f7e79d",
+      "perceptualHash": "0xae27a065a47df115"
+    },
+    {
+      "file": "png_rgba.png",
+      "kind": "png",
+      "expect": "match",
+      "imageHash": "0x6073cfe2b66c6021ddb7923571b454d79b415b33b5176d58a735ac4b7e21146b",
+      "perceptualHash": "0xd58523f12bd12ec3"
+    },
+    {
+      "file": "png_grey.png",
+      "kind": "png",
+      "expect": "match",
+      "imageHash": "0x10343076a9ec1d2031b85d49765f1fba3b5f8a3a61877efe8bd27af952162c97",
+      "perceptualHash": "0xff01227f2072366e"
+    },
+    {
+      "file": "png_97x65_metadata.png",
+      "kind": "png",
+      "expect": "match",
+      "imageHash": "0xc02462a2e3ec3be8761c52a3bf4572a832168bb654e3f683ecda6d53a301813f",
+      "perceptualHash": "0xd5832df125922f93"
+    },
+    {
+      "file": "png_16bit.png",
+      "kind": "png",
+      "expect": "refused",
+      "why": "16-bit"
+    },
+    {
+      "file": "jpeg_420.jpg",
+      "kind": "jpeg",
+      "expect": "match",
+      "imageHash": "0xd0684dc0f9d4269c648c48fb819776317ee262c7a888589d5d11c8776b5fd0b9",
+      "perceptualHash": "0xfe143b0a2f1a3c2e"
+    },
+    {
+      "file": "jpeg_422.jpg",
+      "kind": "jpeg",
+      "expect": "match",
+      "imageHash": "0x6bf4acede5d392cb2ed7b7c6d3b992890e5e959285d852cf3b243e79390c6475",
+      "perceptualHash": "0xfe143d0a3f1a342e"
+    },
+    {
+      "file": "jpeg_444.jpg",
+      "kind": "jpeg",
+      "expect": "match",
+      "imageHash": "0x88772cec139048bbd0df3411a93ef760f6770fa09f37625db115ee744e91bcbe",
+      "perceptualHash": "0xfe143f0a2f183c2e"
+    },
+    {
+      "file": "jpeg_progressive.jpg",
+      "kind": "jpeg",
+      "expect": "match",
+      "imageHash": "0xd0684dc0f9d4269c648c48fb819776317ee262c7a888589d5d11c8776b5fd0b9",
+      "perceptualHash": "0xfe143b0a2f1a3c2e"
+    },
+    {
+      "file": "jpeg_grey.jpg",
+      "kind": "jpeg",
+      "expect": "match",
+      "imageHash": "0x2fef9d475a1e024011a6d82a9130939766f9f43a5a8a0da6132076f8cb1aaa04",
+      "perceptualHash": "0xfe143d0a3f1a342e"
+    },
+    {
+      "file": "jpeg_cmyk.jpg",
+      "kind": "jpeg",
+      "expect": "refused",
+      "why": "CMYK"
+    },
+    {
+      "file": "jpeg_truncated.jpg",
+      "kind": "jpeg",
+      "expect": "refused",
+      "why": "truncated"
+    }
+  ]
+}

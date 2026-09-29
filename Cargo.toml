@@ -1,0 +1,7 @@
+[workspace]
+resolver = "2"
+members = ["rust/genesis-prnu", "rust/genesis-prnu-wasm", "desktop/src-tauri"]
+# Phase 6 (docs/wasm-scoring-plan.md): desktop/src-tauri joined the workspace
+# so it can depend on genesis-prnu as an ordinary path dependency for the
+# delivered-image scoring path, sharing the same Rust implementation as the
+# browser's WASM build and the Python reference.

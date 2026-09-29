@@ -11,13 +11,24 @@
  * a registered photo, stripped of metadata, resized, re-encoded as a web
  * JPEG — and it still resolves.
  *
- * Division of labour: the scoring service does the imaging, because PRNU is
- * Python and a wavelet decomposition of a 24-megapixel raw is not something
- * to ship to a phone. This page does the chain reads, so the service never
- * becomes the thing that decides what is on chain.
+ * Everything happens in this page. Both hashes are computed from the
+ * photo in the browser (hashes.ts: libjpeg-turbo and the Rust core, both
+ * compiled to WASM), and the chain and The Graph are read directly. The
+ * photo is never uploaded.
+ *
+ * The one thing the page cannot do alone is the `fingerprint-only` verdict:
+ * that means searching an unknown photo against *every* enrolled body's K,
+ * and shipping photographers' K files to a browser would break "K never
+ * leaves the machine it was enrolled on" (docs/security.md, "Where K
+ * lives"). So it needs a scoring service that holds K files, which the
+ * public site has none of. Set VITE_SCORING_URL to one (the local demo does)
+ * and its PRNU candidates are added; leave it unset, as on GitHub Pages, and
+ * the page makes no request that carries the photo. score/ is the
+ * single-K version of the same idea, with the visitor's own K.
  */
 
 import { createPublicClient, http, type Address } from "viem";
+import { hashImage } from "./hashes";
 import { anvil, base, baseSepolia, sepolia } from "viem/chains";
 
 /**
@@ -75,7 +86,10 @@ export interface VerifyResult {
   resettableRegistry?: boolean;
 }
 
-const SCORING = import.meta.env.VITE_SCORING_URL ?? "http://127.0.0.1:8000";
+/** Optional: a scoring service holding K files, for PRNU candidates. See the header. */
+const SCORING = import.meta.env.VITE_SCORING_URL as string | undefined;
+/** `PCE_THRESHOLD` in fingerprint/prnu.py, for display when no service answers. */
+const PCE_THRESHOLD = 100;
 const REGISTRY = import.meta.env.VITE_REGISTRY_ADDRESS as Address | undefined;
 const RPC = import.meta.env.VITE_RPC_URL ?? "http://127.0.0.1:8545";
 /** Same keys as `GENESIS_CHAIN` in `console/chain.py`. Anything else is anvil. */
@@ -153,18 +167,14 @@ interface LookupResponse {
 }
 
 export async function verifyImage(file: File): Promise<VerifyResult> {
-  const form = new FormData();
-  form.append("file", file);
-
-  const response = await fetch(`${SCORING}/lookup`, { method: "POST", body: form });
-  if (!response.ok) {
-    throw new Error(`scoring service: ${response.status} ${await response.text()}`);
-  }
-  const lookup: LookupResponse = await response.json();
+  const { imageHash, perceptualHash } = await hashImage(new Uint8Array(await file.arrayBuffer()), file.name);
+  const lookup: LookupResponse = SCORING
+    ? await scoreRemotely(file)
+    : { imageHash, perceptualHash, threshold: PCE_THRESHOLD, verdict: "no-match", candidates: [] };
 
   // Exact branch first. It is cheap and it is the only one that can say
   // "this is byte-for-byte the file that was registered".
-  const exact = await lookupByPixelHash(lookup.imageHash);
+  const exact = await lookupByPixelHash(imageHash);
   const best = lookup.candidates[0];
 
   // Identity comes from the record on chain, never from the scorer: the
@@ -189,7 +199,7 @@ export async function verifyImage(file: File): Promise<VerifyResult> {
   // different pixel hash so the exact read above missed; the perceptual hash
   // finds the original and the chain confirms its registration. The
   // confirmation is what matters -- an index hit is a lookup, never a verdict.
-  const near = await lookupByPerceptualHash(lookup.perceptualHash);
+  const near = await lookupByPerceptualHash(perceptualHash);
   if (near) {
     const parent = await lookupByPixelHash(near.imageHash);
     if (parent) {
@@ -230,6 +240,21 @@ export async function verifyImage(file: File): Promise<VerifyResult> {
     pceScore: best?.pce,
     threshold: lookup.threshold,
   };
+}
+
+/**
+ * PRNU candidates from a scoring service that holds K files. Only called
+ * when VITE_SCORING_URL is set; it is the one request that carries the
+ * photo. The hashes it also returns are ignored in favour of the local ones.
+ */
+async function scoreRemotely(file: File): Promise<LookupResponse> {
+  const form = new FormData();
+  form.append("file", file);
+  const response = await fetch(`${SCORING}/lookup`, { method: "POST", body: form });
+  if (!response.ok) {
+    throw new Error(`scoring service: ${response.status} ${await response.text()}`);
+  }
+  return response.json();
 }
 
 /** Exact branch: pixel hash straight to the registry. */
@@ -524,7 +549,7 @@ input?.addEventListener("change", async () => {
   const section = document.getElementById("result");
   if (section) {
     section.className = "working";
-    section.innerHTML = "<p>Extracting the noise residual…</p>";
+    section.innerHTML = "<p>Hashing the image in your browser…</p>";
     section.hidden = false;
   }
 

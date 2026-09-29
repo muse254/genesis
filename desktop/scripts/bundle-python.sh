@@ -55,6 +55,14 @@ find "$RUNTIME" -maxdepth 3 -name "EXTERNALLY-MANAGED" -delete
 echo "== installing this project's dependencies into it"
 uv pip install --python "$PYTHON_BIN" -r "$ROOT/requirements.txt"
 
+echo "== checking it hashes images exactly as the verify page does"
+# The app and the web page must agree on a photo's pixel hash, or the same
+# JPEG reads "registered" in one and "no record" in the other. The JPEG
+# hash is defined by the libjpeg-turbo inside Pillow's wheel, which is
+# per platform, so check this platform's bundled interpreter against the
+# fixtures the browser build is tested on (verify/README.md).
+(cd "$ROOT" && "$PYTHON_BIN" -m ingest.dump_hash_fixtures --check)
+
 echo "== copying our own pure-Python source"
 # git-tracked .py files only, and never a test/validate_ module -- the
 # packages otherwise hold local fixtures (RAW frames, references) that must

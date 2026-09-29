@@ -31,13 +31,17 @@ and the owner's signature is the claim.
 
 ## How it's made
 
-**Imaging core — Python.** `rawpy` (LibRaw) reads Canon CR3 and returns the
+**Imaging core — Python for RAW decode and enrolment; scoring also has a
+Rust/WASM implementation.** `rawpy` (LibRaw) reads Canon CR3 and returns the
 raw mosaic, split into its four Bayer sublattices, each corrected against its
-own black level. Nothing demosaics. Per plane: a wavelet Wiener denoiser
-(`PyWavelets`, `scipy`) yields the noise residual, a maximum likelihood
-estimator builds K across 40+ frames, post-processing strips artefacts shared
-by every body of the model, and matching is Peak to Correlation Energy over an
-FFT cross-correlation.
+own black level. Nothing demosaics. A maximum likelihood estimator builds K
+across 40+ frames and post-processing strips artefacts shared by every body of
+the model — this half, enrolment, stays Python-only; `rawpy`/LibRaw has no
+Rust equivalent. Per plane: a wavelet Wiener denoiser (`PyWavelets`, `scipy`)
+yields the noise residual, and matching is Peak to Correlation Energy over an
+FFT cross-correlation — this half, scoring, is now also ported to Rust and
+compiled to WASM, parity-tested against this Python reference
+(`rust/genesis-prnu`; `docs/wasm-scoring-plan.md`).
 
 The maths is Fridrich, *Digital Image Forensics Using Sensor Noise*, IEEE SPM
 26(2), 2009, cited by equation number in `fingerprint/prnu.py`.

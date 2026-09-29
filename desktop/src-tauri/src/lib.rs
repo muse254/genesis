@@ -188,6 +188,40 @@ fn start_backend(app: &tauri::AppHandle, port: u16) -> Result<(), Box<dyn std::e
   Ok(())
 }
 
+/// Score a delivered (non-RAW: JPEG/PNG/TIFF) probe image against a K file
+/// natively, in this process -- no round trip through the embedded Python
+/// interpreter / `console.app`'s `/verify`.
+///
+/// This is `genesis_prnu::score()` end to end: read the `.npz` K file
+/// (`genesis_prnu::kfile::load_fingerprint`), pull its CFA pattern out of
+/// its own saved metadata (`genesis_prnu::kfile::cfa_pattern`), decode the
+/// delivered image onto that CFA lattice
+/// (`genesis_prnu::image_decode::load_delivered_planes`), and score. It is
+/// the exact same Rust code (not a reimplementation) as the browser's WASM
+/// build and is parity-tested against the Python reference in
+/// `rust/genesis-prnu/tests/parity.rs` (`e2e_score_matches_python_reference`).
+///
+/// Deliberately narrow, matching `docs/wasm-scoring-plan.md`'s Phase 6 scope:
+/// only the delivered-image case has a Rust equivalent today. RAW probes
+/// (`load_raw_planes`), the crop/scale search (`sensor_field`/
+/// `crop_and_scale_search`), enrolment, and `commitment()` all stay
+/// Python-only and keep going through `console.app` exactly as before --
+/// this command does not touch, replace, or change behavior for any of
+/// those, it only gives the frontend an alternative path for the one case
+/// this crate fully covers.
+///
+/// K bytes and image bytes are both passed in and never written to disk or
+/// sent anywhere by this command -- K still never leaves the machine
+/// (`docs/security.md`, "Where K lives").
+#[tauri::command]
+fn score_delivered_image(image_bytes: Vec<u8>, k_npz_bytes: Vec<u8>) -> Result<f64, String> {
+  let fp = genesis_prnu::kfile::load_fingerprint(&k_npz_bytes).map_err(|e| e.to_string())?;
+  let pattern = genesis_prnu::kfile::cfa_pattern(&fp.meta).map_err(|e| e.to_string())?;
+  let planes = genesis_prnu::image_decode::load_delivered_planes(&image_bytes, pattern, None)
+    .map_err(|e| e.to_string())?;
+  Ok(genesis_prnu::score(&planes, &fp.planes, true))
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
   // Order matters and cannot be undone: PYTHONHOME has to be in the
@@ -200,6 +234,7 @@ pub fn run() {
   pyo3::prepare_freethreaded_python();
 
   tauri::Builder::default()
+    .invoke_handler(tauri::generate_handler![score_delivered_image])
     .setup(|app| {
       if cfg!(debug_assertions) {
         app.handle().plugin(
@@ -227,4 +262,45 @@ pub fn run() {
     .build(tauri::generate_context!())
     .expect("error while building the Genesis app")
     .run(|_app, _event| {});
+}
+
+#[cfg(test)]
+mod score_delivered_image_tests {
+    //! Exercises `score_delivered_image` (the plain function underneath the
+    //! `#[tauri::command]`, called directly rather than over IPC -- no
+    //! running app/webview is needed for that) against the same real
+    //! K + delivered-image fixture pair `rust/genesis-prnu/tests/parity.rs`'s
+    //! `e2e_score_matches_python_reference` already parity-tests against the
+    //! Python reference, so this only has to confirm this crate's own
+    //! plumbing (reading the K/image bytes, wiring `kfile`/`image_decode`/
+    //! `score` together) reproduces that same number -- not re-derive
+    //! numeric parity with Python, which is the core crate's job.
+
+    use super::score_delivered_image;
+    use std::fs;
+    use std::path::Path;
+
+    #[test]
+    fn matches_the_core_crates_own_e2e_fixture() {
+        let fixtures =
+            Path::new(env!("CARGO_MANIFEST_DIR")).join("../../rust/genesis-prnu/tests/fixtures");
+
+        let manifest_text = fs::read_to_string(fixtures.join("manifest.json"))
+            .expect("manifest.json should read");
+        let manifest: serde_json::Value =
+            serde_json::from_str(&manifest_text).expect("manifest.json should be valid JSON");
+        let expected = manifest["e2e_case"]["score"]
+            .as_f64()
+            .expect("e2e_case.score should be a number");
+
+        let k_bytes = fs::read(fixtures.join("e2e_fingerprint.npz")).expect("k fixture should read");
+        let image_bytes =
+            fs::read(fixtures.join("e2e_delivered.png")).expect("image fixture should read");
+
+        let got = score_delivered_image(image_bytes, k_bytes)
+            .expect("scoring the fixture pair should succeed");
+
+        let rel = (got - expected).abs() / expected.abs().max(1.0);
+        assert!(rel < 0.02, "score = {got}, expected = {expected}, rel err {rel}");
+    }
 }

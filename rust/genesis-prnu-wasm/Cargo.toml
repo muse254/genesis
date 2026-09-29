@@ -1,0 +1,17 @@
+[package]
+name = "genesis-prnu-wasm"
+version = "0.1.0"
+edition = "2021"
+description = "wasm-bindgen wrapper around genesis-prnu's scoring core: score(image_bytes, k_npz_bytes) -> PCE. K bytes never leave this call -- see docs/wasm-scoring-plan.md Phase 5 and docs/security.md 'Where K lives'."
+publish = false
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+genesis-prnu = { path = "../genesis-prnu" }
+wasm-bindgen = "0.2"
+
+[profile.release]
+opt-level = "s"
+lto = true

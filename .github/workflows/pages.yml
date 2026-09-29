@@ -1,13 +1,17 @@
 # Publishes the static site to GitHub Pages: the landing/download page at
-# the root (site/, no build step), the verify SPA at /verify/, and the
-# dashboard at /dashboard/ -- both Vite builds, both with a relative base
-# (their vite.config.ts) so they work nested at that depth.
+# the root (site/, no build step), the verify SPA at /verify/, the
+# dashboard at /dashboard/, and the local scoring page at /score/ -- three
+# Vite builds (verify/dashboard/score), all with a relative base (their
+# vite.config.ts) so they work nested at that depth.
 #
 # Everything here is static: the landing page reads GitHub's Releases API
-# client-side (site/app.js), the verify page reads the chain client-side
-# (verify/src/main.ts), and the dashboard reads the subgraph client-side
-# (dashboard/src/main.ts) -- none of them need a server of their own, so
-# all three fit on Pages.
+# client-side (site/app.js), the verify page hashes the photo and reads the
+# chain client-side (verify/src/main.ts, verify/src/hashes.ts; JPEG decoding
+# is libjpeg-turbo built with Emscripten, verify/jpeg/), the dashboard reads
+# the subgraph client-side (dashboard/src/main.ts), and the score page runs a WASM module compiled
+# from rust/genesis-prnu-wasm entirely in the browser (score/src/main.ts,
+# docs/wasm-scoring-plan.md Phase 5) -- none of them need a server of
+# their own, so all four fit on Pages.
 name: pages
 
 on:
@@ -17,6 +21,10 @@ on:
       - "site/**"
       - "verify/**"
       - "dashboard/**"
+      - "score/**"
+      - "rust/**"
+      - "ingest/hashing.py"
+      - "Cargo.toml"
       - ".github/workflows/pages.yml"
   workflow_dispatch:
 
@@ -37,6 +45,13 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+      - uses: jetli/wasm-pack-action@v0.4.0
+        with:
+          version: "latest"
+      - uses: mymindstorm/setup-emsdk@v14
 
       - name: Verify page
         working-directory: verify
@@ -52,10 +67,18 @@ jobs:
           VITE_REGISTRY_ADDRESS: "0x0C0F3Ec87339F985c509c01dEE8474BB8f5b0EB2"
           VITE_CHAIN: base-sepolia
           VITE_SUBGRAPH_URL: https://api.studio.thegraph.com/query/1758974/genesis/v0.1.0-base-sepolia
+          # No VITE_SCORING_URL, on purpose: the page hashes photos itself,
+          # and with this unset it never sends one anywhere.
+        # `npm run build` builds both WASM modules first (prebuild), which
+        # tsc needs to resolve their imports. `npm test` then checks the
+        # hashes against Python's committed fixtures, JPEG included, as a
+        # last gate before deploy: a mismatch would turn every JPEG on the
+        # live page into "no record". (ci.yml runs the same on every PR.)
         run: |
           npm ci
-          npx tsc --noEmit -p .
           npm run build
+          npx tsc --noEmit -p .
+          npm test
 
       - name: Dashboard
         working-directory: dashboard
@@ -67,6 +90,19 @@ jobs:
           npx tsc --noEmit -p .
           npm run build
 
+      - name: Score page
+        working-directory: score
+        # No secrets or env config here (unlike verify/dashboard): scoring
+        # is entirely client-side against files the visitor picks locally,
+        # so there's nothing for this page to be configured with. `npm run
+        # build`'s `prebuild` script runs `wasm-pack build` against
+        # rust/genesis-prnu-wasm (see score/README.md) before `vite build`,
+        # so it goes before tsc, which needs that output to resolve imports.
+        run: |
+          npm ci
+          npm run build
+          npx tsc --noEmit -p .
+
       - name: Assemble _site
         run: |
           mkdir -p _site
@@ -75,6 +111,8 @@ jobs:
           cp -r verify/dist/. _site/verify/
           mkdir -p _site/dashboard
           cp -r dashboard/dist/. _site/dashboard/
+          mkdir -p _site/score
+          cp -r score/dist/. _site/score/
 
       - uses: actions/upload-pages-artifact@v3
         with:

@@ -119,3 +119,21 @@ sidecar. The trade is a real one: about four times the disk, for a fifteen-
 to seventeen-times faster cold start and one fewer process to reason about.
 Shrinking it (dropping `tcl`/`tk` from the bundled runtime, which this
 project never imports) is future work, not yet done.
+
+**A native-Rust scoring command does not shrink this number.** Phase 6 of
+`docs/wasm-scoring-plan.md` added `score_delivered_image`, a Tauri command
+(`desktop/src-tauri/src/lib.rs`) that scores a delivered (non-RAW: JPEG/PNG/
+TIFF) probe image against a K file using `genesis-prnu` directly, in this
+process, with no round trip through the embedded Python interpreter for
+that one request. It is real: that whole class of request no longer needs
+`console.app`'s `/verify` at all. It is also explicitly partial: enrolment
+(`estimate_fingerprint`/`postprocess`), RAW decoding (`load_raw_planes`,
+which needs `rawpy`/LibRaw), the crop/scale search
+(`sensor_field`/`crop_and_scale_search`), and `commitment()` all stay
+Python-only, by deliberate decision (`docs/wasm-scoring-plan.md`), so the
+bundled Python runtime — `numpy`, `scipy`, `rawpy`, and the rest — still has
+to ship in full. The bundle is still ~217 MB; nothing here removes a single
+dependency from `requirements.txt` or lets `bundle-python.sh` drop anything.
+Do not read this as a step toward a smaller bundle by itself — it would only
+become one if enrolment and RAW decode also moved off Python, which is not
+what this phase does.
