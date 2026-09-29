@@ -57,12 +57,23 @@ pub fn pce_threshold() -> f64 {
 #[wasm_bindgen(js_name = imageHashes)]
 pub fn image_hashes(rgb: &[u8], width: usize, height: usize) -> Result<ImageHashes, JsValue> {
     if rgb.len() != width * height * 3 {
-        return Err(JsValue::from_str("rgb buffer does not match its dimensions"));
+        return Err(JsValue::from_str(
+            "rgb buffer does not match its dimensions",
+        ));
     }
     let digest = genesis_prnu::hashing::pixel_sha256(rgb, width, height);
     Ok(ImageHashes {
-        image_hash: format!("0x{}", digest.iter().map(|b| format!("{b:02x}")).collect::<String>()),
-        perceptual_hash: format!("0x{:016x}", genesis_prnu::hashing::perceptual_hash(rgb, width, height)),
+        image_hash: format!(
+            "0x{}",
+            digest
+                .iter()
+                .map(|b| format!("{b:02x}"))
+                .collect::<String>()
+        ),
+        perceptual_hash: format!(
+            "0x{:016x}",
+            genesis_prnu::hashing::perceptual_hash(rgb, width, height)
+        ),
     })
 }
 
@@ -118,4 +129,156 @@ impl DecodedRgb {
     pub fn height(&self) -> usize {
         self.height
     }
+}
+
+// ---- Verification against an enrolled body (docs/shared-verify-plan.md) ----
+//
+// The desktop app holds its enrolled K files and passes them in; the web
+// page has none and never calls these. Same invariant as `score` above:
+// nothing here does I/O, so K bytes cannot leave this call.
+
+/// An enrolled body's fingerprint, parsed once and reused across images.
+#[wasm_bindgen]
+pub struct Body {
+    planes: std::collections::BTreeMap<i32, ndarray::Array2<f32>>,
+    pattern: [[i32; 2]; 2],
+    crop: Option<i64>,
+}
+
+#[wasm_bindgen]
+impl Body {
+    /// Parse a K `.npz` (as `fingerprint/prnu.py::save_fingerprint` writes).
+    #[wasm_bindgen(constructor)]
+    pub fn new(k_npz_bytes: &[u8]) -> Result<Body, JsValue> {
+        let fp = genesis_prnu::kfile::load_fingerprint(k_npz_bytes)
+            .map_err(|e| JsValue::from_str(&format!("could not read K file: {e}")))?;
+        let pattern = genesis_prnu::kfile::cfa_pattern(&fp.meta).map_err(|e| {
+            JsValue::from_str(&format!("K file meta has no usable cfa_pattern: {e}"))
+        })?;
+        let crop = fp.meta.get("crop").and_then(|c| c.as_i64());
+        Ok(Body {
+            planes: fp.planes,
+            pattern,
+            crop,
+        })
+    }
+
+    /// `meta["crop"]`: what a RAW decode for this body must crop to, so its
+    /// planes line up with K. `undefined` for none.
+    #[wasm_bindgen(getter)]
+    pub fn crop(&self) -> Option<i32> {
+        self.crop.map(|c| c as i32)
+    }
+}
+
+fn to_js<T: serde::Serialize>(value: &T) -> Result<JsValue, JsValue> {
+    // json_compatible: None becomes null rather than undefined, matching the
+    // Python payloads this replaces.
+    value
+        .serialize(&serde_wasm_bindgen::Serializer::json_compatible())
+        .map_err(|e| JsValue::from_str(&e.to_string()))
+}
+
+fn stepper(on_step: &js_sys::Function) -> impl FnMut(&str) + '_ {
+    move |label: &str| {
+        let _ = on_step.call1(&JsValue::NULL, &JsValue::from_str(label));
+    }
+}
+
+fn rgb(rgb: &[u8], width: usize, height: usize) -> Result<genesis_prnu::Rgb, JsValue> {
+    if rgb.len() != width * height * 3 {
+        return Err(JsValue::from_str(
+            "rgb buffer does not match its dimensions",
+        ));
+    }
+    Ok(genesis_prnu::Rgb::new(rgb.to_vec(), width, height))
+}
+
+/// `_score_against` for a decoded image: aligned, then the portrait retry,
+/// then border strip and scale search. Returns `{pce, path, orientation,
+/// scale, borderStripped, turned, attempts}`. `onStep(label)` is called with
+/// the same progress labels the Python used.
+#[wasm_bindgen(js_name = scoreAgainst)]
+pub fn score_against(
+    rgb_bytes: &[u8],
+    width: usize,
+    height: usize,
+    body: &Body,
+    on_step: &js_sys::Function,
+) -> Result<JsValue, JsValue> {
+    let image = rgb(rgb_bytes, width, height)?;
+    let result =
+        genesis_prnu::score_against(&image, &body.planes, body.pattern, &mut stepper(on_step));
+    to_js(&result)
+}
+
+/// `_score_against` for a RAW file the desktop decoded in Python: the CFA
+/// planes as a `plane_<c>` `.npz`, plus the developed RGB for the search.
+#[wasm_bindgen(js_name = scoreAgainstRaw)]
+pub fn score_against_raw(
+    planes_npz: &[u8],
+    rgb_bytes: &[u8],
+    width: usize,
+    height: usize,
+    body: &Body,
+    on_step: &js_sys::Function,
+) -> Result<JsValue, JsValue> {
+    let planes = genesis_prnu::kfile::load_planes(planes_npz)
+        .map_err(|e| JsValue::from_str(&format!("could not read RAW planes: {e}")))?;
+    let image = rgb(rgb_bytes, width, height)?;
+    let result =
+        genesis_prnu::score_against_raw(&planes, &image, &body.planes, &mut stepper(on_step));
+    to_js(&result)
+}
+
+#[derive(serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+struct Signals {
+    effective_strength: Option<f64>,
+    resampling_peak: Option<f64>,
+    detail: Option<f64>,
+}
+
+/// The advisory signals (`console/app.py` `_signals`), each `null` when it
+/// does not apply. Advisory only: none of them may raise a verdict.
+///
+/// `effectiveStrength` needs the image on K's lattice, so it is computed only
+/// when `aligned` (from `rawPlanesNpz` for a RAW, else from the pixels).
+/// `resamplingPeak` and `detail` read the delivered pixels, so a RAW (which
+/// passes `rawPlanesNpz`) gets neither.
+#[wasm_bindgen]
+pub fn signals(
+    rgb_bytes: &[u8],
+    width: usize,
+    height: usize,
+    body: &Body,
+    aligned: bool,
+    raw_planes_npz: Option<Vec<u8>>,
+) -> Result<JsValue, JsValue> {
+    use genesis_prnu::consistency::{
+        effective_strength, high_frequency_content, resampling_peak, DEFAULT_PLANE,
+    };
+
+    let image = rgb(rgb_bytes, width, height)?;
+    let is_raw = raw_planes_npz.is_some();
+    let planes = match &raw_planes_npz {
+        Some(npz) => genesis_prnu::kfile::load_planes(npz).ok(),
+        None => Some(genesis_prnu::image_decode::planes_from_rgb(
+            &image.data,
+            width,
+            height,
+            body.pattern,
+            None,
+        )),
+    };
+    let signals = Signals {
+        effective_strength: if aligned {
+            planes.and_then(|p| effective_strength(&p, &body.planes, DEFAULT_PLANE))
+        } else {
+            None
+        },
+        resampling_peak: (!is_raw).then(|| resampling_peak(&image, 1024)),
+        detail: (!is_raw).then(|| high_frequency_content(&image)),
+    };
+    to_js(&signals)
 }

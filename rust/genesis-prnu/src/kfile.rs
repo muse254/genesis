@@ -51,8 +51,7 @@ impl std::error::Error for KFileError {}
 /// touches the filesystem or the network itself).
 pub fn load_fingerprint(bytes: &[u8]) -> Result<Fingerprint, KFileError> {
     let cursor = Cursor::new(bytes);
-    let mut npz =
-        NpzReader::new(cursor).map_err(|e| KFileError::Zip(format!("{e:?}")))?;
+    let mut npz = NpzReader::new(cursor).map_err(|e| KFileError::Zip(format!("{e:?}")))?;
     let names = npz.names().map_err(|e| KFileError::Zip(format!("{e:?}")))?;
 
     let mut planes = BTreeMap::new();
@@ -96,6 +95,32 @@ pub fn load_fingerprint(bytes: &[u8]) -> Result<Fingerprint, KFileError> {
     })
 }
 
+/// Load bare CFA planes from an `.npz` holding `plane_<c>` float32 arrays and
+/// nothing else required -- what the desktop's RAW decoder sends
+/// (`console/app.py` `/raw/decode`), since LibRaw has no WASM build.
+pub fn load_planes(bytes: &[u8]) -> Result<BTreeMap<i32, Array2<f32>>, KFileError> {
+    let mut npz =
+        NpzReader::new(Cursor::new(bytes)).map_err(|e| KFileError::Zip(format!("{e:?}")))?;
+    let names = npz.names().map_err(|e| KFileError::Zip(format!("{e:?}")))?;
+    let mut planes = BTreeMap::new();
+    for name in &names {
+        if let Some(rest) = name.strip_prefix("plane_") {
+            let rest = rest.strip_suffix(".npy").unwrap_or(rest);
+            let c: i32 = rest
+                .parse()
+                .map_err(|_| KFileError::Npy(format!("bad plane key {name}")))?;
+            let arr: Array2<f32> = npz
+                .by_name(name)
+                .map_err(|e| KFileError::Npy(format!("{name}: {e:?}")))?;
+            planes.insert(c, arr);
+        }
+    }
+    if planes.is_empty() {
+        return Err(KFileError::MissingPlanes);
+    }
+    Ok(planes)
+}
+
 /// The CFA pattern (`meta["cfa_pattern"]`, a 2x2 list of CFA colour
 /// indices) out of a loaded fingerprint's metadata, matching how
 /// `fingerprint/fingerprint.py`/`console/app.py` store it at enrolment
@@ -104,18 +129,25 @@ pub fn cfa_pattern(meta: &serde_json::Value) -> Result<[[i32; 2]; 2], KFileError
     let p = meta
         .get("cfa_pattern")
         .ok_or_else(|| KFileError::Json("meta has no cfa_pattern".into()))?;
-    let rows = p.as_array().ok_or_else(|| KFileError::Json("cfa_pattern not an array".into()))?;
+    let rows = p
+        .as_array()
+        .ok_or_else(|| KFileError::Json("cfa_pattern not an array".into()))?;
     if rows.len() != 2 {
         return Err(KFileError::Json("cfa_pattern is not 2x2".into()));
     }
     let mut out = [[0i32; 2]; 2];
     for (i, row) in rows.iter().enumerate() {
-        let cols = row.as_array().ok_or_else(|| KFileError::Json("cfa_pattern row not an array".into()))?;
+        let cols = row
+            .as_array()
+            .ok_or_else(|| KFileError::Json("cfa_pattern row not an array".into()))?;
         if cols.len() != 2 {
             return Err(KFileError::Json("cfa_pattern is not 2x2".into()));
         }
         for (j, v) in cols.iter().enumerate() {
-            out[i][j] = v.as_i64().ok_or_else(|| KFileError::Json("cfa_pattern entry not an int".into()))? as i32;
+            out[i][j] = v
+                .as_i64()
+                .ok_or_else(|| KFileError::Json("cfa_pattern entry not an int".into()))?
+                as i32;
         }
     }
     Ok(out)
@@ -172,15 +204,22 @@ fn parse_npy_unicode_scalar(bytes: &[u8]) -> Result<String, String> {
     let descr = &rest[..q2]; // e.g. "<U55" or ">U55"
 
     if descr.len() < 3 || (descr.as_bytes()[1] != b'U') {
-        return Err(format!("unsupported meta dtype {descr}, expected unicode <U*/>U*"));
+        return Err(format!(
+            "unsupported meta dtype {descr}, expected unicode <U*/>U*"
+        ));
     }
     let big_endian = descr.as_bytes()[0] == b'>';
-    let n_chars: usize = descr[2..].parse().map_err(|_| format!("bad unicode width in {descr}"))?;
+    let n_chars: usize = descr[2..]
+        .parse()
+        .map_err(|_| format!("bad unicode width in {descr}"))?;
 
     let data = &bytes[header_end..];
     let needed = n_chars * 4;
     if data.len() < needed {
-        return Err(format!("meta.npy data too short: {} < {needed}", data.len()));
+        return Err(format!(
+            "meta.npy data too short: {} < {needed}",
+            data.len()
+        ));
     }
 
     let mut s = String::with_capacity(n_chars);
@@ -215,9 +254,7 @@ mod tests {
         npy.push(1); // major
         npy.push(0); // minor
         let descr = format!("<U{}", json.chars().count());
-        let mut header = format!(
-            "{{'descr': '{descr}', 'fortran_order': False, 'shape': (), }}"
-        );
+        let mut header = format!("{{'descr': '{descr}', 'fortran_order': False, 'shape': (), }}");
         // pad so total length (10 + header.len() + 1 for '\n') % 64 == 0
         let base = 10 + header.len() + 1;
         let pad = (64 - base % 64) % 64;

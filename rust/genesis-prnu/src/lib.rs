@@ -27,4 +27,4 @@ pub mod wavelet;
 
 pub use correlation::{cross_correlation, pce, pce_of, score};
 pub use noise::noise_residual;
-pub use search::{score_against, Rgb, ScoreResult};
+pub use search::{score_against, score_against_raw, Rgb, ScoreResult};

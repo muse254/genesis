@@ -277,8 +277,10 @@ fn search_traced(
     (winner.unwrap(), tried)
 }
 
-/// What [`score_against`] found, mirroring the dict `_score_against` returns.
-#[derive(Clone, Debug, PartialEq)]
+/// What [`score_against`] found, mirroring the dict `_score_against` returns
+/// (serialised with the same camelCase keys).
+#[derive(Clone, Debug, PartialEq, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ScoreResult {
     pub pce: f64,
     /// `"aligned"` or `"scale search"`.
@@ -326,15 +328,7 @@ pub fn score_against(
     let probe = planes_from_rgb(&image.data, image.width, image.height, pattern, None);
     if let Some(value) = aligned(&probe, reference) {
         step("correlating on the photosite lattice");
-        return ScoreResult {
-            pce: value,
-            path: "aligned",
-            orientation: "0 deg".into(),
-            scale: None,
-            border_stripped: None,
-            turned: None,
-            attempts: Vec::new(),
-        };
+        return aligned_result(value);
     }
 
     // A portrait capture: the sensor is landscape and a developed JPEG has
@@ -365,6 +359,47 @@ pub fn score_against(
         }
     }
 
+    search_path(image, reference, step)
+}
+
+/// `_score_against` for a RAW file. LibRaw has no WASM build, so the desktop
+/// decodes RAW in Python (`/raw/decode`) and hands over both results: the
+/// CFA planes (cropped per the body's `meta["crop"]`) and the developed RGB.
+/// A RAW sits in sensor space, so there is no portrait retry: if the planes
+/// do not line up with K, the developed image goes to the scale search.
+pub fn score_against_raw(
+    raw_planes: &BTreeMap<i32, Array2<f32>>,
+    developed: &Rgb,
+    reference: &BTreeMap<i32, Array2<f32>>,
+    step: &mut dyn FnMut(&str),
+) -> ScoreResult {
+    step("reading the file");
+    if let Some(value) = aligned(raw_planes, reference) {
+        step("correlating on the photosite lattice");
+        return aligned_result(value);
+    }
+    search_path(developed, reference, step)
+}
+
+fn aligned_result(value: f64) -> ScoreResult {
+    ScoreResult {
+        pce: value,
+        path: "aligned",
+        orientation: "0 deg".into(),
+        scale: None,
+        border_stripped: None,
+        turned: None,
+        attempts: Vec::new(),
+    }
+}
+
+/// The last resort, shared by both entry points: strip a flat border, then
+/// search orientation and scale.
+fn search_path(
+    image: &Rgb,
+    reference: &BTreeMap<i32, Array2<f32>>,
+    step: &mut dyn FnMut(&str),
+) -> ScoreResult {
     // A flat margin defeats the search, not the fingerprint: padding changes
     // the aspect ratio, so no uniform scale maps it back. Strip it first.
     let (image, border_stripped) = match strip_uniform_border(image, 2.0, 0.25) {
