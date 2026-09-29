@@ -42,6 +42,10 @@ The numerics are Rust (`rust/genesis-prnu`), compiled to WASM.
   You need `emcc` on your PATH
   (https://emscripten.org/docs/getting_started/downloads.html).
 
+- **`src/raw/`** (built on its own, `npm run wasm:raw`): LibRaw 0.22.1 for
+  enrolling a camera in the browser, the first piece of that work. Not
+  imported by anything yet, so not part of `npm run wasm`. See below.
+
 ### Why JPEG gets its own decoder
 
 The pixel hash is an exact SHA-256 over decoded pixels, so the browser has
@@ -55,6 +59,25 @@ the hash and the score always see one image.
 `requirements.txt` pins (12.3.0, libjpeg-turbo 3.1.4.1). **To upgrade
 Pillow:** check `features.version("libjpeg_turbo")`, and if it changed,
 bump `build.sh`, regenerate the fixtures, and rerun the tests.
+
+### RAW in the browser: LibRaw
+
+`raw/build.sh` compiles LibRaw at the version `rawpy` bundles (0.22.1,
+`requirements.txt` pins `rawpy`), and `raw/decode.cpp` returns exactly what
+enrolment reads through `rawpy`: the visible mosaic, `raw_pattern`,
+`raw_colors_visible`, `black_level_per_channel` (by `rawpy`'s own helper,
+vendored as `raw/data_helper.h`) and `white_level`, plus the body serial for
+refusing frames from two cameras.
+
+`node raw/parity.mjs <raw files>` compares every one of those against
+`rawpy` (and the serial against `exiftool`) on real files, exactly. On 29
+September: all 41 enrolment frames of the R10, a second R10 body, and a
+lossy DNG (refused, as `load_raw_planes` refuses it) -- 43 of 43. A CR3
+decodes in ~300 ms in Chrome.
+
+Built without lossy-DNG JPEG, zlib (deflate DNG) or threads: enrolment reads
+Bayer mosaics, and a CR3 needs none of them. LibRaw is LGPL 2.1 / CDDL 1.0,
+fetched from libraw.org at the pinned version and rebuilt by the script.
 
 ## Tests
 

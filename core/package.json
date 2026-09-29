@@ -6,6 +6,7 @@
     "wasm": "npm run wasm:prnu && npm run wasm:jpeg",
     "wasm:prnu": "wasm-pack build ../rust/genesis-prnu-wasm --target web --release --out-dir ../../core/src/wasm",
     "wasm:jpeg": "./jpeg/build.sh",
+    "wasm:raw": "./raw/build.sh",
     "test": "vitest run",
     "parity": "node --experimental-strip-types --no-warnings jpeg/parity.mjs"
   },
