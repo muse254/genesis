@@ -138,31 +138,29 @@ Three flows. Build backwards from the demo (§6).
 flowchart TB
   subgraph Enrol["Flow A · Enrol — once per camera body"]
     direction TB
-    subgraph EnrolLocal["CLI on the photographer's machine · fingerprint/"]
-      A1["40+ RAW frames from the archive"] --> A2["CFA plane split"]
+    subgraph EnrolLocal["photographer's machine · desktop app (console/) or CLI · fingerprint/ · Python"]
+      A1["40+ RAW frames from the archive"] --> A2["CFA plane split · rawpy/LibRaw"]
       A2 --> A3["wavelet Wiener residual"]
       A3 --> A4["ML estimator ΣWI/ΣI² → K"]
     end
-    A4 --> A5[("local disk · data/<br/>K itself is never published")]
-    A4 --> A6["CLI · ingest/<br/>commitment hash of K"]
-    subgraph EnrolChain["on chain · Sepolia"]
-      A7["contract · Registry.registerBody<br/>bodyId · fingerprintCommitment · ensNode"]
-      A8["contract · ENSv2<br/>subname r10-4471.cam.osoro.eth"]
+    A4 --> A5[("local disk · references/<br/>K itself is never published")]
+    A4 --> A6["commitment hash of K<br/>+ keyed commitment to the serial"]
+    subgraph EnrolChain["on chain · Base"]
+      A7["contract · Registry.registerBody<br/>bodyId · fingerprintCommitment · bodyCommitment"]
     end
     A6 --> A7
-    A7 <--> A8
   end
 
   subgraph Register["Flow B · Register — per image"]
     direction TB
-    subgraph RegLocal["CLI on the photographer's machine · ingest/ + fingerprint/"]
-      B1["RAW"] --> B2["SHA-256 of pixel data<br/>+ perceptual hash"]
-      B1 --> B3["residual → PCE against K"]
-      B2 --> B4["Birthmark-shaped ImageRecord<br/>+ PRNU attestation"]
+    subgraph RegLocal["photographer's machine · desktop app · ingest/ + fingerprint/ · Python"]
+      B1["photograph"] --> B2["SHA-256 of pixel data<br/>+ perceptual hash"]
+      B1 --> B3["residual → PCE against K<br/>refused below threshold"]
+      B2 --> B4["ImageRecord<br/>+ PRNU attestation"]
       B3 --> B4
     end
-    subgraph RegChain["on chain · Sepolia"]
-      B5["contract · Registry.registerImage"]
+    subgraph RegChain["on chain · Base"]
+      B5["contract · Registry.registerImage<br/>only the body's owner"]
       B6["contract · Registry.commitSession<br/>one Merkle root per shoot, not one write per frame"]
       B7["contract · ERC-7053 commit()"]
     end
@@ -171,18 +169,24 @@ flowchart TB
     B5 --> B7
   end
 
-  subgraph Verify["Flow C · Verify — anyone, any image, anywhere"]
+  subgraph Verify["Flow C · Verify — anyone, any image · core/, in the browser"]
     direction TB
-    C1["web page · verify/ (browser)<br/>image upload"] --> C2{"exact pixel hash hit?"}
-    C2 -->|yes| C3["record — untouched file"]
-    C2 -->|no| C4["index · subgraph/ on The Graph<br/>pHash lookup → candidate records"]
-    C4 --> C5["HTTP service · scoring/ (FastAPI)<br/>PRNU re-score — the browser cannot do this"]
-    C5 --> C6["web page · verify/<br/>verdict + confidence"]
+    C1["drop a photo<br/>web page · verify/ — or the desktop app"] --> C2["Web Worker · Rust/WASM<br/>pixel hash + perceptual hash<br/>the photo never leaves the browser"]
+    C2 --> C3{"exact pixel hash<br/>on chain?"}
+    C3 -->|yes| C4["REGISTERED"]
+    C3 -->|no| C5["index · subgraph/ on The Graph<br/>nearest perceptual hash"]
+    C5 --> C6{"chain confirms<br/>the original?"}
+    C6 -->|yes| C7["DERIVED"]
+    C6 -->|no| C8{"desktop only:<br/>PRNU against its own K<br/>≥ threshold?"}
+    C8 -->|yes| C9["FINGERPRINT ONLY<br/>not a pass"]
+    C8 -->|no| C10["NO RECORD"]
   end
 
   A5 -.->|K stays local| B3
-  A7 -.->|events indexed| C4
-  B5 -.->|events indexed| C2
+  A5 -.->|desktop app only · loopback| C8
+  A7 -.->|owner read on a hit| C4
+  B5 -.->|events indexed| C5
+  B5 -.->|read directly| C3
 ```
 
 Flow C runs in the browser, from one implementation shared by the public
