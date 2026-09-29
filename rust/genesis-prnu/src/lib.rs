@@ -8,13 +8,23 @@
 //! and delivered-image/K-file I/O ([`image_decode`], [`kfile`]). Also the
 //! image record's two content hashes ([`hashing`], from `ingest/hashing.py`),
 //! which the verify page computes in the browser.
+//!
+//! And, for one verify implementation shared by the web page and the desktop
+//! app (`docs/shared-verify-plan.md`): scoring an image of unknown provenance
+//! against a body, including the portrait retry and the scale search
+//! ([`search`], on Pillow's resampler in [`resample`]), and the advisory
+//! consistency signals ([`consistency`]).
 
+pub mod consistency;
 pub mod correlation;
 pub mod hashing;
 pub mod image_decode;
 pub mod kfile;
 pub mod noise;
+pub mod resample;
+pub mod search;
 pub mod wavelet;
 
 pub use correlation::{cross_correlation, pce, pce_of, score};
 pub use noise::noise_residual;
+pub use search::{score_against, Rgb, ScoreResult};

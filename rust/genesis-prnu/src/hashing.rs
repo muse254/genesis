@@ -21,6 +21,8 @@
 
 use sha2::{Digest, Sha256};
 
+use crate::resample::resize_l8_lanczos;
+
 /// Must equal `PIXEL_HASH_VERSION` in `ingest/hashing.py`.
 pub const PIXEL_HASH_VERSION: &[u8] = b"genesis-pixels-v1";
 /// `PHASH_RESIZE` in `ingest/hashing.py`.
@@ -57,17 +59,8 @@ pub fn perceptual_hash(rgb: &[u8], width: usize, height: usize) -> u64 {
         "rgb buffer does not match its dimensions"
     );
 
-    // Pillow's rgb2l: L24(rgb) >> 16.
-    let grey: Vec<u8> = rgb
-        .as_chunks::<3>()
-        .0
-        .iter()
-        .map(|p| {
-            ((p[0] as u32 * 19595 + p[1] as u32 * 38470 + p[2] as u32 * 7471 + 0x8000) >> 16) as u8
-        })
-        .collect();
-
-    let small = resize_lanczos_l(&grey, width, height, PHASH_RESIZE, PHASH_RESIZE);
+    let grey = grey_l8(rgb);
+    let small = resize_l8_lanczos(&grey, width, height, PHASH_RESIZE, PHASH_RESIZE);
     let values: Vec<f64> = small.iter().map(|&v| v as f64).collect();
 
     // dct(dct(values, axis=0), axis=1), both orthonormal.
@@ -147,105 +140,16 @@ fn dct_basis(n: usize) -> Vec<f64> {
     m
 }
 
-// ---- Pillow's 8-bit LANCZOS resample (libImaging/Resample.c) ----
-
-const PRECISION_BITS: u32 = 32 - 8 - 2;
-const LANCZOS_SUPPORT: f64 = 3.0;
-
-fn sinc(x: f64) -> f64 {
-    if x == 0.0 {
-        return 1.0;
-    }
-    let x = x * std::f64::consts::PI;
-    x.sin() / x
-}
-
-fn lanczos(x: f64) -> f64 {
-    if (-3.0..3.0).contains(&x) {
-        sinc(x) * sinc(x / 3.0)
-    } else {
-        0.0
-    }
-}
-
-/// `precompute_coeffs` then `normalize_coeffs_8bpc`: per output sample, the
-/// first input index, the tap count, and the fixed-point taps.
-fn coefficients(in_size: usize, out_size: usize) -> (Vec<(usize, usize)>, Vec<i32>, usize) {
-    let scale = in_size as f64 / out_size as f64;
-    let filterscale = scale.max(1.0);
-    let support = LANCZOS_SUPPORT * filterscale;
-    let ksize = support.ceil() as usize * 2 + 1;
-    let inv = 1.0 / filterscale;
-
-    let mut bounds = Vec::with_capacity(out_size);
-    let mut kk = vec![0i32; out_size * ksize];
-    let mut w = vec![0.0f64; ksize];
-    for xx in 0..out_size {
-        let center = (xx as f64 + 0.5) * scale;
-        // C's (int) cast truncates toward zero.
-        let xmin = ((center - support + 0.5) as i64).max(0) as usize;
-        let xmax = ((center + support + 0.5) as i64).min(in_size as i64) as usize - xmin;
-        let mut ww = 0.0;
-        for (x, tap) in w[..xmax].iter_mut().enumerate() {
-            *tap = lanczos((x as f64 + xmin as f64 - center + 0.5) * inv);
-            ww += *tap;
-        }
-        for x in 0..xmax {
-            let k = if ww != 0.0 { w[x] / ww } else { w[x] };
-            let scaled = k * (1u32 << PRECISION_BITS) as f64;
-            kk[xx * ksize + x] = if k < 0.0 {
-                (-0.5 + scaled) as i32
-            } else {
-                (0.5 + scaled) as i32
-            };
-        }
-        bounds.push((xmin, xmax));
-    }
-    (bounds, kk, ksize)
-}
-
-fn clip8(v: i32) -> u8 {
-    (v >> PRECISION_BITS).clamp(0, 255) as u8
-}
-
-/// Pillow's `ImagingResample` for mode "L": horizontal pass, then vertical,
-/// each skipped when that dimension is unchanged.
-fn resize_lanczos_l(src: &[u8], w: usize, h: usize, out_w: usize, out_h: usize) -> Vec<u8> {
-    let horizontal = if out_w != w {
-        let (bounds, kk, ksize) = coefficients(w, out_w);
-        let mut out = vec![0u8; out_w * h];
-        for y in 0..h {
-            let row = &src[y * w..(y + 1) * w];
-            for (xx, &(xmin, n)) in bounds.iter().enumerate() {
-                let k = &kk[xx * ksize..];
-                let mut ss = 1i32 << (PRECISION_BITS - 1);
-                for x in 0..n {
-                    ss = ss.wrapping_add(row[xmin + x] as i32 * k[x]);
-                }
-                out[y * out_w + xx] = clip8(ss);
-            }
-        }
-        out
-    } else {
-        src.to_vec()
-    };
-
-    if out_h == h {
-        return horizontal;
-    }
-    let (bounds, kk, ksize) = coefficients(h, out_h);
-    let mut out = vec![0u8; out_w * out_h];
-    for (yy, &(ymin, n)) in bounds.iter().enumerate() {
-        let k = &kk[yy * ksize..];
-        for x in 0..out_w {
-            let mut ss = 1i32 << (PRECISION_BITS - 1);
-            for y in 0..n {
-                ss = ss.wrapping_add(horizontal[(ymin + y) * out_w + x] as i32 * k[y]);
-            }
-            out[yy * out_w + x] = clip8(ss);
-        }
-    }
-    out
+/// Pillow's `convert("L")` from RGB: `L24(rgb) >> 16` (`Convert.c` `rgb2l`).
+/// Shared with [`crate::search`], which greys images the same way.
+pub(crate) fn grey_l8(rgb: &[u8]) -> Vec<u8> {
+    rgb.as_chunks::<3>()
+        .0
+        .iter()
+        .map(|p| {
+            ((p[0] as u32 * 19595 + p[1] as u32 * 38470 + p[2] as u32 * 7471 + 0x8000) >> 16) as u8
+        })
+        .collect()
 }
 
 #[cfg(test)]
@@ -341,14 +245,14 @@ mod tests {
     #[test]
     fn resize_to_the_same_size_is_the_identity() {
         let grey: Vec<u8> = (0..32 * 32).map(|i| (i * 7 % 256) as u8).collect();
-        assert_eq!(resize_lanczos_l(&grey, 32, 32, 32, 32), grey);
+        assert_eq!(resize_l8_lanczos(&grey, 32, 32, 32, 32), grey);
     }
 
     #[test]
     fn resize_keeps_a_flat_image_flat() {
         // Taps sum to 1 in fixed point, so a constant survives exactly.
         let grey = vec![137u8; 500 * 90];
-        assert!(resize_lanczos_l(&grey, 500, 90, 32, 32)
+        assert!(resize_l8_lanczos(&grey, 500, 90, 32, 32)
             .iter()
             .all(|&v| v == 137));
     }
