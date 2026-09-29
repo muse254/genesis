@@ -61,6 +61,19 @@ export function ensurePrnu(loaders: Loaders = {}): Promise<unknown> {
   return prnu;
 }
 
+/** Load and compile both WASM modules now, so the first photo does not wait for them. */
+export async function warm(loaders: Loaders = {}): Promise<void> {
+  jpeg ??= createLibJpeg();
+  await Promise.all([ensurePrnu(loaders), jpeg]);
+  // Run the hot paths once. Browsers first run WASM in a quick-to-compile,
+  // slow-to-run tier and optimise only code that turns out to be hot, and
+  // the heap starts small; a first 24 MP photo paid for both (measured:
+  // 4.6 s to hash cold, under 0.5 s warm).
+  const width = 1500;
+  const height = 1000;
+  hashesOf({ rgb: new Uint8Array(width * height * 3), width, height });
+}
+
 /** Decode a JPEG, PNG or TIFF to canonical RGB8. Throws on RAW and on anything unreadable. */
 export async function decode(bytes: Uint8Array, fileName: string, loaders: Loaders = {}): Promise<Decoded> {
   if (isRaw(fileName)) {

@@ -148,10 +148,11 @@ jobs:
       - run: npx tsc --noEmit -p .
       - run: npm run build
 
-  # The Rust scoring/hashing core, and the two pages that run it as WASM.
-  # verify's tests are the only place the JPEG hash parity runs (the Rust
-  # crate does not link libjpeg-turbo), and a JPEG mismatch there would
-  # turn every JPEG on the live page into "no record".
+  # The Rust scoring/hashing core, core/ (the verification the web page and
+  # the desktop app share), and the pages that run it as WASM. core's tests
+  # are the only place the JPEG hash parity runs (the Rust crate does not
+  # link libjpeg-turbo), and a JPEG mismatch there would turn every JPEG on
+  # the live page into "no record".
   wasm:
     runs-on: ubuntu-latest
     steps:
@@ -168,13 +169,19 @@ jobs:
           node-version: "22"
       - name: genesis-prnu tests (PRNU parity, hashing parity)
         run: cargo test -p genesis-prnu
-      - name: verify -- build, types, tests
+      - name: core -- the shared verification, WASM, types, tests
+        working-directory: core
+        run: |
+          npm ci
+          npm run wasm
+          npx tsc --noEmit -p .
+          npm test
+      - name: verify -- build, types
         working-directory: verify
         run: |
           npm ci
           npm run build
           npx tsc --noEmit -p .
-          npm test
       - name: score -- build, types
         working-directory: score
         run: |

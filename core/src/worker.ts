@@ -4,10 +4,12 @@
  */
 
 import { analyse, loadBody, type AnalyseRequest } from "./analyse";
+import { warm } from "./hashes";
 
 export type WorkerMessage =
   | { id: number; type: "load"; bodyId: string; name: string; k: Uint8Array }
-  | { id: number; type: "analyse"; request: AnalyseRequest };
+  | { id: number; type: "analyse"; request: AnalyseRequest }
+  | { id: number; type: "warm" };
 
 export type WorkerReply =
   | { id: number; step: { label: string; fraction: number } }
@@ -25,9 +27,11 @@ scope.onmessage = async ({ data }: MessageEvent<WorkerMessage>) => {
   const reply = (message: WorkerReply) => scope.postMessage(message);
   try {
     const result =
-      data.type === "load"
-        ? await loadBody(data.bodyId, data.name, data.k)
-        : await analyse(data.request, (label, fraction) => reply({ id: data.id, step: { label, fraction } }));
+      data.type === "warm"
+        ? await warm()
+        : data.type === "load"
+          ? await loadBody(data.bodyId, data.name, data.k)
+          : await analyse(data.request, (label, fraction) => reply({ id: data.id, step: { label, fraction } }));
     reply({ id: data.id, result });
   } catch (error) {
     reply({ id: data.id, error: error instanceof Error ? error.message : String(error) });

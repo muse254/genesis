@@ -41,6 +41,7 @@ function engine(candidates: Candidate[] = [], signals: Analysis["signals"] = nul
   const calls: unknown[] = [];
   return {
     calls,
+    warm: async () => {},
     loadBody: async () => ({ crop: null }),
     analyse: async (request) => {
       calls.push(request);

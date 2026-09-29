@@ -1,401 +1,48 @@
 /**
- * Verify page — both branches of Flow C.
+ * Verify page. Configuration and rendering only: the verification itself is
+ * `core/` (`@genesis/core`), the same code the desktop app runs
+ * (`docs/shared-verify-plan.md`).
  *
  *   image → SHA-256 of pixel data → exact hit?
  *            ├ yes → record                      (untouched file)
- *            └ no  → pHash lookup → candidates
- *                    → PRNU re-score against that body
- *                    → verdict + confidence
+ *            └ no  → pHash lookup via The Graph → chain confirms → derived
  *
- * The lower branch is the differentiator, and demo step 4 rides on it:
- * a registered photo, stripped of metadata, resized, re-encoded as a web
+ * The lower branch is the differentiator, and demo step 4 rides on it: a
+ * registered photo, stripped of metadata, resized, re-encoded as a web
  * JPEG — and it still resolves.
  *
- * Everything happens in this page. Both hashes are computed from the
- * photo in the browser (hashes.ts: libjpeg-turbo and the Rust core, both
- * compiled to WASM), and the chain and The Graph are read directly. The
- * photo is never uploaded.
+ * Everything happens in the browser. Both hashes are computed from the photo
+ * in a Web Worker (libjpeg-turbo and the Rust core, compiled to WASM), and
+ * the chain and The Graph are read directly. The photo is never uploaded.
  *
- * The one thing the page cannot do alone is the `fingerprint-only` verdict:
- * that means searching an unknown photo against *every* enrolled body's K,
- * and shipping photographers' K files to a browser would break "K never
- * leaves the machine it was enrolled on" (docs/security.md, "Where K
- * lives"). So it needs a scoring service that holds K files, which the
- * public site has none of. Set VITE_SCORING_URL to one (the local demo does)
- * and its PRNU candidates are added; leave it unset, as on GitHub Pages, and
- * the page makes no request that carries the photo. score/ is the
- * single-K version of the same idea, with the visitor's own K.
+ * This page holds no fingerprints, so it never reaches `fingerprint-only`:
+ * that means scoring the photo against enrolled K files, and K never leaves
+ * the machine it was enrolled on (`docs/security.md`, "Where K lives"). The
+ * desktop app, which holds its owner's K, runs the same code with them.
  */
 
-import { createPublicClient, http, type Address } from "viem";
-import { hashImage } from "./hashes";
-import { anvil, base, baseSepolia, sepolia } from "viem/chains";
+import { createChainReader, verify, workerEngine, type ChainKey, type VerifyResult } from "@genesis/core";
 
-/**
- * Four outcomes, and the gap between the middle two is the product.
- *
- * - `registered`        exact pixel hash, confirmed on chain. This *is* the
- *                       registered file.
- * - `derived`           a perceptual hash found the original and the chain
- *                       confirmed its registration. Descends from a
- *                       registered photograph rather than being one -- a
- *                       pHash is collidable and cheap to forge, so it earns
- *                       the weaker word even though the link is usually right.
- * - `fingerprint-only`  the pixels carry a body's fingerprint and nothing is
- *                       registered. **Not a pass.** A forgery lands here at
- *                       any score the attacker likes.
- * - `no-record`         neither. Absence means nothing about the image.
- */
-export type Verdict = "registered" | "derived" | "fingerprint-only" | "no-record";
+const REGISTRY = import.meta.env.VITE_REGISTRY_ADDRESS as `0x${string}` | undefined;
+const RPC = import.meta.env.VITE_RPC_URL as string | undefined;
+const SUBGRAPH = (import.meta.env.VITE_SUBGRAPH_URL as string | undefined) || undefined;
+const EXPLORER = (import.meta.env.VITE_EXPLORER_URL as string | undefined) || undefined;
 
-export interface VerifyResult {
-  verdict: Verdict;
-  /**
-   * Whether a registration for this image was actually read off the chain.
-   * The PRNU score alone cannot establish this and must never imply it:
-   * anyone holding one RAW file off the body can plant the fingerprint in
-   * an image the camera never took, at a distortion no eye can see
-   * (`docs/adversarial.md`). Only the chain says who signed for what.
-   */
-  registered: boolean;
-  bodyName?: string; // e.g. r10-4471.cam.osoro.eth
-  pceScore?: number;
-  modificationLevel?: 0 | 1 | 2;
-  registeredAt?: string;
-  /** How the pixels were matched: aligned lattice, or a scale search. */
-  method?: string;
-  /** Present when the image had to be turned to line up with the sensor. */
-  orientation?: string;
-  threshold?: number;
-  /** Set on `derived`: which registered image this was matched to, and how far. */
-  derivedFrom?: { imageHash: `0x${string}`; hammingDistance: number };
-  /** The body's owner, and its ENS name when one forward-resolves. */
-  owner?: `0x${string}`;
-  ownerName?: string;
-  revoked?: boolean;
-  /**
-   * True when the registry admits it can be wiped (`Registry.resetAll`).
-   *
-   * It changes what a registration is worth, so it is carried all the way to
-   * the page rather than being a deployment detail. `docs/claims.md` claim 1
-   * is that a registration exists *at time T*, and `docs/security.md` counts
-   * first-registration time as one of two boundaries the system has. A
-   * registry that can withdraw a date has neither, and a reader is owed that
-   * before they rely on one.
-   */
-  resettableRegistry?: boolean;
-}
+const engine = workerEngine();
+// Compile the WASM while the visitor is still choosing a file.
+engine.warm().catch(() => {});
+const chain =
+  REGISTRY && RPC
+    ? createChainReader({
+        rpcUrl: RPC,
+        chain: (import.meta.env.VITE_CHAIN as ChainKey) || "anvil",
+        registry: REGISTRY,
+        explorer: EXPLORER,
+      })
+    : undefined;
 
-/** Optional: a scoring service holding K files, for PRNU candidates. See the header. */
-const SCORING = import.meta.env.VITE_SCORING_URL as string | undefined;
-/** `PCE_THRESHOLD` in fingerprint/prnu.py, for display when no service answers. */
-const PCE_THRESHOLD = 100;
-const REGISTRY = import.meta.env.VITE_REGISTRY_ADDRESS as Address | undefined;
-const RPC = import.meta.env.VITE_RPC_URL ?? "http://127.0.0.1:8545";
-/** Same keys as `GENESIS_CHAIN` in `console/chain.py`. Anything else is anvil. */
-const CHAINS = { base, "base-sepolia": baseSepolia, sepolia } as const;
-const CHAIN = CHAINS[import.meta.env.VITE_CHAIN as keyof typeof CHAINS] ?? anvil;
-const SUBGRAPH = import.meta.env.VITE_SUBGRAPH_URL as string | undefined;
-
-/**
- * Bits of the 64-bit pHash allowed to differ. Measured: on a real photograph
- * the hash moves zero bits from 1800px q95 down to 400px q60 (`docs/gates.md`, Gate B),
- * so this is slack rather than a tuned figure. Widening it starts attaching
- * registrations to unrelated photographs, which is a worse failure than
- * missing a match.
- */
-const MAX_HAMMING = 10;
-
-/** Only the two reads this page makes. */
-const REGISTRY_ABI = [
-  {
-    type: "function",
-    name: "images",
-    stateMutability: "view",
-    inputs: [{ name: "", type: "bytes32" }],
-    outputs: [
-      { name: "imageHash", type: "bytes32" },
-      { name: "perceptualHash", type: "bytes32" },
-      { name: "bodyId", type: "bytes32" },
-      { name: "modificationLevel", type: "uint8" },
-      { name: "parentImageHash", type: "bytes32" },
-      { name: "metadataHmac", type: "bytes32" },
-      { name: "pceScore", type: "uint32" },
-      { name: "registeredAt", type: "uint64" },
-    ],
-  },
-  {
-    type: "function",
-    name: "testMode",
-    stateMutability: "view",
-    inputs: [],
-    outputs: [{ name: "", type: "bool" }],
-  },
-  {
-    type: "function",
-    name: "bodies",
-    stateMutability: "view",
-    inputs: [{ name: "", type: "bytes32" }],
-    outputs: [
-      { name: "fingerprintCommitment", type: "bytes32" },
-      { name: "owner", type: "address" },
-      { name: "bodyCommitment", type: "bytes32" },
-      { name: "revoked", type: "bool" },
-    ],
-  },
-] as const;
-
-const client = REGISTRY
-  ? createPublicClient({ chain: CHAIN, transport: http(RPC) })
-  : undefined;
-
-interface Candidate {
-  bodyId: string;
-  body: string;
-  pce: number;
-  path: string;
-  orientation?: string;
-  scale?: number;
-}
-
-interface LookupResponse {
-  imageHash: `0x${string}`;
-  perceptualHash: string;
-  threshold: number;
-  verdict: "match" | "no-match";
-  candidates: Candidate[];
-}
-
-export async function verifyImage(file: File): Promise<VerifyResult> {
-  const { imageHash, perceptualHash } = await hashImage(new Uint8Array(await file.arrayBuffer()), file.name);
-  const lookup: LookupResponse = SCORING
-    ? await scoreRemotely(file)
-    : { imageHash, perceptualHash, threshold: PCE_THRESHOLD, verdict: "no-match", candidates: [] };
-
-  // Exact branch first. It is cheap and it is the only one that can say
-  // "this is byte-for-byte the file that was registered".
-  const exact = await lookupByPixelHash(imageHash);
-  const best = lookup.candidates[0];
-
-  // Identity comes from the record on chain, never from the scorer: the
-  // public scoring service holds no fingerprints and returns no candidates.
-  if (exact) {
-    const identity = await identityOf(exact.bodyId);
-    return {
-      verdict: "registered",
-      resettableRegistry: await registryIsResettable(),
-      registered: true,
-      bodyName: best?.body,
-      ...identity,
-      pceScore: exact.pceScore,
-      modificationLevel: exact.modificationLevel,
-      registeredAt: exact.registeredAt,
-      method: "pixel hash",
-      threshold: lookup.threshold,
-    };
-  }
-
-  // The Graph, and the branch demo step 4 rides on. A degraded copy has a
-  // different pixel hash so the exact read above missed; the perceptual hash
-  // finds the original and the chain confirms its registration. The
-  // confirmation is what matters -- an index hit is a lookup, never a verdict.
-  const near = await lookupByPerceptualHash(perceptualHash);
-  if (near) {
-    const parent = await lookupByPixelHash(near.imageHash);
-    if (parent) {
-      const identity = await identityOf(parent.bodyId);
-      return {
-        verdict: "derived",
-        resettableRegistry: await registryIsResettable(),
-        registered: true,
-        bodyName: best?.body,
-        ...identity,
-        pceScore: best?.pce,
-        method: best?.path,
-        orientation: best?.orientation,
-        registeredAt: parent.registeredAt,
-        modificationLevel: parent.modificationLevel,
-        threshold: lookup.threshold,
-        derivedFrom: near,
-      };
-    }
-  }
-
-  // Pixels only: a fingerprint matched and nothing is registered.
-  if (lookup.verdict === "match" && best) {
-    return {
-      verdict: "fingerprint-only",
-      registered: false,
-      bodyName: best.body,
-      pceScore: best.pce,
-      method: best.path,
-      orientation: best.orientation,
-      threshold: lookup.threshold,
-    };
-  }
-
-  return {
-    verdict: "no-record",
-    registered: false,
-    pceScore: best?.pce,
-    threshold: lookup.threshold,
-  };
-}
-
-/**
- * PRNU candidates from a scoring service that holds K files. Only called
- * when VITE_SCORING_URL is set; it is the one request that carries the
- * photo. The hashes it also returns are ignored in favour of the local ones.
- */
-async function scoreRemotely(file: File): Promise<LookupResponse> {
-  const form = new FormData();
-  form.append("file", file);
-  const response = await fetch(`${SCORING}/lookup`, { method: "POST", body: form });
-  if (!response.ok) {
-    throw new Error(`scoring service: ${response.status} ${await response.text()}`);
-  }
-  return response.json();
-}
-
-/** Exact branch: pixel hash straight to the registry. */
-async function lookupByPixelHash(hash: `0x${string}`) {
-  if (!client || !REGISTRY) return undefined;
-
-  const record = await client.readContract({
-    address: REGISTRY,
-    abi: REGISTRY_ABI,
-    functionName: "images",
-    args: [hash],
-  });
-
-  // An unregistered hash reads back as a zeroed struct, not an error.
-  if (/^0x0+$/.test(record[0])) return undefined;
-
-  return {
-    bodyId: record[2] as `0x${string}`,
-    modificationLevel: Number(record[3]) as 0 | 1 | 2,
-    pceScore: Number(record[6]),
-    registeredAt: new Date(Number(record[7]) * 1000).toISOString(),
-  };
-}
-
-/**
- * Who the body is registered to, as a name rather than an address.
- *
- * `docs/claims.md` derives "body X is registered to identity Y" from the two
- * claims, and until now the page showed X and never Y. It could not read Y off
- * the registry either: the body record holds commitments, not names.
- *
- * A reverse record does, and it is resolved live rather than configured.
- * On a chain viem knows no ENS resolver for (Base, since D2 in COLOSSEUM.md)
- * the lookup throws, is caught, and the owner shows as an address.
- *
- * **Forward-checked.** A reverse record is self-asserted: anyone may point
- * their address at `vitalik.eth`. It counts only if the name resolves back to
- * the same address, so that is checked, and a name that fails is discarded
- * rather than shown. Same rule as the subgraph branch below -- a claim from an
- * index is a lookup, never an authority.
- */
-let resettable: boolean | undefined;
-
-async function registryIsResettable(): Promise<boolean> {
-  if (resettable !== undefined) return resettable;
-  if (!client || !REGISTRY) return false;
-  try {
-    resettable = (await client.readContract({
-      address: REGISTRY,
-      abi: REGISTRY_ABI,
-      functionName: "testMode",
-    })) as boolean;
-  } catch {
-    // A registry predating the flag cannot be reset, so absence means false.
-    resettable = false;
-  }
-  return resettable;
-}
-
-async function identityOf(rawBodyId: string) {
-  if (!client || !REGISTRY) return undefined;
-
-  // `/lookup` returns body ids as bare hex; the chain wants them prefixed.
-  const bodyId = (rawBodyId.startsWith("0x") ? rawBodyId : `0x${rawBodyId}`) as `0x${string}`;
-
-  const body = await client.readContract({
-    address: REGISTRY,
-    abi: REGISTRY_ABI,
-    functionName: "bodies",
-    args: [bodyId],
-  });
-
-  const owner = body[1] as `0x${string}`;
-  if (/^0x0+$/.test(owner)) return undefined;
-
-  let name: string | undefined;
-  try {
-    const reverse = await client.getEnsName({ address: owner });
-    if (reverse) {
-      const forward = await client.getEnsAddress({ name: reverse });
-      if (forward && forward.toLowerCase() === owner.toLowerCase()) name = reverse;
-    }
-  } catch {
-    // No reverse record, or no resolver. An address is still an identity;
-    // it is just not a readable one, and that is not a failure to report.
-  }
-
-  return { owner, ownerName: name, revoked: body[3] as boolean };
-}
-
-/**
- * Perceptual branch, over The Graph.
- *
- * The registry has no index on `perceptualHash` -- `images` is keyed by pixel
- * hash -- so going from a degraded copy back to the original it descends from
- * needs an index, and the subgraph is it. Without one the scoring service had
- * to re-score against every body it holds, which is fine for one photographer
- * and does not scale to a registry.
- *
- * Returns a candidate only. The caller reads that hash off the chain before
- * saying anything, because an index is not an authority: a subgraph that is
- * stale, wrong, or hostile must not be able to manufacture a registration.
- */
-async function lookupByPerceptualHash(
-  hash: string,
-): Promise<{ imageHash: `0x${string}`; hammingDistance: number } | undefined> {
-  if (!SUBGRAPH) return undefined;
-
-  let images: { imageHash: `0x${string}`; perceptualHash: string }[];
-  try {
-    const response = await fetch(SUBGRAPH, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ query: "{ images(first: 1000) { imageHash perceptualHash } }" }),
-    });
-    if (!response.ok) return undefined;
-    const body = (await response.json()) as { data?: { images?: typeof images } };
-    images = body.data?.images ?? [];
-  } catch {
-    // Index unreachable. Fall through to the pixel answer rather than failing
-    // the whole verification -- the chain read above already happened, and a
-    // missing index costs a link, not a verdict.
-    return undefined;
-  }
-
-  const target = BigInt(hash);
-  let best: { imageHash: `0x${string}`; hammingDistance: number } | undefined;
-
-  for (const image of images) {
-    let bits = target ^ BigInt(image.perceptualHash);
-    let distance = 0;
-    while (bits) {
-      distance += Number(bits & 1n);
-      bits >>= 1n;
-    }
-    if (!best || distance < best.hammingDistance) {
-      best = { imageHash: image.imageHash, hammingDistance: distance };
-    }
-  }
-
-  return best && best.hammingDistance <= MAX_HAMMING ? best : undefined;
+export function verifyFile(file: File, onStep?: (label: string, fraction: number) => void): Promise<VerifyResult> {
+  return verify(file, { engine, chain, subgraphUrl: SUBGRAPH, onStep });
 }
 
 function render(result: VerifyResult): void {
@@ -405,6 +52,9 @@ function render(result: VerifyResult): void {
   const rows: string[] = [];
   const say = (label: string, value: string) =>
     rows.push(`<div class="row"><dt>${label}</dt><dd>${value}</dd></div>`);
+  const registeredAt = result.registration
+    ? new Date(result.registration.registeredAt * 1000).toISOString()
+    : undefined;
 
   if (result.verdict === "no-record") {
     // Neutral, deliberately. An absent record is not a finding about the
@@ -413,9 +63,7 @@ function render(result: VerifyResult): void {
     rows.push("<h2>No record</h2>");
     rows.push(
       `<p>No registration matches this image${
-        result.pceScore !== undefined
-          ? `: best score ${result.pceScore.toFixed(1)} against a threshold of ${result.threshold}`
-          : ""
+        result.pce !== null ? `: best score ${result.pce.toFixed(1)} against a threshold of ${result.threshold}` : ""
       }. That means we have no record — not that the image is fake.</p>`,
     );
   } else if (!result.registered) {
@@ -425,10 +73,8 @@ function render(result: VerifyResult): void {
     // at a distortion of 51.6 dB — invisible. See `docs/adversarial.md`.
     section.className = "pixels-only";
     rows.push("<h2>Fingerprint matched — but nothing is registered</h2>");
-    if (result.bodyName) say("Fingerprint of", result.bodyName);
-    if (result.pceScore !== undefined) {
-      say("Score", `${result.pceScore.toFixed(1)} (threshold ${result.threshold})`);
-    }
+    if (result.body?.name) say("Fingerprint of", result.body.name);
+    if (result.pce !== null) say("Score", `${result.pce.toFixed(1)} (threshold ${result.threshold})`);
     say("Matched by", result.method ?? "PRNU");
     if (result.orientation && result.orientation !== "0 deg") {
       say("Orientation", `${result.orientation} — the image had been turned`);
@@ -444,13 +90,10 @@ function render(result: VerifyResult): void {
     );
   } else if (result.verdict === "derived") {
     // Real, and weaker than an exact match on purpose. The link is a
-    // perceptual hash: collidable, and cheap to forge. The PCE is shown even
-    // when it is below threshold, because that is the honest state of a copy
-    // that has been through a platform -- the pHash and the chain carry this
-    // one, not the pixels.
+    // perceptual hash: collidable, and cheap to forge.
     section.className = "derived";
     rows.push("<h2>Descends from a registered photograph</h2>");
-    if (result.bodyName) say("Body", result.bodyName);
+    if (result.body?.name) say("Body", result.body.name);
     sayIdentity(result, say);
     if (result.derivedFrom) {
       say("Matched to", `${result.derivedFrom.imageHash.slice(0, 18)}…`);
@@ -460,15 +103,15 @@ function render(result: VerifyResult): void {
           (result.derivedFrom.hammingDistance === 0 ? " — identical" : ""),
       );
     }
-    if (result.pceScore !== undefined) {
-      const clears = result.threshold !== undefined && result.pceScore >= result.threshold;
+    if (result.pce !== null) {
+      const clears = result.pce >= result.threshold;
       say(
         "PCE",
-        `${result.pceScore.toFixed(1)} (threshold ${result.threshold})` +
+        `${result.pce.toFixed(1)} (threshold ${result.threshold})` +
           (clears ? "" : " — below threshold; the pixels do not carry this claim"),
       );
     }
-    if (result.registeredAt) say("Original registered", result.registeredAt);
+    if (registeredAt) say("Original registered", registeredAt);
     sayTestRegistry(result, rows);
     rows.push(
       "<p class=\"caveat\">The original was registered by its owner at the time " +
@@ -479,23 +122,20 @@ function render(result: VerifyResult): void {
   } else {
     section.className = "registered";
     rows.push("<h2>Registered by the body’s owner</h2>");
-    if (result.bodyName) say("Body", result.bodyName);
+    if (result.body?.name) say("Body", result.body.name);
     sayIdentity(result, say);
-    if (result.pceScore !== undefined) {
+    if (result.registration) {
       // Read off the record, and the record's score is whatever the owner's
       // machine reported: the contract does not check it (docs/security.md).
       say(
         "PCE at registration",
-        `${result.pceScore.toFixed(1)} (threshold ${result.threshold}) — reported by the owner`,
+        `${result.registration.pceAtRegistration.toFixed(1)} (threshold ${result.threshold}) — reported by the owner`,
       );
     }
-    say("Matched by", result.verdict === "registered" ? "exact pixel hash" : result.method ?? "PRNU");
-    if (result.orientation && result.orientation !== "0 deg") {
-      say("Orientation", `${result.orientation} — the image had been turned`);
-    }
-    if (result.registeredAt) say("First registered", result.registeredAt);
-    if (result.modificationLevel !== undefined) {
-      say("Modification level", ["unedited raw", "adjusted", "generative edit"][result.modificationLevel]);
+    say("Matched by", "exact pixel hash");
+    if (registeredAt) say("First registered", registeredAt);
+    if (result.registration) {
+      say("Modification level", ["unedited raw", "adjusted", "generative edit"][result.registration.modificationLevel]);
     }
     sayTestRegistry(result, rows);
     rows.push(
@@ -508,14 +148,6 @@ function render(result: VerifyResult): void {
   section.hidden = false;
 }
 
-/**
- * "Body X is registered to identity Y" -- the derived claim in
- * `docs/claims.md`, which this page used to state only half of.
- *
- * The name is shown when it forward-resolves and the raw address otherwise.
- * An address is a perfectly good identity; it is only a less readable one, and
- * substituting a name that does not check out would be worse than showing hex.
- */
 function sayTestRegistry(result: VerifyResult, rows: string[]): void {
   if (!result.resettableRegistry) return;
   // Loud, and above the caveat rather than below it: on this registry the
@@ -525,19 +157,25 @@ function sayTestRegistry(result: VerifyResult, rows: string[]): void {
     "<p class=\"caveat\"><strong>Test registry.</strong> This deployment can be " +
       "wiped by its administrator, so the registration time above is not a " +
       "date anyone should rely on. Registrations here are for rehearsal. A " +
-      "production registry cannot do this \u2014 the contract refuses the " +
+      "production registry cannot do this — the contract refuses the " +
       "setting outside a testnet.</p>",
   );
 }
 
+/**
+ * "Body X is registered to identity Y" (`docs/claims.md`). The name is shown
+ * when it forward-resolves and the raw address otherwise: an address is a
+ * perfectly good identity, only a less readable one.
+ */
 function sayIdentity(result: VerifyResult, say: (label: string, value: string) => void): void {
-  if (result.ownerName) {
-    say("Registered by", `${result.ownerName} (${result.owner?.slice(0, 10)}\u2026)`);
-  } else if (result.owner) {
-    say("Registered by", result.owner);
+  const body = result.body;
+  if (body?.ownerName) {
+    say("Registered by", `${body.ownerName} (${body.owner?.slice(0, 10)}…)`);
+  } else if (body?.owner) {
+    say("Registered by", body.owner);
   }
-  if (result.revoked) {
-    say("Body status", "revoked \u2014 the owner withdrew this body's signing key");
+  if (body?.revoked) {
+    say("Body status", "revoked — the owner withdrew this body's signing key");
   }
 }
 
@@ -547,14 +185,16 @@ input?.addEventListener("change", async () => {
   if (!file) return;
 
   const section = document.getElementById("result");
-  if (section) {
+  const status = (text: string) => {
+    if (!section) return;
     section.className = "working";
-    section.innerHTML = "<p>Hashing the image in your browser…</p>";
+    section.innerHTML = `<p>${text}</p>`;
     section.hidden = false;
-  }
+  };
+  status("Hashing the image in your browser…");
 
   try {
-    render(await verifyImage(file));
+    render(await verifyFile(file, (label) => status(label === "reading the chain" ? "Reading the chain…" : "Hashing the image in your browser…")));
   } catch (error) {
     if (section) {
       section.className = "error";
