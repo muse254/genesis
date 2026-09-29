@@ -5,9 +5,12 @@
 //! This crate implements Phases 0-4 of that plan: the `db8` wavelet
 //! transform ([`wavelet`]), the Mihcak wavelet-Wiener denoiser ([`noise`],
 //! `noise_residual`), FFT cross-correlation/PCE/`score` ([`correlation`]),
-//! and delivered-image/K-file I/O ([`image_decode`], [`kfile`]).
+//! and delivered-image/K-file I/O ([`image_decode`], [`kfile`]). Also the
+//! image record's two content hashes ([`hashing`], from `ingest/hashing.py`),
+//! which the verify page computes in the browser.
 
 pub mod correlation;
+pub mod hashing;
 pub mod image_decode;
 pub mod kfile;
 pub mod noise;

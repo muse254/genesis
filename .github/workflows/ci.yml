@@ -129,7 +129,8 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        app: [console-ui, verify]
+        # verify/ and score/ build WASM first, so they are in `wasm` below.
+        app: [console-ui]
     defaults:
       run:
         working-directory: ${{ matrix.app }}
@@ -141,6 +142,40 @@ jobs:
       - run: npm ci
       - run: npx tsc --noEmit -p .
       - run: npm run build
+
+  # The Rust scoring/hashing core, and the two pages that run it as WASM.
+  # verify's tests are the only place the JPEG hash parity runs (the Rust
+  # crate does not link libjpeg-turbo), and a JPEG mismatch there would
+  # turn every JPEG on the live page into "no record".
+  wasm:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+      - uses: jetli/wasm-pack-action@v0.4.0
+        with:
+          version: "latest"
+      - uses: mymindstorm/setup-emsdk@v14
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: genesis-prnu tests (PRNU parity, hashing parity)
+        run: cargo test -p genesis-prnu
+      - name: verify -- build, types, tests
+        working-directory: verify
+        run: |
+          npm ci
+          npm run build
+          npx tsc --noEmit -p .
+          npm test
+      - name: score -- build, types
+        working-directory: score
+        run: |
+          npm ci
+          npm run build
+          npx tsc --noEmit -p .
 
   desktop:
     runs-on: ubuntu-22.04

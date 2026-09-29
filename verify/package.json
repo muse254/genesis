@@ -3,15 +3,24 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "wasm": "npm run wasm:prnu && npm run wasm:jpeg",
+    "wasm:prnu": "wasm-pack build ../rust/genesis-prnu-wasm --target web --release --out-dir ../../verify/src/wasm",
+    "wasm:jpeg": "./jpeg/build.sh",
+    "predev": "npm run wasm",
+    "prebuild": "npm run wasm",
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "vitest run",
+    "parity": "node --experimental-strip-types --no-warnings jpeg/parity.mjs"
   },
   "dependencies": {
     "viem": "^2.21.0"
   },
   "devDependencies": {
+    "happy-dom": "^20.14.5",
     "typescript": "^5.6.0",
-    "vite": "^5.4.0"
+    "vite": "^5.4.0",
+    "vitest": "^3.2.7"
   }
 }

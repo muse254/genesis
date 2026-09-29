@@ -1,9 +1,13 @@
 //! `wasm-bindgen` wrapper around `genesis-prnu`'s scoring core.
 //!
-//! Exposes exactly one function, [`score`]: takes an image's raw bytes and
+//! Exposes [`score`], for the score page: takes an image's raw bytes and
 //! a K `.npz` file's raw bytes, does everything in-process (decode, CFA
 //! sample, noise residual, cross-correlation, PCE), and returns a plain
 //! `f64` PCE. See `docs/wasm-scoring-plan.md` Phase 5.
+//!
+//! And, for the verify page, [`image_hashes`] and [`decode_rgb`]: the two
+//! content hashes `ingest/hashing.py` computes, so a photo being verified
+//! never has to leave the browser either.
 //!
 //! **Hard invariant: K bytes never leave this call.** Nothing in this crate
 //! performs network I/O -- there is no `fetch`, no `XMLHttpRequest`
@@ -40,4 +44,78 @@ pub fn score(image_bytes: &[u8], k_npz_bytes: &[u8]) -> Result<f64, JsValue> {
 #[wasm_bindgen(js_name = pceThreshold)]
 pub fn pce_threshold() -> f64 {
     100.0
+}
+
+/// The image record's two hashes, from canonical 8-bit RGB (`width *
+/// height * 3` bytes, row-major), as `ingest/hashing.py` computes them:
+/// `imageHash` is `0x` + 64 hex digits, `perceptualHash` is `0x` + 16.
+///
+/// The caller supplies the pixels because decoding is where exactness is
+/// won or lost -- see `genesis_prnu::hashing`. The verify page decodes JPEG
+/// with libjpeg-turbo (`verify/jpeg/`) and everything else with
+/// [`decode_rgb`].
+#[wasm_bindgen(js_name = imageHashes)]
+pub fn image_hashes(rgb: &[u8], width: usize, height: usize) -> Result<ImageHashes, JsValue> {
+    if rgb.len() != width * height * 3 {
+        return Err(JsValue::from_str("rgb buffer does not match its dimensions"));
+    }
+    let digest = genesis_prnu::hashing::pixel_sha256(rgb, width, height);
+    Ok(ImageHashes {
+        image_hash: format!("0x{}", digest.iter().map(|b| format!("{b:02x}")).collect::<String>()),
+        perceptual_hash: format!("0x{:016x}", genesis_prnu::hashing::perceptual_hash(rgb, width, height)),
+    })
+}
+
+#[wasm_bindgen]
+pub struct ImageHashes {
+    image_hash: String,
+    perceptual_hash: String,
+}
+
+#[wasm_bindgen]
+impl ImageHashes {
+    #[wasm_bindgen(getter, js_name = imageHash)]
+    pub fn image_hash(&self) -> String {
+        self.image_hash.clone()
+    }
+
+    #[wasm_bindgen(getter, js_name = perceptualHash)]
+    pub fn perceptual_hash(&self) -> String {
+        self.perceptual_hash.clone()
+    }
+}
+
+/// Decode a PNG or TIFF to canonical 8-bit RGB. JPEG is refused on
+/// purpose: this decoder does not reproduce Pillow's JPEG pixels, so it
+/// would produce a wrong pixel hash without any error.
+#[wasm_bindgen(js_name = decodeRgb)]
+pub fn decode_rgb(bytes: &[u8]) -> Result<DecodedRgb, JsValue> {
+    let (rgb, width, height) =
+        genesis_prnu::hashing::decode_rgb8(bytes).map_err(|e| JsValue::from_str(&e))?;
+    Ok(DecodedRgb { rgb, width, height })
+}
+
+#[wasm_bindgen]
+pub struct DecodedRgb {
+    rgb: Vec<u8>,
+    width: usize,
+    height: usize,
+}
+
+#[wasm_bindgen]
+impl DecodedRgb {
+    #[wasm_bindgen(getter)]
+    pub fn rgb(&self) -> Vec<u8> {
+        self.rgb.clone()
+    }
+
+    #[wasm_bindgen(getter)]
+    pub fn width(&self) -> usize {
+        self.width
+    }
+
+    #[wasm_bindgen(getter)]
+    pub fn height(&self) -> usize {
+        self.height
+    }
 }
