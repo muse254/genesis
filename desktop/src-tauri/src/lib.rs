@@ -222,47 +222,6 @@ fn score_delivered_image(image_bytes: Vec<u8>, k_npz_bytes: Vec<u8>) -> Result<f
   Ok(genesis_prnu::score(&planes, &fp.planes, true))
 }
 
-#[cfg(test)]
-mod score_delivered_image_tests {
-    //! Exercises `score_delivered_image` (the plain function underneath the
-    //! `#[tauri::command]`, called directly rather than over IPC -- no
-    //! running app/webview is needed for that) against the same real
-    //! K + delivered-image fixture pair `rust/genesis-prnu/tests/parity.rs`'s
-    //! `e2e_score_matches_python_reference` already parity-tests against the
-    //! Python reference, so this only has to confirm this crate's own
-    //! plumbing (reading the K/image bytes, wiring `kfile`/`image_decode`/
-    //! `score` together) reproduces that same number -- not re-derive
-    //! numeric parity with Python, which is the core crate's job.
-
-    use super::score_delivered_image;
-    use std::fs;
-    use std::path::Path;
-
-    #[test]
-    fn matches_the_core_crates_own_e2e_fixture() {
-        let fixtures =
-            Path::new(env!("CARGO_MANIFEST_DIR")).join("../../rust/genesis-prnu/tests/fixtures");
-
-        let manifest_text = fs::read_to_string(fixtures.join("manifest.json"))
-            .expect("manifest.json should read");
-        let manifest: serde_json::Value =
-            serde_json::from_str(&manifest_text).expect("manifest.json should be valid JSON");
-        let expected = manifest["e2e_case"]["score"]
-            .as_f64()
-            .expect("e2e_case.score should be a number");
-
-        let k_bytes = fs::read(fixtures.join("e2e_fingerprint.npz")).expect("k fixture should read");
-        let image_bytes =
-            fs::read(fixtures.join("e2e_delivered.png")).expect("image fixture should read");
-
-        let got = score_delivered_image(image_bytes, k_bytes)
-            .expect("scoring the fixture pair should succeed");
-
-        let rel = (got - expected).abs() / expected.abs().max(1.0);
-        assert!(rel < 0.02, "score = {got}, expected = {expected}, rel err {rel}");
-    }
-}
-
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
   // Order matters and cannot be undone: PYTHONHOME has to be in the
@@ -303,4 +262,45 @@ pub fn run() {
     .build(tauri::generate_context!())
     .expect("error while building the Genesis app")
     .run(|_app, _event| {});
+}
+
+#[cfg(test)]
+mod score_delivered_image_tests {
+    //! Exercises `score_delivered_image` (the plain function underneath the
+    //! `#[tauri::command]`, called directly rather than over IPC -- no
+    //! running app/webview is needed for that) against the same real
+    //! K + delivered-image fixture pair `rust/genesis-prnu/tests/parity.rs`'s
+    //! `e2e_score_matches_python_reference` already parity-tests against the
+    //! Python reference, so this only has to confirm this crate's own
+    //! plumbing (reading the K/image bytes, wiring `kfile`/`image_decode`/
+    //! `score` together) reproduces that same number -- not re-derive
+    //! numeric parity with Python, which is the core crate's job.
+
+    use super::score_delivered_image;
+    use std::fs;
+    use std::path::Path;
+
+    #[test]
+    fn matches_the_core_crates_own_e2e_fixture() {
+        let fixtures =
+            Path::new(env!("CARGO_MANIFEST_DIR")).join("../../rust/genesis-prnu/tests/fixtures");
+
+        let manifest_text = fs::read_to_string(fixtures.join("manifest.json"))
+            .expect("manifest.json should read");
+        let manifest: serde_json::Value =
+            serde_json::from_str(&manifest_text).expect("manifest.json should be valid JSON");
+        let expected = manifest["e2e_case"]["score"]
+            .as_f64()
+            .expect("e2e_case.score should be a number");
+
+        let k_bytes = fs::read(fixtures.join("e2e_fingerprint.npz")).expect("k fixture should read");
+        let image_bytes =
+            fs::read(fixtures.join("e2e_delivered.png")).expect("image fixture should read");
+
+        let got = score_delivered_image(image_bytes, k_bytes)
+            .expect("scoring the fixture pair should succeed");
+
+        let rel = (got - expected).abs() / expected.abs().max(1.0);
+        assert!(rel < 0.02, "score = {got}, expected = {expected}, rel err {rel}");
+    }
 }
