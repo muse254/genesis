@@ -79,8 +79,9 @@ export class SubgraphClient {
    *
    * Equality for now, which finds re-encodes that did not move a single bit
    * of the hash but misses anything further away. Proper nearest-neighbour
-   * over Hamming distance is not something a subgraph can do; it belongs in
-   * the scoring service, which holds the fingerprints anyway.
+   * over Hamming distance is not something a subgraph can do; core/'s
+   * `nearest` does it client-side over the indexed hashes, as the verify
+   * page does.
    */
   async imagesByPerceptualHash(hash: string, limit = 10): Promise<ImageRecord[]> {
     const data = await this.query<{ images: ImageRecord[] }>(

@@ -253,7 +253,9 @@ async def register_image(
     path = Path(handle.name)
 
     try:
-        # Score through the same function `/verify` uses. `build_record`'s
+        # Score through the shared `_score_against` -- the function core/'s
+        # Rust port is parity-tested against, so registering and verifying
+        # agree (docs/shared-verify-plan.md; E2 moves this onto core/ too). `build_record`'s
         # own scoring is the aligned path only, so a portrait frame raised a
         # shape mismatch and returned 500 -- the fingerprint lives in sensor
         # space, which is always landscape. Registration and verification

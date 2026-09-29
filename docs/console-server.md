@@ -112,21 +112,26 @@ parameter with no default, because `docs/gates.md` measured 1800px q95 at 408
 and q80 at 37 — the same size and the same pixels, and the claim dies between
 them. A default here would hide the one number the demo depends on.
 
-### `POST /verify` — steps 3 and 5
+### Verification — steps 3 and 5 (moved to `core/`, 29 September)
+
+`POST /verify` and `/verify/stream` are gone. Verification runs in the app's
+own webview on `core/` (`@genesis/core`), the same code the public verify
+page runs, so the app and the page cannot disagree about a photograph
+(`docs/shared-verify-plan.md`). What this server still supplies is what the
+webview cannot get itself:
 
 ```
-multipart: file  ->  {
-  "verdict": "registered" | "fingerprint-only" | "no-record",
-  "pce", "threshold", "method", "orientation",
-  "body": { "bodyId", "ensName", "owner", "commitment" } | null,
-  "registration": { "txHash", "blockNumber", "registeredAt",
-                    "modificationLevel", "explorerUrl" } | null,
-  "consistency": { "bodyConsistency": float, "resamplingPeak": float } | null
-}
+GET  /bodies                      -> [{ "id", "name", "crop" }]
+GET  /bodies/{id}/fingerprint     -> the K .npz            (loopback, the app's origins only)
+POST /raw/develop   multipart     -> RGB8 bytes, X-Width, X-Height   (LibRaw: no WASM build)
+POST /raw/planes    multipart+crop -> plane_<c> .npz
+POST /rpc           JSON-RPC      -> RPC_URL, read methods only      (keeps a key out of the webview)
+POST /subgraph      GraphQL       -> GENESIS_SUBGRAPH_URL
+GET  /state         ... "verify": { "chain", "registry", "explorer", "subgraph" }   (no URLs)
 ```
 
-The one endpoint the frontend needs for a verdict, and the shape carries the
-distinction the whole system now rests on:
+The verdict `core/` returns keeps the contract this section always
+described, and the shape carries the distinction the whole system rests on:
 
 - `registered` **requires** a chain read that returned a record, and
   `registration` is non-null. Only this verdict may be presented as a claim.
@@ -149,7 +154,8 @@ delivered-JPEG forgery, which is the path the product serves
 (`docs/security.md`). They are shown as evidence beside the score, never as a
 verdict, and the API returning them does not make them one. A frontend that
 turns any of these into a pass/fail has misread the contract — which is why
-`verdict` is a separate field decided only by the chain read.
+`verdict` is a separate field decided only by the chain read. (`derived`, a
+fourth verdict, came later: see below.)
 
 `effectiveStrength` and `pooledTriangle` need a calibration the server does
 not have at first run: the genuine band per processing path, and reference

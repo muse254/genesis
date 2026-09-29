@@ -6,9 +6,10 @@
 #
 # Everything here is static: the landing page reads GitHub's Releases API
 # client-side (site/app.js), the verify page hashes the photo and reads the
-# chain client-side (verify/src/main.ts, verify/src/hashes.ts; JPEG decoding
-# is libjpeg-turbo built with Emscripten, verify/jpeg/), the dashboard reads
-# the subgraph client-side (dashboard/src/main.ts), and the score page runs a WASM module compiled
+# chain client-side (verify/, on core/ -- the verification it shares with
+# the desktop app; JPEG decoding is libjpeg-turbo built with Emscripten),
+# the dashboard reads the subgraph client-side (dashboard/src/main.ts), and
+# the score page runs a WASM module compiled
 # from rust/genesis-prnu-wasm entirely in the browser (score/src/main.ts,
 # docs/wasm-scoring-plan.md Phase 5) -- none of them need a server of
 # their own, so all four fit on Pages.
@@ -22,6 +23,7 @@ on:
       - "verify/**"
       - "dashboard/**"
       - "score/**"
+      - "core/**"
       - "rust/**"
       - "ingest/hashing.py"
       - "Cargo.toml"
@@ -53,6 +55,17 @@ jobs:
           version: "latest"
       - uses: mymindstorm/setup-emsdk@v14
 
+      # core/'s tests check the hashes against Python's committed fixtures,
+      # JPEG included, as a last gate before deploy: a mismatch would turn
+      # every JPEG on the live page into "no record". (ci.yml runs the same
+      # on every PR.)
+      - name: Shared verification (core)
+        working-directory: core
+        run: |
+          npm ci
+          npm run wasm
+          npm test
+
       - name: Verify page
         working-directory: verify
         # Public config only (an RPC URL, a contract address, a subgraph
@@ -67,18 +80,12 @@ jobs:
           VITE_REGISTRY_ADDRESS: "0x0C0F3Ec87339F985c509c01dEE8474BB8f5b0EB2"
           VITE_CHAIN: base-sepolia
           VITE_SUBGRAPH_URL: https://api.studio.thegraph.com/query/1758974/genesis/v0.1.0-base-sepolia
-          # No VITE_SCORING_URL, on purpose: the page hashes photos itself,
-          # and with this unset it never sends one anywhere.
-        # `npm run build` builds both WASM modules first (prebuild), which
-        # tsc needs to resolve their imports. `npm test` then checks the
-        # hashes against Python's committed fixtures, JPEG included, as a
-        # last gate before deploy: a mismatch would turn every JPEG on the
-        # live page into "no record". (ci.yml runs the same on every PR.)
+          VITE_EXPLORER_URL: https://sepolia.basescan.org
+        # `npm run build` builds core's two WASM modules first (prebuild).
         run: |
           npm ci
           npm run build
           npx tsc --noEmit -p .
-          npm test
 
       - name: Dashboard
         working-directory: dashboard

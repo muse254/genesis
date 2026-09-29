@@ -90,9 +90,10 @@ def build_record(
         the orientation or scale search: this function's own scoring is the
         aligned path only, and a portrait frame -- a fingerprint lives in
         sensor space, which is always landscape -- raises a shape mismatch
-        there. `scoring.app._score_against` picks the right path and is what
-        `/verify` uses, so passing its answer here keeps registration and
-        verification from disagreeing about the same photograph.
+        there. `scoring.app._score_against` picks the right path, and it is
+        what verification's Rust port (core/) is parity-tested against, so
+        passing its answer here keeps registration and verification from
+        disagreeing about the same photograph.
     parent : bytes, optional
         ``image_hash`` of the original this was edited from. Absent for an
         original, which is what makes the records an edit graph rather than

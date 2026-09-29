@@ -2,14 +2,15 @@
 
     uvicorn console.app:app --host 127.0.0.1 --port 8100
 
-Spec `docs/console-server.md`, posture `docs/security.md`. This file has
-`/health`, `/state` and `/verify`. The signing endpoints come next and stay
-in their own module, so the boundary is visible in the file listing.
+Spec `docs/console-server.md`, posture `docs/security.md`. The signing
+endpoints live in their own module (`console/registry.py`), so the boundary
+is visible in the file listing.
 
-The pixel work is imported from `scoring.app` rather than reimplemented. The
-console and the public verify page must never disagree about what the pixels
-say -- if they did, the demo would be showing something the public page
-cannot reproduce.
+This server does not verify. Verification runs in the app's webview on
+`core/`, the code the public verify page runs too, so the console and the
+page cannot disagree about what the pixels say (`docs/shared-verify-plan.md`).
+What it serves for that is what a webview cannot do itself: the enrolled K
+files, RAW decoding, and read-only proxies to the chain and the index.
 """
 
 from __future__ import annotations
@@ -20,14 +21,15 @@ import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
 
-from fastapi import FastAPI, File, Form, HTTPException, UploadFile
+from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse
+from fastapi.responses import FileResponse, JSONResponse, Response, StreamingResponse
 
 from console import catalogue, chain, jobs, registry, subgraph
-from fingerprint import consistency, prnu, stress
-from ingest import hashing, record
-from scoring.app import _bodies, _score_against
+from fingerprint import prnu, stress
+from ingest import record
+import scoring.app as scoring_app
+from scoring.app import _bodies
 
 app = FastAPI(title="Genesis demo console")
 
@@ -40,6 +42,9 @@ app.add_middleware(
     ).split(","),
     allow_methods=["GET", "POST"],
     allow_headers=["*"],
+    # /raw/develop sends the image size in headers, which a browser hides
+    # from cross-origin script unless they are exposed.
+    expose_headers=["X-Width", "X-Height"],
     # WKWebView (the desktop app's webview) preflights every request from its
     # tauri:// page to this loopback server as Private Network Access and
     # fails closed without this -- Starlette answers 400 "Disallowed CORS
@@ -193,6 +198,14 @@ async def state() -> dict:
         "threshold": prnu.PCE_THRESHOLD,
         "chain": status,
         "registry": {"resettable": resettable, "epoch": epoch},
+        # What core/ needs to read the chain through /rpc and the index
+        # through /subgraph. No URLs: those stay on this side of the proxy.
+        "verify": {
+            "chain": chain.CHAIN_KEY,
+            "registry": chain.REGISTRY or None,
+            "explorer": chain.EXPLORER,
+            "subgraph": bool(subgraph.SUBGRAPH_URL),
+        },
     }
     _STATE_CACHE["at"], _STATE_CACHE["payload"] = _time.time(), payload
     return payload
@@ -213,302 +226,122 @@ def _save(upload: UploadFile) -> Path:
     return Path(handle.name)
 
 
-def _signals(path: Path, body: dict, result: dict) -> dict:
-    """Advisory evidence. Never a verdict -- see `docs/security.md`.
+# --- what core/ needs from this machine (docs/shared-verify-plan.md) ------
+#
+# Verification runs in the app's own webview now: core/, the same code the
+# web page runs, so the two cannot disagree about a photo. This server
+# supplies only what the webview cannot get itself -- the enrolled K files,
+# RAW decoding (LibRaw has no WASM build), and the chain and the index behind
+# a proxy that keeps any key in their URLs out of the webview. It no longer
+# computes a verdict.
 
-    `bodyConsistency` and `pooledTriangle` need calibration the server does
-    not hold until `/enrol` stores it, so they are null rather than a number
-    nobody can interpret. The two that need none are returned with
-    `calibrated: false`, because the *band* they are read against is what is
-    missing, not the measurement.
+
+@app.get("/bodies")
+async def bodies() -> list[dict]:
+    """The enrolled bodies core/ scores against, and the crop a RAW decode must
+    use for each (its `meta["crop"]`) so the planes line up with K."""
+    return [
+        {"id": body_id, "name": body["name"], "crop": body["meta"].get("crop")}
+        for body_id, body in _bodies().items()
+    ]
+
+
+@app.get("/bodies/{body_id}/fingerprint")
+async def fingerprint(body_id: str) -> FileResponse:
+    """One body's K file, for core/ to score against in the app's webview.
+
+    K never leaves the machine it was enrolled on (`docs/security.md`, "Where
+    K lives"), and this keeps it there: the server binds to loopback, and CORS
+    lets only the app's own origins read the response. The webview is on this
+    machine; the web page on GitHub Pages never gets here.
     """
-    signals: dict = {
-        "calibrated": False,
-        "bodyConsistency": None,
-        "pooledTriangle": None,
-        "effectiveStrength": None,
-        "resamplingPeak": None,
-    }
-    try:
-        if result.get("path") == "aligned":
-            planes = (
-                prnu.load_raw_planes(path, crop=body["meta"].get("crop"))
-                if path.suffix.lower() in record.hashing_raw_suffixes()
-                else prnu.load_delivered_planes(path, body["meta"]["cfa_pattern"])
-            )
-            signals["effectiveStrength"] = consistency.effective_strength(planes, body["planes"])
-
-        from PIL import Image
-
-        Image.MAX_IMAGE_PIXELS = None
-        if path.suffix.lower() not in record.hashing_raw_suffixes():
-            with Image.open(path) as opened:
-                import numpy as np
-
-                signals["resamplingPeak"] = consistency.resampling_peak(
-                    np.asarray(opened.convert("L"), dtype=float)
-                )
-                # Not advisory in the same sense as the others: this does not
-                # say a photograph is forged, it says whether there was
-                # anything to measure. A frame with no high-frequency detail
-                # carries no fingerprint however genuine it is, and telling a
-                # photographer their own soft photograph is "unrecognised"
-                # blames the camera for the exposure.
-                detail = consistency.high_frequency_content(opened)
-                signals["detail"] = round(detail, 1)
-                signals["tooSoftToMeasure"] = detail < consistency.DETAIL_FLOOR
-    except (ValueError, KeyError, OSError):
-        pass  # advisory: a signal that cannot be computed is absent, not fatal
-    return signals
+    body = _bodies().get(body_id.removeprefix("0x"))
+    if body is None:
+        raise HTTPException(404, f"no enrolled body {body_id}")
+    # Read at call time, from the module _bodies() globs: the file served is
+    # always from the directory the body list came from.
+    path = scoring_app.REFERENCES / f"{body['name']}.npz"
+    return FileResponse(path, media_type="application/octet-stream")
 
 
-def _verify(path: Path, progress=None) -> dict:
-    """The verification itself, and the only place `registered` is decided.
-
-    Shared by `/verify` and `/verify/stream`, one implementation on purpose: a
-    blocking endpoint and a streaming one that could disagree about the same
-    photograph would repeat the mistake registration and verification already
-    made once, and the fix there was also to collapse onto one function.
-
-    Takes ownership of `path` and deletes it, because the streaming caller
-    outlives the request that saved it.
-
-    Three outcomes, and the difference between the first two is a chain read
-    and nothing else:
-
-    - `registered`   a record came back for this pixel hash. The only verdict
-                     that carries a claim.
-    - `fingerprint-only`  the pixels matched and nothing is registered. **Not
-                     a pass.** A fingerprint can be planted by anyone holding
-                     one RAW file off the body (`docs/adversarial.md`).
-    - `no-record`    neither. Absence means nothing about the image.
-
-    If the RPC is unreachable this raises rather than falling back to
-    `fingerprint-only`. Silently downgrading a verdict is how a demo tells a
-    comfortable lie, and the downgrade would land on the case that looks most
-    like success.
-    """
-    bodies = _bodies()
-    if not bodies:
+def _raw_upload(upload: UploadFile) -> Path:
+    path = _save(upload)
+    if path.suffix.lower() not in record.hashing_raw_suffixes():
         path.unlink(missing_ok=True)
-        raise HTTPException(503, "no enrolled fingerprints")
+        raise HTTPException(400, "not a RAW file; core/ decodes everything else itself")
+    return path
 
+
+@app.post("/raw/develop")
+async def raw_develop(file: UploadFile = File(...)) -> Response:
+    """A RAW's development as RGB8, row-major, with its size in headers.
+
+    What `ingest/hashing.py` hashes for a RAW, and what the scale search reads
+    when the RAW's planes do not line up with K. core/ hashes and scores these
+    exact bytes, so the RAW path agrees with Python's by construction.
+    """
+    import numpy as np
+
+    path = _raw_upload(file)
     try:
-        candidates = []
-        for body_id, body in bodies.items():
-            scored = _score_against(body, path, progress)
-            candidates.append({"bodyId": body_id, "body": body, **scored})
-        candidates.sort(key=lambda c: -c["pce"])
-        best = candidates[0]
-
-        image_hash = "0x" + hashing.pixel_sha256(path).hex()
-        perceptual_hash = f"0x{hashing.perceptual_hash(path):016x}"
-
-        try:
-            registration = chain.image(image_hash)
-        except chain.ChainError as error:
-            raise HTTPException(502, f"chain read failed, verdict withheld: {error}")
-
-        # The lower branch, and the one demo step 4 rides on. A degraded copy
-        # has a different pixel hash, so the exact read above misses; the
-        # perceptual hash finds a candidate and the chain confirms it. The
-        # confirmation is the point -- a pHash hit on its own is a lookup, and
-        # `registered` still means a chain read succeeded.
-        derived_from = None
-        if registration is None:
-            try:
-                near = subgraph.nearest(perceptual_hash)
-            except subgraph.SubgraphError:
-                near = None       # index down: fall through, never fabricate
-            if near:
-                try:
-                    candidate = chain.image(near["imageHash"])
-                except chain.ChainError as error:
-                    raise HTTPException(502, f"chain read failed, verdict withheld: {error}")
-                if candidate:
-                    registration = candidate
-                    derived_from = {
-                        "imageHash": near["imageHash"],
-                        "hammingDistance": near["distance"],
-                        "matchedBy": "perceptual hash",
-                    }
-
-        matched = best["pce"] >= prnu.PCE_THRESHOLD
-        if registration and derived_from is None:
-            # Exact pixel hash. This *is* the registered file, byte for byte.
-            verdict = "registered"
-        elif registration:
-            # A perceptual match the chain confirmed. Weaker on purpose: a
-            # pHash is collidable and cheap to forge, so this says the image
-            # descends from a registered photograph -- not that it is one.
-            # The PCE is reported beside it and here it may well be below
-            # threshold, which is the honest state of a degraded copy.
-            verdict = "derived"
-        elif matched:
-            verdict = "fingerprint-only"
-        else:
-            verdict = "no-record"
-
-        payload: dict = {
-            "verdict": verdict,
-            "pce": best["pce"],
-            "threshold": prnu.PCE_THRESHOLD,
-            "method": best.get("path"),
-            "orientation": best.get("orientation"),
-            "imageHash": image_hash,
-            "perceptualHash": perceptual_hash,
-            "body": None,
-            "registration": None,
-            "derivedFrom": derived_from,
-            "consistency": None,   # filled below, with the stage report
-        }
-
-        signals = _signals(path, best["body"], best)
-        payload["consistency"] = signals
-        payload["stages"] = consistency.stages(
-            matched=matched,
-            registered=registration is not None,
-            signals=signals,
-            path="raw" if best.get("path") == "aligned" else "delivered",
-        )
-
-        if registration:
-            on_chain_body = chain.body(registration.body_id)
-            payload["body"] = {
-                "bodyId": registration.body_id,
-                "owner": on_chain_body.owner if on_chain_body else None,
-                "commitment": on_chain_body.fingerprint_commitment if on_chain_body else None,
-                "revoked": on_chain_body.revoked if on_chain_body else None,
-                "bodyCommitment": on_chain_body.body_commitment if on_chain_body else None,
-            }
-            payload["registration"] = {
-                "registeredAt": registration.registered_at,
-                "modificationLevel": registration.modification_level,
-                "pceAtRegistration": registration.pce_score,
-                "explorerUrl": chain.explorer_url(chain.REGISTRY, "address"),
-            }
-        elif matched:
-            # Named, because the page has to say *which* body's fingerprint it
-            # is -- and say in the same breath that nobody registered it.
-            payload["body"] = {"bodyId": best["bodyId"], "name": best["body"]["name"]}
-        else:
-            payload["diagnosis"] = _diagnose(path, payload["consistency"] or {})
-
-        return payload
+        rgb = np.ascontiguousarray(np.asarray(stress.develop(path).convert("RGB")))
     finally:
         path.unlink(missing_ok=True)
+    return Response(
+        rgb.tobytes(),
+        media_type="application/octet-stream",
+        headers={"X-Width": str(rgb.shape[1]), "X-Height": str(rgb.shape[0])},
+    )
 
 
-#: Software tags a desktop development leaves behind. Anything with a camera
-#: Make and none of these looks like a JPEG straight out of the camera, which
-#: `docs/gates.md` measured as carrying no readable fingerprint.
-DESKTOP_SOFTWARE = (
-    "adobe", "photoshop", "lightroom", "acd", "capture one", "darktable",
-    "rawtherapee", "affinity", "dxo", "luminar", "gimp", "pixelmator",
-    "apple", "preview",
-)
+@app.post("/raw/planes")
+async def raw_planes(file: UploadFile = File(...), crop: str = Form("none")) -> Response:
+    """A RAW's CFA planes, cropped as one body's K was, as a `plane_<c>` .npz."""
+    import io
 
+    import numpy as np
 
-def _diagnose(path: Path, signals: dict) -> str | None:
-    """Why there was nothing to find — when we can say, from measurement.
-
-    A bare `no-record` is true and unhelpful. It reads as "not your camera",
-    and for two common cases that is the wrong thing to conclude: the image
-    may carry no measurable fingerprint at all. Saying which costs nothing and
-    stops a photographer distrusting a camera that is fine.
-
-    Only reports what was measured or read. It never guesses at a cause it
-    cannot see.
-    """
-    if signals.get("tooSoftToMeasure"):
-        return (
-            f"This image has almost no high-frequency detail (median tile "
-            f"{signals.get('detail')}, against roughly 1,000-4,000 for files that "
-            f"verify). A sensor fingerprint lives in high frequencies, so there is "
-            f"nothing here to measure — which is not the same as the camera not "
-            f"matching."
-        )
-
-    if path.suffix.lower() in record.hashing_raw_suffixes():
-        return None
-
+    path = _raw_upload(file)
     try:
-        from PIL import Image
-
-        with Image.open(path) as opened:
-            exif = opened.getexif() or {}
-        make = str(exif.get(271, "") or "")
-        software = str(exif.get(305, "") or "").lower()
-    except Exception:
-        return None
-
-    if make and not any(tag in software for tag in DESKTOP_SOFTWARE):
-        return (
-            "This looks like a JPEG written by the camera itself. Measured on "
-            "this body, in-camera JPEGs carry no readable fingerprint — the "
-            "camera's noise reduction removes it, because to the camera a "
-            "sensor fingerprint is noise (docs/gates.md). Try the RAW, or a "
-            "development of it."
-        )
-    return None
+        planes = prnu.load_raw_planes(path, crop=None if crop == "none" else int(crop))
+    finally:
+        path.unlink(missing_ok=True)
+    buffer = io.BytesIO()
+    np.savez(buffer, **{f"plane_{c}": plane for c, plane in planes.items()})
+    return Response(buffer.getvalue(), media_type="application/octet-stream")
 
 
-@app.post("/verify")
-async def verify(file: UploadFile = File(...)) -> dict:
-    """Blocking verification. `/verify/stream` is the same work, reported."""
-    return _verify(_save(file))
+#: The JSON-RPC methods core/ reads the registry with. Anything else is
+#: refused: this proxy exists to keep the RPC URL's key out of the webview,
+#: not to lend the webview a node.
+READ_METHODS = {"eth_call", "eth_chainId", "eth_blockNumber"}
 
 
-@app.post("/verify/stream")
-async def verify_stream(file: UploadFile = File(...)) -> dict:
-    """Start a verification and return a job to watch it.
+@app.post("/rpc")
+async def rpc(request: Request) -> JSONResponse:
+    """Forward read-only JSON-RPC to `RPC_URL`."""
+    import httpx
 
-    An unfamiliar image is slow in a way that looks broken: a file destined
-    for `no-record` still pays for all twenty-one correlations of the scale
-    search, which can take over a minute with nothing on screen.
-    """
-    path = _save(file)
-
-    def work(job: jobs.Job) -> None:
-        def progress(label: str) -> None:
-            # Weighted rather than even. The search is most of the wall clock,
-            # so equal shares would sit at 40% for a minute and then jump --
-            # the spinner problem with extra steps.
-            fraction = 0.06
-            if "residual" in label:
-                fraction = 0.15
-            elif "sensor space" in label or "lattice" in label:
-                fraction = 0.80
-            elif "searching" in label and " of " in label:
-                try:
-                    head = label.split("—")[1].split("(")[0].strip()
-                    done, total = (int(x) for x in head.split(" of "))
-                    fraction = 0.20 + 0.65 * (done / max(total, 1))
-                except (ValueError, IndexError):
-                    fraction = 0.5
-            job.emit(event="step", label=label, fraction=round(fraction, 3))
-
-        result = _verify(path, progress=progress)
-        job.emit(event="step", label="reading the chain", fraction=0.97)
-        job.finish(result)
-
-    return {"jobId": jobs.start(work).id}
+    payload = await request.json()
+    calls = payload if isinstance(payload, list) else [payload]
+    refused = sorted({str(c.get("method")) for c in calls if c.get("method") not in READ_METHODS})
+    if refused:
+        raise HTTPException(403, f"read-only proxy: {', '.join(refused)} refused")
+    async with httpx.AsyncClient(timeout=15.0) as client:
+        response = await client.post(chain.RPC_URL, json=payload)
+    return JSONResponse(response.json(), status_code=response.status_code)
 
 
-@app.get("/verify/{job_id}/events")
-async def verify_events(job_id: str) -> StreamingResponse:
-    job = jobs.get(job_id)
-    if job is None:
-        raise HTTPException(404, f"no job {job_id}")
+@app.post("/subgraph")
+async def subgraph_proxy(request: Request) -> JSONResponse:
+    """Forward a GraphQL query to `GENESIS_SUBGRAPH_URL`."""
+    import httpx
 
-    def stream():
-        while True:
-            event = job.events.get()
-            yield f"data: {json.dumps(event)}\n\n"
-            if event.get("event") == "done":
-                return
-
-    return StreamingResponse(stream(), media_type="text/event-stream")
+    if not subgraph.SUBGRAPH_URL:
+        raise HTTPException(503, "GENESIS_SUBGRAPH_URL is not set")
+    async with httpx.AsyncClient(timeout=15.0) as client:
+        response = await client.post(subgraph.SUBGRAPH_URL, json=await request.json())
+    return JSONResponse(response.json(), status_code=response.status_code)
 
 
 @app.post("/degrade")
@@ -659,8 +492,9 @@ async def preview(file: UploadFile = File(...), longest_edge: int = Form(720)) -
     somewhere, and the only thing on this machine that can develop it is the
     scorer's own decoder.
 
-    Display only. Nothing here feeds a hash, a score or a record: `/verify`
-    and `/register-image` read the uploaded file, never this. A preview that
+    Display only. Nothing here feeds a hash, a score or a record:
+    verification (core/, from the file or `/raw/*`) and `/register-image`
+    read the uploaded file, never this. A preview that
     could influence a verdict would be a second decode path to disagree with
     the first.
     """

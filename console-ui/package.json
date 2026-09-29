@@ -3,6 +3,9 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "wasm": "npm --prefix ../core run wasm",
+    "predev": "npm run wasm",
+    "prebuild": "npm run wasm",
     "dev": "vite --port 5173",
     "build": "vite build",
     "preview": "vite preview"

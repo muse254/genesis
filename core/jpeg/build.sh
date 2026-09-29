@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 # Build libjpeg-turbo + decode.c to WASM for the verify page. Needs emcc
-# (Emscripten) on PATH; see verify/README.md.
+# (Emscripten) on PATH; see core/README.md.
 #
 # LIBJPEG_TURBO_VERSION must equal the libjpeg-turbo bundled in the Pillow
 # the Python side runs -- `python -c "from PIL import features;
 # print(features.version('libjpeg_turbo'))"`, also recorded in
 # rust/genesis-prnu/tests/fixtures/hashing/manifest.json. Different
 # versions can decode to different pixels, and the pixel hash is exact.
-# ingest/validate_hash_fixtures.py and verify/test/hashes.test.ts fail
+# ingest/validate_hash_fixtures.py and core/test/hashes.test.ts fail
 # loudly if they drift apart.
 #
 # SIMD is off because WASM can't use libjpeg-turbo's hand-written SIMD.
@@ -23,7 +23,7 @@ work="$here/.build"
 src="$work/libjpeg-turbo-$LIBJPEG_TURBO_VERSION"
 out="$here/../src/jpeg"
 
-command -v emcc >/dev/null || { echo "emcc not found: install Emscripten (verify/README.md)" >&2; exit 1; }
+command -v emcc >/dev/null || { echo "emcc not found: install Emscripten (core/README.md)" >&2; exit 1; }
 mkdir -p "$work" "$out"
 
 if [ ! -d "$src" ]; then
@@ -42,7 +42,7 @@ fi
 
 emcc -O3 "$here/decode.c" "$work/lib/libjpeg.a" -I"$src/src" -I"$work/lib" \
   -o "$out/libjpeg.mjs" \
-  -sMODULARIZE -sEXPORT_ES6 -sENVIRONMENT=web,node \
+  -sMODULARIZE -sEXPORT_ES6 -sENVIRONMENT=web,worker,node \
   -sALLOW_MEMORY_GROWTH -sMAXIMUM_MEMORY=4GB \
   -sEXPORTED_FUNCTIONS=_decode,_release,_result_pixels,_result_w,_result_h,_error_message,_malloc,_free \
   -sEXPORTED_RUNTIME_METHODS=HEAPU8,UTF8ToString

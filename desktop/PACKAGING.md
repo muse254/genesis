@@ -125,15 +125,23 @@ project never imports) is future work, not yet done.
 (`desktop/src-tauri/src/lib.rs`) that scores a delivered (non-RAW: JPEG/PNG/
 TIFF) probe image against a K file using `genesis-prnu` directly, in this
 process, with no round trip through the embedded Python interpreter for
-that one request. It is real: that whole class of request no longer needs
-`console.app`'s `/verify` at all. It is also explicitly partial: enrolment
+that one request. It is also explicitly partial: enrolment
 (`estimate_fingerprint`/`postprocess`), RAW decoding (`load_raw_planes`,
-which needs `rawpy`/LibRaw), the crop/scale search
-(`sensor_field`/`crop_and_scale_search`), and `commitment()` all stay
-Python-only, by deliberate decision (`docs/wasm-scoring-plan.md`), so the
+which needs `rawpy`/LibRaw), and `commitment()` all stay Python-only, by
+deliberate decision (`docs/wasm-scoring-plan.md`), so the
 bundled Python runtime — `numpy`, `scipy`, `rawpy`, and the rest — still has
 to ship in full. The bundle is still ~217 MB; nothing here removes a single
 dependency from `requirements.txt` or lets `bundle-python.sh` drop anything.
 Do not read this as a step toward a smaller bundle by itself — it would only
 become one if enrolment and RAW decode also moved off Python, which is not
 what this phase does.
+
+**Since 29 September the app verifies in its webview**, on `core/`, the same
+code as the public verify page (`docs/shared-verify-plan.md`): the crop and
+scale search, the portrait retry and the consistency signals are all Rust
+now, compiled to WASM. The console's `/verify` is gone; the embedded Python
+serves the enrolled K files, decodes RAW, and proxies the chain read-only.
+`score_delivered_image` above is unused as a result -- WASM in the webview
+measured no slower than it (7.7 s against 6.9 s for an aligned 24 MP score).
+The bundle size is unchanged, for the same reason: registration, enrolment
+and RAW decoding still need the full Python runtime.

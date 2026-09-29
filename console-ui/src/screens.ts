@@ -5,8 +5,9 @@
  * Every screen has the same four states: idle, working, a verdict, or an
  * error. Working states are determinate wherever the server gives us
  * something to count -- `/enrol` streams per frame, so that one is honest.
- * `/verify` and `/degrade` return once, so those show elapsed against a
- * typical figure and no fake sub-steps (`docs/console-server.md`).
+ * Verification reports each step from core/, the scale search counted one
+ * correlation at a time; `/degrade` returns once, so it shows elapsed
+ * against a typical figure and no fake sub-steps (`docs/console-server.md`).
  */
 
 import {
@@ -18,6 +19,7 @@ import {
   type VerifyResult,
 } from "./api";
 import { el, escape, rail, short, stageStrip, verdictCard } from "./components";
+import { verifyStreaming } from "./verifier";
 
 type Render = (host: HTMLElement) => void;
 
@@ -120,7 +122,7 @@ async function scored(
   }, 100);
 
   try {
-    const result = await api.verifyStreaming(file, (label, fraction) => {
+    const result = await verifyStreaming(file, (label, fraction) => {
       bar.style.width = `${Math.max(2, Math.round(fraction * 100))}%`;
       step.textContent = label;
     });

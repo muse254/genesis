@@ -189,8 +189,10 @@ fn start_backend(app: &tauri::AppHandle, port: u16) -> Result<(), Box<dyn std::e
 }
 
 /// Score a delivered (non-RAW: JPEG/PNG/TIFF) probe image against a K file
-/// natively, in this process -- no round trip through the embedded Python
-/// interpreter / `console.app`'s `/verify`.
+/// natively, in this process, with no round trip through the embedded
+/// Python interpreter. Nothing calls it yet: verification now runs in the
+/// webview on core/ (docs/shared-verify-plan.md), the same WASM as the web
+/// page, which measured no slower than this native path.
 ///
 /// This is `genesis_prnu::score()` end to end: read the `.npz` K file
 /// (`genesis_prnu::kfile::load_fingerprint`), pull its CFA pattern out of

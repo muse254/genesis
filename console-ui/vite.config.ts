@@ -1,3 +1,4 @@
+import { fileURLToPath } from "node:url";
 import { defineConfig } from "vite";
 
 export default defineConfig({
@@ -10,5 +11,14 @@ export default defineConfig({
     host: "127.0.0.1",
     port: 5173,
     strictPort: true,
+    // core/ lives outside this app; see the alias below.
+    fs: { allow: [".."] },
   },
+  // Verification is core/ (docs/shared-verify-plan.md), shared with the web
+  // page. There is no npm workspace, so it is reached by alias.
+  resolve: {
+    alias: { "@genesis/core": fileURLToPath(new URL("../core/src/index.ts", import.meta.url)) },
+  },
+  // core's worker imports WASM glue that uses import.meta.url.
+  worker: { format: "es" },
 });

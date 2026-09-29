@@ -23,6 +23,11 @@ jobs:
       - run: python -m pip install -r requirements.txt pytest-cov
       - name: pytest with coverage
         # 76% on 17 Sept; the floor stops it sliding, raise it as it rises.
+        # `shell: bash` runs with pipefail. Without it this step's status was
+        # tee's, so a coverage (or test) failure still passed: on 29 Sept the
+        # log said "FAIL Required test coverage of 75% not reached" under a
+        # green check.
+        shell: bash
         run: >
           python -m pytest -q
           --cov=fingerprint --cov=ingest --cov=scoring --cov=console
@@ -125,28 +130,12 @@ jobs:
       - run: npm run build
       - run: npm test
 
-  web:
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        # verify/ and score/ build WASM first, so they are in `wasm` below.
-        app: [console-ui]
-    defaults:
-      run:
-        working-directory: ${{ matrix.app }}
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "22"
-      - run: npm ci
-      - run: npx tsc --noEmit -p .
-      - run: npm run build
-
-  # The Rust scoring/hashing core, and the two pages that run it as WASM.
-  # verify's tests are the only place the JPEG hash parity runs (the Rust
-  # crate does not link libjpeg-turbo), and a JPEG mismatch there would
-  # turn every JPEG on the live page into "no record".
+  # The Rust scoring/hashing core, core/ (the verification the web page and
+  # the desktop app share), and the three frontends that run it as WASM --
+  # verify/, console-ui/ (the desktop app) and score/. core's tests
+  # are the only place the JPEG hash parity runs (the Rust crate does not
+  # link libjpeg-turbo), and a JPEG mismatch there would turn every JPEG on
+  # the live page into "no record".
   wasm:
     runs-on: ubuntu-latest
     steps:
@@ -163,13 +152,25 @@ jobs:
           node-version: "22"
       - name: genesis-prnu tests (PRNU parity, hashing parity)
         run: cargo test -p genesis-prnu
-      - name: verify -- build, types, tests
+      - name: core -- the shared verification, WASM, types, tests
+        working-directory: core
+        run: |
+          npm ci
+          npm run wasm
+          npx tsc --noEmit -p .
+          npm test
+      - name: verify -- build, types
         working-directory: verify
         run: |
           npm ci
           npm run build
           npx tsc --noEmit -p .
-          npm test
+      - name: console-ui -- the desktop app's frontend, on core
+        working-directory: console-ui
+        run: |
+          npm ci
+          npm run build
+          npx tsc --noEmit -p .
       - name: score -- build, types
         working-directory: score
         run: |
@@ -215,8 +216,10 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
-      - name: Frontend the shell bundles
-        run: npm ci --prefix console-ui && npm run build --prefix console-ui
+      # console-ui is built and tested in the wasm job; tauri-build only
+      # checks that frontendDist exists, so an empty one satisfies the lint.
+      - name: Placeholder frontend (built for real in the wasm job)
+        run: mkdir -p console-ui/dist
       # tauri-build's own build script checks that tauri.conf.json's
       # bundle.resources paths exist, even for a plain `cargo clippy` that
       # never touches them -- this is a lint pass, not the real thing

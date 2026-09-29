@@ -39,9 +39,10 @@ across 40+ frames and post-processing strips artefacts shared by every body of
 the model — this half, enrolment, stays Python-only; `rawpy`/LibRaw has no
 Rust equivalent. Per plane: a wavelet Wiener denoiser (`PyWavelets`, `scipy`)
 yields the noise residual, and matching is Peak to Correlation Energy over an
-FFT cross-correlation — this half, scoring, is now also ported to Rust and
-compiled to WASM, parity-tested against this Python reference
-(`rust/genesis-prnu`; `docs/wasm-scoring-plan.md`).
+FFT cross-correlation — this half, scoring, is ported to Rust and compiled
+to WASM, parity-tested against this Python reference (`rust/genesis-prnu`),
+and it is what verification runs, on the web page and in the desktop app
+alike (`docs/shared-verify-plan.md`).
 
 The maths is Fridrich, *Digital Image Forensics Using Sensor Noise*, IEEE SPM
 26(2), 2009, cited by equation number in `fingerprint/prnu.py`.
@@ -118,9 +119,13 @@ Confidential compute does nothing about forgery. An enclave would score a
 planted fingerprint faithfully and sign it; it protects the reference from the
 verifier, and the attack happens before the pixels arrive.
 
-**Scoring, verify page and console.** FastAPI wraps the imaging core. The
-verify page is a single page with no framework, `viem` for chain reads, and
-four verdicts. An eight-screen presenter console drives the demo on localhost
+**Verification, verify page and console.** One verification implementation,
+`core/`, serves both the public verify page and the desktop app: the pixel
+work is Rust compiled to WASM (both hashes, and PCE with the scale and
+orientation search, parity-tested against the Python reference to four
+decimals on real photographs), the verdict is TypeScript, and it runs in the
+browser, so a photo being verified is never uploaded. The verify page is a
+single page with no framework and four verdicts. An eight-screen presenter console drives the demo on localhost
 and holds the signing key — it is never deployed.
 
 ## Measured — Canon EOS R10

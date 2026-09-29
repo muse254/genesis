@@ -22,6 +22,7 @@ import "./app.css";
 import { api, ETHERSCAN, readContractUrl } from "./api";
 import type { ReferenceLink, State } from "./api";
 import { el, escape, short, utc, verdictCard } from "./components";
+import { verifyStreaming } from "./verifier";
 
 type ViewId = "home" | "photos" | "verify" | "cameras" | "settings";
 
@@ -470,7 +471,7 @@ function renderVerify(host: HTMLElement) {
 
     const status = preview.querySelector(".verify-checking") as HTMLElement;
     try {
-      const verdict = await api.verifyStreaming(file, (label, fraction) => {
+      const verdict = await verifyStreaming(file, (label, fraction) => {
         status.textContent = `${label} — ${Math.round(fraction * 100)}%`;
       });
       preview.remove();

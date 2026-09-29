@@ -48,11 +48,23 @@ jobs:
           node-version: "22"
 
       - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
 
       - uses: astral-sh/setup-uv@v3
 
+      # The app verifies with core/ (docs/shared-verify-plan.md), whose two
+      # WASM modules console-ui's build compiles first: wasm-pack for the
+      # Rust core, Emscripten for libjpeg-turbo.
+      - uses: jetli/wasm-pack-action@v0.4.0
+        with:
+          version: "latest"
+      - uses: mymindstorm/setup-emsdk@v14
+
       - name: Console UI dependencies
-        run: npm ci --prefix console-ui
+        run: |
+          npm ci --prefix core
+          npm ci --prefix console-ui
 
       - name: Bundle the Python runtime (fetched + populated, not built)
         shell: bash

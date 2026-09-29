@@ -3,21 +3,26 @@
  * `docs/console-server.md`).
  *
  * Shapes mirror the server exactly. Where the server decides something --
- * which verdict, whether a pre-flight row passes -- this client carries the
- * answer through untouched. The frontend renders; it never evaluates. A
- * second opinion here is a second place to be wrong, and the two would
- * eventually disagree about the same image.
+ * whether a pre-flight row passes, what a registration signed -- this client
+ * carries the answer through untouched. A second opinion here is a second
+ * place to be wrong.
+ *
+ * Verification is the exception, and not a second opinion: it runs in
+ * `verifier.ts` on `@genesis/core`, the one implementation the web page runs
+ * too, and the console only supplies its inputs (`docs/shared-verify-plan.md`).
  */
 
 /** The desktop app injects its backend's port before any script runs
  *  (`desktop/src-tauri/src/lib.rs`); a browser session uses the env or the
  *  historical default. */
-const BASE =
+export const BASE =
   (window as { __GENESIS_CONSOLE__?: string }).__GENESIS_CONSOLE__ ??
   import.meta.env.VITE_CONSOLE_URL ??
   "http://127.0.0.1:8100";
 
-export type Verdict = "registered" | "derived" | "fingerprint-only" | "no-record";
+
+export type { Verdict, Stage, Signal } from "@genesis/core";
+export type { VerifyResult } from "./verifier";
 
 export interface Check {
   check: string;
@@ -57,6 +62,8 @@ export interface State {
    * only when it is true, so a production registry simply has no button.
    */
   registry?: { resettable: boolean; epoch: number };
+  /** What core/ needs to read the chain through `/rpc` and the index through `/subgraph`. */
+  verify?: { chain: string; registry: string | null; explorer: string; subgraph: boolean };
 }
 
 /** Where a claim can be checked by someone who does not trust this console. */
@@ -80,51 +87,6 @@ export interface ResetResult {
   blockNumber: number;
   explorerUrl: string;
   links?: ReferenceLink[];
-}
-
-export interface Signal {
-  signal: string;
-  value: number | null;
-  auc: number | null;
-}
-
-export interface Stage {
-  stage: number;
-  name: string;
-  asks: string;
-  result: string | Signal[] | null;
-  decides: string;
-}
-
-export interface VerifyResult {
-  verdict: Verdict;
-  pce: number;
-  threshold: number;
-  method: string | null;
-  orientation: string | null;
-  imageHash: string;
-  perceptualHash: string;
-  body: {
-    bodyId: string;
-    name?: string;
-    owner?: string | null;
-    commitment?: string | null;
-    revoked?: boolean | null;
-    /** Keyed camera commitment; all zeros when none was committed. */
-    bodyCommitment?: string | null;
-  } | null;
-  registration: {
-    registeredAt: number;
-    modificationLevel: number;
-    pceAtRegistration: number;
-    explorerUrl: string;
-  links?: ReferenceLink[];
-  } | null;
-  derivedFrom: { imageHash: string; hammingDistance: number; matchedBy: string } | null;
-  consistency: Record<string, number | boolean | null> | null;
-  stages: Stage[];
-  /** On `no-record`: why there was nothing to find, when it can be measured. */
-  diagnosis?: string | null;
 }
 
 async function call<T>(path: string, init?: RequestInit): Promise<T> {
@@ -202,12 +164,6 @@ export const api = {
     return call<ResetResult>("/reset", { method: "POST", body: form });
   },
 
-  verify(file: File) {
-    const form = new FormData();
-    form.append("file", file);
-    return call<VerifyResult>("/verify", { method: "POST", body: form });
-  },
-
   /**
    * Demo step 2a, and the step the console never had. `registerBody` is a
    * race -- `bodyId` derives from SHA-256(K), so a leaked reference lets
@@ -233,39 +189,6 @@ export const api = {
     if (!response.ok) throw new Error(await response.text());
     const blob = await response.blob();
     return new File([blob], "degraded.jpg", { type: "image/jpeg" });
-  },
-
-  /**
-   * Verification with progress. Same work as `verify`, reported as it runs.
-   *
-   * An unfamiliar image pays for all twenty-one correlations of the scale
-   * search even when the answer is `no-record`, which is over a minute of
-   * apparent silence.
-   */
-  verifyStreaming(
-    file: File,
-    onStep: (label: string, fraction: number) => void,
-  ): Promise<VerifyResult> {
-    const form = new FormData();
-    form.append("file", file);
-    return call<{ jobId: string }>("/verify/stream", { method: "POST", body: form }).then(
-      (job) =>
-        new Promise<VerifyResult>((resolve, reject) => {
-          const stream = new EventSource(`${BASE}/verify/${job.jobId}/events`);
-          stream.onmessage = (message) => {
-            const event = JSON.parse(message.data);
-            if (event.event === "step") onStep(event.label, event.fraction);
-            if (event.event === "done") {
-              stream.close();
-              event.error ? reject(new Error(event.error)) : resolve(event.result);
-            }
-          };
-          stream.onerror = () => {
-            stream.close();
-            reject(new Error("progress stream closed"));
-          };
-        }),
-    );
   },
 
   /** The local catalogue. Never leaves the machine — see console/catalogue.py. */
