@@ -23,6 +23,11 @@ jobs:
       - run: python -m pip install -r requirements.txt pytest-cov
       - name: pytest with coverage
         # 76% on 17 Sept; the floor stops it sliding, raise it as it rises.
+        # `shell: bash` runs with pipefail. Without it this step's status was
+        # tee's, so a coverage (or test) failure still passed: on 29 Sept the
+        # log said "FAIL Required test coverage of 75% not reached" under a
+        # green check.
+        shell: bash
         run: >
           python -m pytest -q
           --cov=fingerprint --cov=ingest --cov=scoring --cov=console
