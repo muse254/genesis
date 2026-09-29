@@ -192,6 +192,18 @@ describe("the desktop: enrolled bodies", () => {
     expect(result.stages.map((s) => s.result)).toEqual(["match", null, "no registration"]);
   });
 
+  it("keeps a strong match `fingerprint-only` when the index proposes a parent the chain lacks", async () => {
+    const { fetch } = graph([{ imageHash: PARENT, perceptualHash: PHASH }]);
+    const result = await run(photo(), { engine: engine([candidate(5000)]), chain: chain(), subgraphUrl: SUBGRAPH, fetch, bodies });
+    expect(result).toMatchObject({ verdict: "fingerprint-only", registration: null, derivedFrom: null });
+  });
+
+  it("degrades to the pixel answer when the index is down, never inventing a link", async () => {
+    const { fetch } = graph("down");
+    const result = await run(photo(), { engine: engine([candidate(5000)]), chain: chain(), subgraphUrl: SUBGRAPH, fetch, bodies });
+    expect(result).toMatchObject({ verdict: "fingerprint-only", derivedFrom: null });
+  });
+
   it("never lets a PRNU match raise a verdict without the chain", async () => {
     const result = await run(photo(), { engine: engine([candidate(99_999)]), bodies });
     expect(result.verdict).toBe("fingerprint-only");

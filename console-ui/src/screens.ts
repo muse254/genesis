@@ -18,6 +18,7 @@ import {
   type VerifyResult,
 } from "./api";
 import { el, escape, rail, short, stageStrip, verdictCard } from "./components";
+import { verifyStreaming } from "./verifier";
 
 type Render = (host: HTMLElement) => void;
 
@@ -120,7 +121,7 @@ async function scored(
   }, 100);
 
   try {
-    const result = await api.verifyStreaming(file, (label, fraction) => {
+    const result = await verifyStreaming(file, (label, fraction) => {
       bar.style.width = `${Math.max(2, Math.round(fraction * 100))}%`;
       step.textContent = label;
     });

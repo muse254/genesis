@@ -153,8 +153,18 @@ produced K. No server holds a reference.
 **The hosted scoring service holds nothing.** It runs with `GENESIS_PUBLIC=1`:
 it loads no reference, answers `/score` with 403,
 and refuses to start if a reference is present in its directory. Its only job
-is to hash pixels (`imageHash`, `perceptualHash`) for the verify page, which
-resolves them against the chain itself.
+was to hash pixels (`imageHash`, `perceptualHash`) for the verify page, and
+since 29 September the page does that itself, in WASM, so the photo never
+leaves the browser (`core/`, `docs/shared-verify-plan.md`).
+
+**In the desktop app, K reaches the app's own webview, and only it.**
+Verification runs in the webview on `core/`, the same code as the verify
+page, so it needs K there. The console serves it
+(`GET /bodies/{id}/fingerprint`) on loopback, and CORS lets only the app's
+own origins read the response, so a web page open in the operator's browser
+cannot. The webview is on the machine K was enrolled on; K is held in a
+worker's memory and never written anywhere else. The verify page on GitHub
+Pages never receives a K.
 
 So the public verify page gives these verdicts, and only these:
 

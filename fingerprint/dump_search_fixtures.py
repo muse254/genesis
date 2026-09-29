@@ -127,18 +127,25 @@ def main() -> None:
     np.savez(OUT / "raw_planes.npz", **{f"plane_{c}": p for c, p in planes.items()})
     manifest["raw"] = {"planes": "raw_planes.npz", "developed": "aligned.png", "pce": prnu.score(planes, body)}
 
-    # --- _diagnose's EXIF branch: in-camera JPEG vs a desktop development ---
-    from console.app import _diagnose
-
+    # --- the diagnosis's EXIF branch: in-camera JPEG vs a desktop development ---
+    # console/app.py's _diagnose was retired when verification moved to core/
+    # (docs/shared-verify-plan.md, phase E). These are its last answers,
+    # recorded from it before it went, which core/src/verify.ts must keep.
+    in_camera = (
+        "This looks like a JPEG written by the camera itself. Measured on this body, in-camera JPEGs carry no readable fingerprint — the camera's noise reduction removes it, because to the camera a sensor fingerprint is noise (docs/gates.md). Try the RAW, or a development of it."
+    )
     manifest["diagnose"] = []
-    for name, software in {"exif_camera.jpg": None, "exif_lightroom.jpg": "Adobe Lightroom Classic 13.0"}.items():
+    for name, software, diagnosis in [
+        ("exif_camera.jpg", None, in_camera),
+        ("exif_lightroom.jpg", "Adobe Lightroom Classic 13.0", None),
+    ]:
         exif = Image.Exif()
         exif[271] = "Canon"
         exif[272] = "Canon EOS R10"
         if software:
             exif[305] = software
         base.resize((32, 24)).save(OUT / name, exif=exif, quality=85)
-        manifest["diagnose"].append({"file": name, "diagnosis": _diagnose(OUT / name, {})})
+        manifest["diagnose"].append({"file": name, "diagnosis": diagnosis})
 
     # --- stages, for the TypeScript port to match field for field ---
     manifest["stages"] = consistency.stages(

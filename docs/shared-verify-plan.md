@@ -61,6 +61,12 @@ making it faster is separate work, and it would speed up both frontends.
 
 Each phase ends green, with its parity checks, and lands as its own commit.
 
+**Status, 29 September:** A–E done, on branch `shared-verify-core`. On the
+R10's K and real photos, the Rust port matches Python on every decision and
+to four decimals of PCE (as shot, web JPEG, portrait, framed, and a CR3
+through the RAW path), and the desktop app verifies end to end on `core/`.
+F is open, and so is **E2** below, which this work surfaced.
+
 ### A. Rust: everything `_score_against` does, from pixels
 
 In `rust/genesis-prnu`, working from RGB8 (decoded by libjpeg-turbo for
@@ -110,6 +116,23 @@ it through a Vite alias, since there's no npm workspace.
 - `console-ui`: the verify screen calls `core.verify` with the enrolled
   bodies; RAW goes through `/raw/decode` first.
 - `console/validate_console.py`: the verify cases move to `core/`'s tests.
+
+### E2. Registration onto `core/` too
+
+Verification is on `core/`; **registration still scores and hashes in
+Python** (`console/registry.py`, `_score_against`, `ingest/hashing.py`). So
+the app now runs two implementations of the same scorer: the Rust port when
+verifying, the Python original when registering. They are parity-tested
+(`search_parity.rs`, and exact on real photos), but that is a guarantee
+kept by tests rather than by there being one function -- which is the thing
+`console/validate_console.py` says cost a 500 on every portrait photo the
+last time the two paths diverged.
+
+Closing it: the webview computes the hashes and PCE with `core/` (the
+`analyse` step verification already runs) and sends them with the file;
+`/register-image` checks the file's pixel hash matches before signing, and
+still reads the metadata HMAC and body commitment in Python. Its own
+decision because it moves a value that goes on chain.
 
 ### F. Retire the duplicates
 
