@@ -59,7 +59,9 @@ pub fn perceptual_hash(rgb: &[u8], width: usize, height: usize) -> u64 {
 
     // Pillow's rgb2l: L24(rgb) >> 16.
     let grey: Vec<u8> = rgb
-        .chunks_exact(3)
+        .as_chunks::<3>()
+        .0
+        .iter()
         .map(|p| {
             ((p[0] as u32 * 19595 + p[1] as u32 * 38470 + p[2] as u32 * 7471 + 0x8000) >> 16) as u8
         })

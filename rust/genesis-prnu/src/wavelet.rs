@@ -127,7 +127,7 @@ pub const REC_HI: [f64; FILTER_LEN] = [
 /// `pywt.dwt_max_level(n, "db8")`: how many levels of `db8` decomposition
 /// `n` samples can carry before the extension swamps the signal.
 pub fn dwt_max_level(n: usize) -> usize {
-    if n <= FILTER_LEN - 1 {
+    if n < FILTER_LEN {
         return 0;
     }
     ((n as f64) / ((FILTER_LEN - 1) as f64)).log2().floor() as usize
@@ -153,7 +153,7 @@ fn symmetric_index(j: i64, n: usize) -> usize {
 /// `DEC_HI`), symmetric mode.
 fn dwt1d(x: &[f64], filt: &[f64; FILTER_LEN]) -> Vec<f64> {
     let n = x.len();
-    let pad: i64 = if n % 2 == 0 {
+    let pad: i64 = if n.is_multiple_of(2) {
         (FILTER_LEN - 2) as i64
     } else {
         (FILTER_LEN - 1) as i64
@@ -211,7 +211,7 @@ fn idwt1d(ca: &[f64], cd: &[f64], n: usize) -> Vec<f64> {
                     continue;
                 }
                 let up_idx = up_idx as usize;
-                if up_idx % 2 == 0 {
+                if up_idx.is_multiple_of(2) {
                     acc += REC_LO[tap] * ca[up_idx / 2] + REC_HI[tap] * cd[up_idx / 2];
                 }
             }
@@ -282,9 +282,12 @@ fn idwt_axis(ca: &Array2<f64>, cd: &Array2<f64>, n: usize, axis: Axis) -> Array2
     out
 }
 
+/// One level's detail bands: `(horizontal, vertical, diagonal)`.
+type Details = (Array2<f64>, Array2<f64>, Array2<f64>);
+
 /// One level of 2-D `db8` DWT: `(approx, (horizontal, vertical, diagonal))`,
 /// matching `pywt.dwt2`'s `(cA, (cH, cV, cD))`.
-fn dwt2(a: &Array2<f64>) -> (Array2<f64>, (Array2<f64>, Array2<f64>, Array2<f64>)) {
+fn dwt2(a: &Array2<f64>) -> (Array2<f64>, Details) {
     let lo_cols = dwt_axis(a, &DEC_LO, Axis(1));
     let hi_cols = dwt_axis(a, &DEC_HI, Axis(1));
 

@@ -36,9 +36,9 @@ pub fn load_delivered_planes(
     let mut planes = BTreeMap::new();
     for &c in &colours {
         let (mut pi, mut pj) = (0usize, 0usize);
-        'outer: for i in 0..2 {
-            for j in 0..2 {
-                if pattern[i][j] == c {
+        'outer: for (i, row) in pattern.iter().enumerate() {
+            for (j, &colour) in row.iter().enumerate() {
+                if colour == c {
                     pi = i;
                     pj = j;
                     break 'outer;
@@ -47,8 +47,8 @@ pub fn load_delivered_planes(
         }
         let ch = *channels.get(&c).unwrap_or(&1);
 
-        let out_h = (height - pi + 1) / 2;
-        let out_w = (width - pj + 1) / 2;
+        let out_h = (height - pi).div_ceil(2);
+        let out_w = (width - pj).div_ceil(2);
         let mut plane = Array2::<f32>::zeros((out_h, out_w));
         for oi in 0..out_h {
             let y = pi + 2 * oi;
