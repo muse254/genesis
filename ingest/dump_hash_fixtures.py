@@ -5,6 +5,12 @@ repo root with:
 
     .venv/bin/python -m ingest.dump_hash_fixtures
 
+or, to check an interpreter against the committed fixtures without writing
+anything (``desktop/scripts/bundle-python.sh`` does this with the Python it
+bundles, so the desktop app hashes exactly as the verify page does):
+
+    python -m ingest.dump_hash_fixtures --check
+
 Writes synthetic images only (never a real photo) plus the hashes Python
 computes for them to ``rust/genesis-prnu/tests/fixtures/hashing/``:
 
@@ -25,6 +31,8 @@ because the JPEG pixel hashes are only defined relative to them.
 from __future__ import annotations
 
 import json
+import re
+import sys
 from pathlib import Path
 
 import numpy as np
@@ -32,7 +40,8 @@ from PIL import Image, PngImagePlugin, features
 
 from ingest import hashing
 
-OUT = Path(__file__).resolve().parent.parent / "rust" / "genesis-prnu" / "tests" / "fixtures" / "hashing"
+ROOT = Path(__file__).resolve().parent.parent
+OUT = ROOT / "rust" / "genesis-prnu" / "tests" / "fixtures" / "hashing"
 
 
 def synthetic(height: int, width: int, seed: int) -> np.ndarray:
@@ -131,5 +140,39 @@ def main() -> None:
     print(f"wrote {len(cases)} cases to {OUT}")
 
 
+def check() -> int:
+    """Hash the committed fixtures with this interpreter; 0 if all agree."""
+    manifest = json.loads((OUT / "manifest.json").read_text())
+    pinned = re.search(r"LIBJPEG_TURBO_VERSION=(\S+)", (ROOT / "verify" / "jpeg" / "build.sh").read_text())[1]
+    problems = []
+
+    have = features.version("libjpeg_turbo")
+    if not have == manifest["libjpeg_turbo"] == pinned:
+        problems.append(
+            f"libjpeg-turbo: this Pillow has {have}, the fixtures {manifest['libjpeg_turbo']}, "
+            f"verify/jpeg/build.sh pins {pinned}"
+        )
+    for case in manifest["cases"]:
+        path = OUT / case["file"]
+        if case["expect"] == "match":
+            got = ("0x" + hashing.pixel_sha256(path).hex(), f"0x{hashing.perceptual_hash(path):016x}")
+            if got != (case["imageHash"], case["perceptualHash"]):
+                problems.append(f"{case['file']}: hashes differ from the fixtures")
+        elif case["why"] == "truncated":
+            try:
+                hashing.pixel_sha256(path)
+                problems.append(f"{case['file']}: hashed, but the verify page refuses truncated files")
+            except OSError:
+                pass
+
+    for problem in problems:
+        print(f"FAIL {problem}")
+    print(f"{len(manifest['cases'])} fixtures, Pillow {Image.__version__}, libjpeg-turbo {have}: "
+          + ("hashes match the verify page" if not problems else f"{len(problems)} problems"))
+    return 1 if problems else 0
+
+
 if __name__ == "__main__":
+    if sys.argv[1:] == ["--check"]:
+        sys.exit(check())
     main()
