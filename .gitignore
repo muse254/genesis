@@ -24,6 +24,11 @@ __pycache__/
 # not derived from any real body, so it carries none of the risk above.
 # See rust/genesis-prnu/tests/fixtures/README.md.
 !rust/genesis-prnu/tests/fixtures/e2e_fingerprint.npz
+# Same exception, same reasoning: the verify-path parity fixtures
+# (fingerprint/dump_search_fixtures.py) are a synthetic K and the planes of
+# a synthetic exposure, from the same deterministic fake sensor.
+!rust/genesis-prnu/tests/fixtures/search/k.npz
+!rust/genesis-prnu/tests/fixtures/search/raw_planes.npz
 data/references/
 data/flats/
 data/shoots/

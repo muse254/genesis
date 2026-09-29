@@ -123,6 +123,31 @@ def main() -> None:
         "detail_resized": consistency.high_frequency_content(Image.open(OUT / "resized.png")),
     }
 
+    # --- the RAW path's input: planes as the desktop's /raw/decode sends them ---
+    np.savez(OUT / "raw_planes.npz", **{f"plane_{c}": p for c, p in planes.items()})
+    manifest["raw"] = {"planes": "raw_planes.npz", "developed": "aligned.png", "pce": prnu.score(planes, body)}
+
+    # --- _diagnose's EXIF branch: in-camera JPEG vs a desktop development ---
+    from console.app import _diagnose
+
+    manifest["diagnose"] = []
+    for name, software in {"exif_camera.jpg": None, "exif_lightroom.jpg": "Adobe Lightroom Classic 13.0"}.items():
+        exif = Image.Exif()
+        exif[271] = "Canon"
+        exif[272] = "Canon EOS R10"
+        if software:
+            exif[305] = software
+        base.resize((32, 24)).save(OUT / name, exif=exif, quality=85)
+        manifest["diagnose"].append({"file": name, "diagnosis": _diagnose(OUT / name, {})})
+
+    # --- stages, for the TypeScript port to match field for field ---
+    manifest["stages"] = consistency.stages(
+        matched=True,
+        registered=False,
+        signals={"effectiveStrength": 0.25, "resamplingPeak": 4.0, "bodyConsistency": None},
+        path="delivered",
+    )
+
     (OUT / "manifest.json").write_text(json.dumps(manifest, indent=2, default=float) + "\n")
     for case in manifest["cases"]:
         r = case["result"]

@@ -211,5 +211,54 @@
     "resamplingPeak": 3.6323617079544666,
     "detail": 188.3984375,
     "detail_resized": 14.609754253308129
-  }
+  },
+  "raw": {
+    "planes": "raw_planes.npz",
+    "developed": "aligned.png",
+    "pce": 20620.247107096133
+  },
+  "diagnose": [
+    {
+      "file": "exif_camera.jpg",
+      "diagnosis": "This looks like a JPEG written by the camera itself. Measured on this body, in-camera JPEGs carry no readable fingerprint \u2014 the camera's noise reduction removes it, because to the camera a sensor fingerprint is noise (docs/gates.md). Try the RAW, or a development of it."
+    },
+    {
+      "file": "exif_lightroom.jpg",
+      "diagnosis": null
+    }
+  ],
+  "stages": [
+    {
+      "stage": 1,
+      "name": "pixel match",
+      "asks": "do these pixels carry this body's fingerprint?",
+      "result": "match",
+      "decides": "whether to look further. A match alone claims nothing."
+    },
+    {
+      "stage": 2,
+      "name": "consistency",
+      "asks": "does anything about this image contradict a genuine capture?",
+      "result": [
+        {
+          "signal": "effectiveStrength",
+          "value": 0.25,
+          "auc": 0.767
+        },
+        {
+          "signal": "resamplingPeak",
+          "value": 4.0,
+          "auc": 0.517
+        }
+      ],
+      "decides": "nothing. Advisory only -- every signal here overlaps between genuine frames and forgeries, best AUC 0.900 on RAW and 0.725 on delivered. It may add doubt; it may never add confidence."
+    },
+    {
+      "stage": 3,
+      "name": "registration",
+      "asks": "did this body's owner register this image on chain?",
+      "result": "no registration",
+      "decides": "the verdict. This is the only stage that grants a claim."
+    }
+  ]
 }

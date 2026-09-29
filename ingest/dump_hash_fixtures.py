@@ -15,8 +15,8 @@ Writes synthetic images only (never a real photo) plus the hashes Python
 computes for them to ``rust/genesis-prnu/tests/fixtures/hashing/``:
 
 * PNGs -- lossless, so they test the Rust decoder and the hashes together.
-* JPEGs -- the part the Rust decoder cannot do. ``verify/jpeg/`` decodes
-  these with libjpeg-turbo in WASM, and ``verify/test/hashes.test.ts`` checks
+* JPEGs -- the part the Rust decoder cannot do. ``core/jpeg/`` decodes
+  these with libjpeg-turbo in WASM, and ``core/test/hashes.test.ts`` checks
   both hashes against this manifest. The sampling variants cover the
   chroma upsampling paths, which is where decoders disagree.
 
@@ -143,14 +143,14 @@ def main() -> None:
 def check() -> int:
     """Hash the committed fixtures with this interpreter; 0 if all agree."""
     manifest = json.loads((OUT / "manifest.json").read_text())
-    pinned = re.search(r"LIBJPEG_TURBO_VERSION=(\S+)", (ROOT / "verify" / "jpeg" / "build.sh").read_text())[1]
+    pinned = re.search(r"LIBJPEG_TURBO_VERSION=(\S+)", (ROOT / "core" / "jpeg" / "build.sh").read_text())[1]
     problems = []
 
     have = features.version("libjpeg_turbo")
     if not have == manifest["libjpeg_turbo"] == pinned:
         problems.append(
             f"libjpeg-turbo: this Pillow has {have}, the fixtures {manifest['libjpeg_turbo']}, "
-            f"verify/jpeg/build.sh pins {pinned}"
+            f"core/jpeg/build.sh pins {pinned}"
         )
     for case in manifest["cases"]:
         path = OUT / case["file"]

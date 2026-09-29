@@ -3,7 +3,7 @@
 //! the pixel hash has no tolerance, and the pHash port is bit-exact too.
 //!
 //! PNG cases only. The JPEG cases in the same manifest need libjpeg-turbo,
-//! which this crate does not link; `verify/test/hashes.test.ts` runs them.
+//! which this crate does not link; `core/test/hashes.test.ts` runs them.
 
 use std::fs;
 use std::path::PathBuf;

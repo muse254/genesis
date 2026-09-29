@@ -1,23 +1,24 @@
 /**
- * The image record's two hashes, computed in the browser.
+ * Decoding a photo to canonical RGB8, and the image record's two hashes.
  *
  * The same digests `ingest/hashing.py` computes: `imageHash` (SHA-256 over
- * canonical RGB8 pixels) and `perceptualHash` (64-bit DCT pHash). The photo
- * never leaves the page to get them -- this used to be a POST to a scoring
- * service's `/lookup`, which on GitHub Pages meant a request to localhost.
+ * canonical RGB8 pixels) and `perceptualHash` (64-bit DCT pHash).
  *
  * Decoding is split by format, because the pixel hash is exact and the
  * decoder decides the pixels:
  *
- * - JPEG goes through libjpeg-turbo compiled to WASM (`verify/jpeg/`), the
+ * - JPEG goes through libjpeg-turbo compiled to WASM (`core/jpeg/`), the
  *   same version Pillow bundles, so it decodes to the same bytes. The Rust
  *   `image` crate does not (15% of bytes off on a real photo).
  * - PNG and TIFF go through the Rust crate (`rust/genesis-prnu-wasm`).
  *   Lossless, so any correct decoder agrees.
- * - RAW is refused: developing one is LibRaw's job, and LibRaw has no WASM
- *   build.
+ * - RAW is refused here: developing one is LibRaw's job, and LibRaw has no
+ *   WASM build. The desktop decodes RAW in Python and passes the result in
+ *   (see `verify.ts`); the web page cannot.
  *
- * Both modules load lazily on first use and are cached.
+ * Both modules load lazily on first use and are cached. The pixels decoded
+ * here are also what PRNU scoring reads (`analyse.ts`), so the hash and the
+ * score always see the same image.
  */
 
 import initPrnu, { decodeRgb, imageHashes } from "./wasm/genesis_prnu_wasm.js";
@@ -28,33 +29,51 @@ export interface Hashes {
   perceptualHash: `0x${string}`;
 }
 
+export interface Decoded {
+  rgb: Uint8Array;
+  width: number;
+  height: number;
+}
+
 /** `hashing_raw_suffixes()` in `ingest/record.py`. */
-const RAW_SUFFIXES = [".cr3", ".cr2", ".crw", ".nef", ".arw", ".dng", ".raf", ".rw2"];
+export const RAW_SUFFIXES = [".cr3", ".cr2", ".crw", ".nef", ".arw", ".dng", ".raf", ".rw2"];
+
+export function isRaw(fileName: string): boolean {
+  const lower = fileName.toLowerCase();
+  return RAW_SUFFIXES.some((suffix) => lower.endsWith(suffix));
+}
 
 let prnu: Promise<unknown> | undefined;
 let jpeg: Promise<LibJpeg> | undefined;
 
 /**
- * Optional overrides for where the two `.wasm` binaries come from. The page
- * never passes these (both modules find their binary next to their JS);
- * the Node parity check does, because Node's `fetch` cannot read files.
+ * Optional override for where the Rust `.wasm` binary comes from. The pages
+ * never pass it (the module finds its binary next to its JS); tests and
+ * Node scripts do, because Node's `fetch` cannot read files.
  */
 export interface Loaders {
   prnuWasm?: BufferSource;
 }
 
-export async function hashImage(bytes: Uint8Array, fileName: string, loaders: Loaders = {}): Promise<Hashes> {
-  const lower = fileName.toLowerCase();
-  if (RAW_SUFFIXES.some((suffix) => lower.endsWith(suffix))) {
+/** Load the Rust WASM module once. Everything else in core that calls into it awaits this first. */
+export function ensurePrnu(loaders: Loaders = {}): Promise<unknown> {
+  prnu ??= initPrnu(loaders.prnuWasm ? { module_or_path: loaders.prnuWasm } : undefined);
+  return prnu;
+}
+
+/** Decode a JPEG, PNG or TIFF to canonical RGB8. Throws on RAW and on anything unreadable. */
+export async function decode(bytes: Uint8Array, fileName: string, loaders: Loaders = {}): Promise<Decoded> {
+  if (isRaw(fileName)) {
     throw new Error(
       "RAW files can't be checked in the browser. Export a JPEG, or verify the RAW in the desktop app.",
     );
   }
+  await ensurePrnu(loaders);
+  return isJpeg(bytes) ? decodeJpeg(bytes) : decodeLossless(bytes);
+}
 
-  prnu ??= initPrnu(loaders.prnuWasm ? { module_or_path: loaders.prnuWasm } : undefined);
-  await prnu;
-
-  const { rgb, width, height } = isJpeg(bytes) ? await decodeJpeg(bytes) : decodeLossless(bytes);
+/** Both hashes of pixels already decoded. */
+export function hashesOf({ rgb, width, height }: Decoded): Hashes {
   const hashes = imageHashes(rgb, width, height);
   try {
     return {
@@ -66,11 +85,16 @@ export async function hashImage(bytes: Uint8Array, fileName: string, loaders: Lo
   }
 }
 
+/** Decode and hash in one step. */
+export async function hashImage(bytes: Uint8Array, fileName: string, loaders: Loaders = {}): Promise<Hashes> {
+  return hashesOf(await decode(bytes, fileName, loaders));
+}
+
 function isJpeg(bytes: Uint8Array): boolean {
   return bytes.length > 3 && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff;
 }
 
-async function decodeJpeg(bytes: Uint8Array) {
+async function decodeJpeg(bytes: Uint8Array): Promise<Decoded> {
   jpeg ??= createLibJpeg();
   const lib = await jpeg;
 
@@ -92,7 +116,7 @@ async function decodeJpeg(bytes: Uint8Array) {
   }
 }
 
-function decodeLossless(bytes: Uint8Array) {
+function decodeLossless(bytes: Uint8Array): Decoded {
   let decoded;
   try {
     decoded = decodeRgb(bytes);

@@ -1,7 +1,7 @@
 """The browser's hash fixtures still describe this Python.
 
 ``rust/genesis-prnu/tests/fixtures/hashing/manifest.json`` is what the Rust
-and WASM ports are tested against (``cargo test``, ``verify/``'s
+and WASM ports are tested against (``cargo test``, ``core/``'s
 ``npm test``). If ``hashing.py`` changes, or Pillow is upgraded and brings a
 different libjpeg-turbo, the ports keep passing against the stale manifest
 while the verify page quietly stops matching what Python registers. These
@@ -26,9 +26,9 @@ MANIFEST = json.loads((FIXTURES / "manifest.json").read_text())
 
 
 def test_libjpeg_turbo_matches_the_manifest_and_the_wasm_build():
-    pinned = re.search(r"LIBJPEG_TURBO_VERSION=(\S+)", (ROOT / "verify" / "jpeg" / "build.sh").read_text())[1]
+    pinned = re.search(r"LIBJPEG_TURBO_VERSION=(\S+)", (ROOT / "core" / "jpeg" / "build.sh").read_text())[1]
     assert features.version("libjpeg_turbo") == MANIFEST["libjpeg_turbo"] == pinned, (
-        "Pillow's libjpeg-turbo, the fixtures and verify/jpeg/build.sh must agree; "
+        "Pillow's libjpeg-turbo, the fixtures and core/jpeg/build.sh must agree; "
         "see verify/README.md"
     )
 

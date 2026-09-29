@@ -10,7 +10,7 @@
 //! bundles (3.1.4.1 for Pillow 12.3.0), and the `image` crate's JPEG decoder
 //! does *not* reproduce it -- measured on `a-piece-of-quiet.jpg`, 15% of bytes
 //! differed, by up to 5 levels. The verify page therefore decodes JPEG with
-//! that same libjpeg-turbo compiled to WASM (`verify/jpeg/`) and hands the
+//! that same libjpeg-turbo compiled to WASM (`core/jpeg/`) and hands the
 //! RGB here. [`decode_rgb8`] is only for the lossless formats, where any
 //! correct decoder agrees.
 //!

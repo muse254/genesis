@@ -1,4 +1,4 @@
-// Real-photo parity: the browser hashes (verify/src/hashes.ts) against
+// Real-photo parity: the browser hashes (core/src/hashes.ts) against
 // ingest/hashing.py, on photos too large or too private to commit.
 //
 //   npm run parity -- ~/photos/a.jpg ~/photos/b.png
