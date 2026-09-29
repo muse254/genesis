@@ -58,7 +58,7 @@ export function createServer(client = new SubgraphClient(SUBGRAPH_URL)): McpServ
     {
       hash: z
         .string()
-        .describe("Pixel SHA-256 of the image, 0x-prefixed. Use the scoring service to compute it."),
+        .describe("Pixel SHA-256 of the image, 0x-prefixed. The verify page computes it in the browser (core/'s hashImage)."),
     },
     async ({ hash }) => text(describeImage(await client.imageByHash(hash), hash)),
   );

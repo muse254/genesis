@@ -42,7 +42,8 @@ Work happens on `colosseum` only. `main`, `ethonline` and the tag
       the Studio development URL is capped at 3,000 queries/day and is for testing only; a published
       subgraph queried with an API key has 100,000 free queries/month, then $2 per 100,000
 - [x] Scoring service has a public mode: no K, hashes only, refuses to start beside a reference
-- [ ] Scoring service hosted with `GENESIS_PUBLIC=1`: HTTPS on a real domain, health check green, survives reboot
+- [x] ~~Scoring service hosted with `GENESIS_PUBLIC=1`~~ -- not needed: since 29 Sept the verify page computes
+      both hashes in the browser in WASM and sends only them (`core/`, `docs/shared-verify-plan.md`)
 - [x] Verify page takes body identity from the chain record, and labels the stored PCE as owner-reported
 - [ ] Verify page public, pointed at Base; both Flow C branches live (exact hash; pHash via the subgraph, no re-score)
 - [ ] R10 body registered on mainnet with a camera commitment
@@ -57,17 +58,23 @@ Work happens on `colosseum` only. `main`, `ethonline` and the tag
 
 - [ ] Hot-pixel and defect map — `adversarial.md` §"Proposals, ranked", tier 1 item 2 (items 1 and 3 shipped 8 Sept)
 - [ ] MCP server real, not sketched: runs against the Base subgraph, `verify_image` / `lookup_body` / `image_lineage` answer from live data
-- [ ] MCP: an agent can check an image it holds, not only a hash it already knows (through the public service's hashes)
+- [ ] MCP: an agent can check an image it holds, not only a hash it already knows (core/'s `hashImage` computes them; the public service is no longer needed for it)
 - [ ] MCP: install instructions a stranger can follow; one recorded agent session
 - [ ] Push
 - [x] Rust port of the scoring core (not enrolment), compiled to WASM for
       in-browser scoring — Phases 0-5 done: `rust/genesis-prnu` (noise
       residual, cross-correlation, PCE, score, delivered-image decode,
       read-only `.npz` K reading), `rust/genesis-prnu-wasm`, and the
-      client-side local-scoring page `score/`. Phase 6, reusing it natively
-      from the desktop app in place of the PyO3-embedded Python interpreter,
-      is undecided/in progress in a separate effort — not done here. Plan
-      and phase breakdown in `docs/wasm-scoring-plan.md`
+      client-side local-scoring page `score/`. Plan and phase breakdown in
+      `docs/wasm-scoring-plan.md`
+- [x] One verify implementation for the web page and the desktop app (29 Sept,
+      `docs/shared-verify-plan.md`, phases A-E): `core/`, with the scale and
+      orientation search, portrait retry, border strip and consistency signals
+      ported to Rust and matched to Python to four decimals on real photos. The
+      verify page no longer posts photos anywhere; the desktop app verifies in
+      its webview and the console's `/verify` is gone
+- [ ] Registration onto `core/` too (phase E2): until then the app verifies
+      with the Rust port and registers with the Python original, parity-tested
 
 ## Week 3 — 1–7 Oct · Traction
 

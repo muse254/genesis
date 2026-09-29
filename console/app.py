@@ -2,14 +2,15 @@
 
     uvicorn console.app:app --host 127.0.0.1 --port 8100
 
-Spec `docs/console-server.md`, posture `docs/security.md`. This file has
-`/health`, `/state` and `/verify`. The signing endpoints come next and stay
-in their own module, so the boundary is visible in the file listing.
+Spec `docs/console-server.md`, posture `docs/security.md`. The signing
+endpoints live in their own module (`console/registry.py`), so the boundary
+is visible in the file listing.
 
-The pixel work is imported from `scoring.app` rather than reimplemented. The
-console and the public verify page must never disagree about what the pixels
-say -- if they did, the demo would be showing something the public page
-cannot reproduce.
+This server does not verify. Verification runs in the app's webview on
+`core/`, the code the public verify page runs too, so the console and the
+page cannot disagree about what the pixels say (`docs/shared-verify-plan.md`).
+What it serves for that is what a webview cannot do itself: the enrolled K
+files, RAW decoding, and read-only proxies to the chain and the index.
 """
 
 from __future__ import annotations
@@ -491,8 +492,9 @@ async def preview(file: UploadFile = File(...), longest_edge: int = Form(720)) -
     somewhere, and the only thing on this machine that can develop it is the
     scorer's own decoder.
 
-    Display only. Nothing here feeds a hash, a score or a record: `/verify`
-    and `/register-image` read the uploaded file, never this. A preview that
+    Display only. Nothing here feeds a hash, a score or a record:
+    verification (core/, from the file or `/raw/*`) and `/register-image`
+    read the uploaded file, never this. A preview that
     could influence a verdict would be a second decode path to disagree with
     the first.
     """

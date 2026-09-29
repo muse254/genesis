@@ -5,8 +5,9 @@
  * Every screen has the same four states: idle, working, a verdict, or an
  * error. Working states are determinate wherever the server gives us
  * something to count -- `/enrol` streams per frame, so that one is honest.
- * `/verify` and `/degrade` return once, so those show elapsed against a
- * typical figure and no fake sub-steps (`docs/console-server.md`).
+ * Verification reports each step from core/, the scale search counted one
+ * correlation at a time; `/degrade` returns once, so it shows elapsed
+ * against a typical figure and no fake sub-steps (`docs/console-server.md`).
  */
 
 import {

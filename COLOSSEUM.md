@@ -81,7 +81,7 @@ Nothing new is built. What works goes into production.
 | Task | Done when |
 | --- | --- |
 | Deploy the registry to mainnet | Verified on the explorer; address pinned; tx linked |
-| Host the scoring service | HTTPS on a real domain, health check green, survives reboot |
+| ~~Host the scoring service~~ | Not needed since 29 Sept: the verify page hashes photos in the browser (`core/`, `docs/shared-verify-plan.md`) |
 | Verify page public | Upload an image, get a verdict, both Flow C branches live |
 | Register the R10 for real | Body enrolled on mainnet, 20+ photographs registered and resolvable publicly |
 | README for a stranger | Verify an image in 60 seconds without opening `BUILD.md`. Link `adversarial.md` prominently |

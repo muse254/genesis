@@ -185,22 +185,18 @@ flowchart TB
   B5 -.->|events indexed| C2
 ```
 
-Flow B's scoring stage (`residual → PCE against K`) also has a second,
-WASM-only implementation now, for the local-scoring use case where a
-photographer scores against a K they hold themselves rather than searching
-across every enrolled body's. See `docs/wasm-scoring-plan.md` and `score/`.
+Flow C runs in the browser, from one implementation shared by the public
+verify page and the desktop app: `core/`, with the pixel work (both hashes,
+and scoring against K including the scale and orientation search) in Rust
+compiled to WASM (`docs/shared-verify-plan.md`). The public page holds no K,
+so it hashes, reads the chain and The Graph, and never sends the photo
+anywhere. The desktop app runs the same code with the K files it enrolled,
+which is how it can also say `fingerprint-only`. `score/` is the single-K
+version of the same idea, for a photographer scoring against their own K.
 
-Enrol and register are a CLI on the photographer's machine — that is where the
-RAW archive and K already are. Verify is the one browser surface for
-*lookup* — identifying an unknown photo against every enrolled body's K — and
-it posts to the scoring service rather than scoring in-browser because that
-job needs every photographer's K in one place to search, which would violate
-the "K never leaves the machine it was enrolled on" invariant if it ran
-client-side (§8, and `docs/security.md`, "Where K lives"). That is a
-custody-of-secrets constraint specific to lookup, not a language or
-performance one — `score/` scores client-side in Rust/WASM against the one K
-its own visitor already holds, precisely because it doesn't have this
-problem.
+Enrol and register are on the photographer's machine — that is where the RAW
+archive and K already are — and stay Python: enrolment and RAW decoding need
+`rawpy` (LibRaw), which has no WASM build.
 
 **Flow C's lower branch is the differentiator.** An exact pixel hash dies the
 moment a platform re-encodes or resizes. Everything that has actually been out
@@ -374,13 +370,11 @@ see `docs/wasm-scoring-plan.md`.
 
 ### Scoring service
 
-The verify page posts to the scoring service rather than scoring in the
-browser — not because a WASM path is impractical (`score/` now ships one,
-see `docs/wasm-scoring-plan.md`), but because verify's `/lookup` has to search
-across every enrolled body's K to identify an unknown photo, and shipping
-every photographer's K to a browser would violate the "K never leaves the
-machine it was enrolled on" invariant. See §4 and `docs/security.md`, "Where
-K lives".
+No longer on the verify path. The verify page used to post photos to it for
+their hashes; since 29 September it computes them itself in WASM (`core/`),
+and the desktop app scores against its own K the same way. The service
+remains for the Python tooling that calls it, and its public mode still
+holds no K (`docs/security.md`, "Where K lives").
 
 | Tool | Why |
 | --- | --- |
@@ -391,9 +385,10 @@ the honest reason CRE is in the design at all, rather than a sponsor tick.
 
 ### Verify page
 
-Plain HTML plus TypeScript, or a small Vite app. **No framework.** `viem` for
-chain reads, `fetch` to the scoring service. It is one page: an upload control
-and a result.
+A small Vite app. **No framework.** It is one page, an upload control and a
+result, over `core/`: libjpeg-turbo and the Rust core in WASM for the
+hashes, in a Web Worker, and `viem` for chain reads. The photo never leaves
+the browser.
 
 ### Confidential compute — built, on simulation
 

@@ -52,7 +52,7 @@ pub fn pce_threshold() -> f64 {
 ///
 /// The caller supplies the pixels because decoding is where exactness is
 /// won or lost -- see `genesis_prnu::hashing`. The verify page decodes JPEG
-/// with libjpeg-turbo (`verify/jpeg/`) and everything else with
+/// with libjpeg-turbo (`core/jpeg/`) and everything else with
 /// [`decode_rgb`].
 #[wasm_bindgen(js_name = imageHashes)]
 pub fn image_hashes(rgb: &[u8], width: usize, height: usize) -> Result<ImageHashes, JsValue> {

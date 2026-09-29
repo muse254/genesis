@@ -1,5 +1,14 @@
 # Rust scoring core, compiled to WASM: plan and handoff
 
+> **Status, 29 September 2026.** Phases 0–5 are done, and the work continued
+> in [`docs/shared-verify-plan.md`](shared-verify-plan.md). Phase 5's open
+> question, where browser scoring lives, was answered as `score/` and then
+> `core/`, the verification the web page and the desktop app now share.
+> Phase 6 (desktop reuse) went further than planned: the desktop app verifies
+> on the same WASM in its webview, including the crop and scale search this
+> plan left in Python. It measured no slower than native Rust. Enrolment and
+> RAW decoding remain Python, as this plan decided.
+
 Decided 23 September 2026, after proving feasibility in-session (see chat
 log / commit history around this date): `fingerprint/prnu.py`'s scoring
 path — everything except enrolment — runs with no dependency that WASM

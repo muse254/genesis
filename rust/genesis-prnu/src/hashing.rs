@@ -1,7 +1,7 @@
 //! The two content hashes of an image record -- a Rust port of
 //! `ingest/hashing.py`'s `pixel_sha256` and `perceptual_hash`, so the verify
-//! page can compute them in the browser instead of posting the photo to a
-//! scoring service.
+//! page and the desktop app (`core/`) compute them in the browser instead of
+//! posting the photo to a scoring service.
 //!
 //! Both start from canonical 8-bit RGB, row-major. **Producing those bytes is
 //! the caller's job, and it is the fragile part**: `pixel_sha256` is exact, so

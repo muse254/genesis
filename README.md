@@ -41,11 +41,12 @@ that exists; in-camera signing (C2PA) covers what is shot from now on.
 
 ## How it works
 
-The scoring stages below (`score against K`, in Register and Verify) also
-have a second, client-side implementation in Rust/WASM, used by the
-local-scoring page at [`score/`](score/) — see
-[`docs/wasm-scoring-plan.md`](docs/wasm-scoring-plan.md). RAW decode and
-enrolment remain Python-only.
+Verification is one implementation, [`core/`](core/), used by both the web
+page and the desktop app: Rust compiled to WASM for the pixel work (hashes,
+fingerprint scoring), TypeScript for the chain and the verdict. It runs in
+the browser, so a photo being verified never leaves it
+([`docs/shared-verify-plan.md`](docs/shared-verify-plan.md)). Enrolment, RAW
+decoding and registration remain Python, on the photographer's machine.
 
 ```mermaid
 flowchart TB
@@ -67,7 +68,7 @@ flowchart TB
 
   subgraph Verify["Verify · anyone, any image · web page"]
     direction TB
-    C1["upload"] --> C2["public hash service<br/>holds no fingerprints"]
+    C1["drop a photo"] --> C2["pixel hash + perceptual hash<br/>in the browser · the photo stays there"]
     C2 --> C3{"pixel hash<br/>on record?"}
     C3 -->|yes| C4["REGISTERED"]
     C3 -->|no| C5["The Graph<br/>perceptual-hash lookup"]
@@ -99,8 +100,10 @@ because the app holds their key and a relayer pays the fee.
 **Verify.** Anyone drops an image on the web page. An exact pixel hash means
 this is the registered file. A resized or re-encoded copy has a different
 hash, so the perceptual hash finds the original through The Graph, and the
-registry confirms it before anything is shown. The public service only
-hashes; fingerprint scoring happens on the photographer's machine, where K is.
+registry confirms it before anything is shown. The page computes both hashes
+in the browser and sends only them. The desktop app runs the same
+verification, and adds a fingerprint score against its own K, which stays on
+the photographer's machine.
 
 Where K lives, what the stored score does and does not mean, and why scoring
 in the cloud or with a proof is future work:
