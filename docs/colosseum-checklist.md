@@ -78,6 +78,10 @@ Work happens on `colosseum` only. `main`, `ethonline` and the tag
 
 ## Week 3 — 1–7 Oct · Traction
 
+- [ ] Genesis Cloud decisions C1 (who can decrypt K) and C2 (Stripe entity/country) — `docs/cloud-plan.md`
+- [ ] Only if mainnet is live and traction is on track by ~5 Oct: cloud slice C1–C2 (sign-in, Stripe test mode, encrypted K backup)
+- [ ] Pitch: the open-core + Genesis Cloud revenue model, stated as planned unless built
+
 - [ ] osoroprints: every print sold carries a Genesis certificate linking to its record
 - [ ] osoroprints: first customer through the live integration
 - [ ] Onboarding path a stranger can finish: enrol, commit, register — with their own key and their own gas

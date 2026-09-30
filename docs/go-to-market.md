@@ -60,6 +60,15 @@ camera serial stays hidden unless its owner chooses to reveal it.
 Photographers pay for a dispute, not for insurance. Businesses pay to not have
 disputes.
 
+**How photographers pay (decided 30 September): a subscription to Genesis
+Cloud** over a free open-source core. The subscription bundles what the row
+above prices separately (dispute packs, sponsored registrations) with what a
+photographer cannot easily do alone: keeping their fingerprint K and their RAW
+archive backed up and synced across devices, encrypted on the device so that
+Genesis cannot read them, plus certificate pages. Planned, not built; tiers,
+architecture and open decisions in `docs/cloud-plan.md`. Prices come from week
+3's notes.
+
 ## Distribution
 
 - **Certificates on physical prints.** Every osoroprints certificate links to

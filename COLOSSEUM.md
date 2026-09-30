@@ -143,6 +143,13 @@ A week, not a night.
 - **Market.** Photo competitions first. Then stock and licensing, AI
   training-data provenance, print marketplaces. Photographers pay for a
   dispute, not for insurance.
+- **Revenue model (decided 30 Sept).** Open core, paid cloud. Everything that
+  runs on the photographer's machine is open source and free; **Genesis
+  Cloud** charges for keeping K and the RAW archive safe off the machine
+  (encrypted on the device, so Genesis cannot read them), gas-free
+  registration, certificate pages and dispute packs, in the web page and the
+  desktop app alike. Plan, tiers and the decisions it needs:
+  `docs/cloud-plan.md`. Pitch it as a planned tier unless it is built.
 - **Claims discipline holds.** `docs/claims.md` governs the pitch too.
 
 ---
@@ -160,6 +167,12 @@ Cut from the bottom.
 ---
 
 ## 9. Open, raise rather than guess
+
+- **Genesis Cloud decisions** (`docs/cloud-plan.md`): C1, who can decrypt K
+  (recommended: only the user, keys on the device); C2, which entity and
+  country the Stripe account belongs to. Both block building it. The plan's
+  Colosseum slice is only worth building if mainnet is live and week 3 is on
+  track by ~5 October.
 
 - Confirm the event: the site shows Crypto World's Fair 14 Sept – 12 Oct; the
   blog lists a Fall hackathon 28 Sept – 2 Nov. Possibly the same thing renamed.

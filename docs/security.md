@@ -150,6 +150,14 @@ Decided 17 September for Colosseum, after dropping CRE (`COLOSSEUM.md` §3).
 there, in the console and the desktop app, next to the RAW archive that
 produced K. No server holds a reference.
 
+**Planned (30 September), not built: Genesis Cloud may store K, and only as
+ciphertext it cannot read.** The paid tier (`docs/cloud-plan.md`) backs K and
+the RAW archive up off the machine. It keeps this section true only if the
+encryption happens on the device with a key Genesis never holds (the plan's
+decision C1, recommended that way). If server-held keys were chosen instead,
+this section would have to say Genesis can read K, and the claims would
+change with it.
+
 **The hosted scoring service holds nothing.** It runs with `GENESIS_PUBLIC=1`:
 it loads no reference, answers `/score` with 403,
 and refuses to start if a reference is present in its directory. Its only job
