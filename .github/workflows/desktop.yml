@@ -21,7 +21,26 @@ permissions:
   contents: write
 
 jobs:
+  # tauri-action creates the release when none exists, and since 12 Oct GitHub
+  # refuses that call ("Resource not accessible by integration") while still
+  # accepting uploads to an existing one. So the draft is made here, once,
+  # before any platform builds.
+  prepare:
+    if: ${{ github.ref_type == 'tag' }}
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      TAG: ${{ github.ref_name }}
+    steps:
+      - name: Create the draft release
+        run: |
+          gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1 ||
+            gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --draft --prerelease --verify-tag \
+              --title "Genesis desktop ${TAG#desktop-}" --notes "Building."
+
   build:
+    needs: prepare
+    if: ${{ !cancelled() && (needs.prepare.result == 'success' || needs.prepare.result == 'skipped') }}
     strategy:
       fail-fast: false
       matrix:
@@ -94,11 +113,12 @@ jobs:
 
   # Publish the draft once every platform has built: installers renamed to
   # genesis-<version>-<os>-<arch>.<ext>, a SHA256SUMS.txt, then a normal
-  # release, so the landing page's releases/latest link finds it. Runs even
-  # if one platform failed, publishing whatever did build.
+  # release, so the landing page's releases/latest link finds it.
+  # Only a complete release is published: a missing platform would become
+  # "latest" and leave that platform's download button with nothing to fetch.
   publish:
     needs: build
-    if: ${{ !cancelled() && github.ref_type == 'tag' }}
+    if: ${{ needs.build.result == 'success' && github.ref_type == 'tag' }}
     runs-on: ubuntu-latest
     env:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
