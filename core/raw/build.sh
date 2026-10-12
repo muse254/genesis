@@ -26,7 +26,9 @@ mkdir -p "$work" "$out"
 if [ ! -d "$src" ]; then
   tarball="$work/LibRaw-$LIBRAW_VERSION.tar.gz"
   curl -sSfL -o "$tarball" "https://www.libraw.org/data/LibRaw-$LIBRAW_VERSION.tar.gz"
-  echo "$LIBRAW_SHA256  $tarball" | shasum -a 256 -c - >/dev/null
+  # sha256sum on Linux and Git Bash (Windows), shasum on macOS; exactly one decides.
+  if command -v sha256sum >/dev/null; then sumcheck="sha256sum -c -"; else sumcheck="shasum -a 256 -c -"; fi
+  echo "$LIBRAW_SHA256  $tarball" | $sumcheck >/dev/null
   tar xzf "$tarball" -C "$work"
 fi
 
