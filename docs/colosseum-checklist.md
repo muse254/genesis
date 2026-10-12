@@ -22,14 +22,14 @@ Work happens on `colosseum` only. `main`, `ethonline` and the tag
 
 - [ ] Deployer key chosen and backed up — it owns the R10 body forever; there is no transfer
 - [x] Rehearsal key funded: `0x63723f1C…2137` holds Base Sepolia ETH, bridged from the ETHOnline deployer (faucets want a mainnet balance)
-- [ ] Mainnet key decided and funded with ~0.005 ETH on Base
+- [x] Mainnet key decided and funded with ~0.005 ETH on Base -- `0xc0b60Ce1…625A`, 0.00465 ETH, 12 Oct
 - [x] Rehearse on Base Sepolia — 17 Sept
   - test registry [`0x0C0F3Ec87339F985c509c01dEE8474BB8f5b0EB2`](https://sepolia.basescan.org/address/0x0c0f3ec87339f985c509c01dee8474bb8f5b0eb2), `testMode` true, verified on Basescan
   - R10 body registered ([tx](https://sepolia.basescan.org/tx/0xec7bf4dee6428634bc7ecf2a1a75f2a70554a47f2ad75c59ec870323301833aa)); IMG_0191 registered at PCE 220,907 ([tx](https://sepolia.basescan.org/tx/0xa7cba6cae1f5677ce756e23bd5faa533747d60ef805c7526de24e05f8b8b4e83))
   - public scorer (`GENESIS_PUBLIC=1`, no references) refuses `/score` and returns the pixel hash, which resolves on chain to the R10 body
 - [ ] Verify page driven in a browser against the Base Sepolia registry
-- [ ] Deploy to Base mainnet, `REGISTRY_TEST_MODE` unset (false)
-- [ ] Verified on Basescan; address and deploy tx pinned in README and `.env.example`
+- [x] Deploy to Base mainnet, `REGISTRY_TEST_MODE` unset (false) -- 12 Oct, block 52505470, 0.000008 ETH
+- [x] Verified on Basescan; address and deploy tx pinned in README and `.env.example` -- [`0xBa5Ea549c9e1414C14038dB050e0caCB4f9E48cB`](https://basescan.org/address/0xBa5Ea549c9e1414C14038dB050e0caCB4f9E48cB), [tx](https://basescan.org/tx/0x24d5f952de05e5280406923be51c281dd1b1feb5bf174141ee079d90e4da6582)
 - [x] Subgraph on Base Sepolia for the rehearsal — `genesis` v0.1.0-base-sepolia
       (22 Sept), indexing the rehearsal registry from its actual deploy block
       (46937327). Found by the dashboard's first real query: every

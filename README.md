@@ -9,7 +9,7 @@
 check a copy that has already left.**
 
 Colosseum · Crypto World's Fair 2026 · built on Base · rehearsed on Base
-Sepolia, **mainnet not yet deployed**
+Sepolia, **live on Base mainnet**
 
 ---
 
@@ -88,7 +88,7 @@ that exists; in-camera signing (C2PA) covers what is shot from now on.
 
 | | Address | Status |
 | --- | --- | --- |
-| **Base mainnet** registry | **TBD — see [`docs/mainnet-deploy.md`](docs/mainnet-deploy.md)** | Not deployed yet |
+| **Base mainnet** registry | [`0xBa5Ea549c9e1414C14038dB050e0caCB4f9E48cB`](https://basescan.org/address/0xBa5Ea549c9e1414C14038dB050e0caCB4f9E48cB) | Live since 12 Oct 2026, block 52505470 ([deploy tx](https://basescan.org/tx/0x24d5f952de05e5280406923be51c281dd1b1feb5bf174141ee079d90e4da6582)). `testMode` false, `VERSION` 1.0.0, verified on Basescan. Subgraph and verify page move here next |
 | Base Sepolia test registry | [`0x0C0F3Ec87339F985c509c01dEE8474BB8f5b0EB2`](https://sepolia.basescan.org/address/0x0c0f3ec87339f985c509c01dee8474bb8f5b0eb2) | Live; what the verify page reads today. Subgraph `genesis` v0.1.0-base-sepolia |
 | Ethereum Sepolia (ETHOnline) | `0xd1bbDB8A6BfD25563d2e6444fA41E4C5230Ed3C9` | Historical; no longer used |
 
