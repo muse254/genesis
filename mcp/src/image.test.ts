@@ -131,10 +131,10 @@ test("~ expands to the home directory", () => {
   assert.ok(expandPath("~/a.jpg").endsWith("/a.jpg"));
 });
 
-test("GENESIS_SUBGRAPH_URL wins; otherwise GENESIS_CHAIN picks, defaulting to Base Sepolia", () => {
+test("GENESIS_SUBGRAPH_URL wins; otherwise GENESIS_CHAIN picks, defaulting to Base mainnet", () => {
   assert.equal(subgraphUrl({ GENESIS_SUBGRAPH_URL: "http://x", GENESIS_CHAIN: "base" }), "http://x");
-  assert.match(subgraphUrl({}), /base-sepolia/);
+  assert.match(subgraphUrl({}), /v1\.0\.0-base$/);
+  assert.match(subgraphUrl({ GENESIS_CHAIN: "base-sepolia" }), /base-sepolia/);
   assert.match(subgraphUrl({ GENESIS_CHAIN: "sepolia" }), /v0\.0\.5/);
-  assert.throws(() => subgraphUrl({ GENESIS_CHAIN: "base" }), /No subgraph is published.*GENESIS_SUBGRAPH_URL/);
   assert.throws(() => subgraphUrl({ GENESIS_CHAIN: "mainnet" }), /not one of/);
 });

@@ -20,7 +20,7 @@ Work happens on `colosseum` only. `main`, `ethonline` and the tag
 
 ## Week 1 — 17–23 Sept · Go live
 
-- [ ] Deployer key chosen and backed up — it owns the R10 body forever; there is no transfer
+- [x] Deployer key chosen and backed up — `0xc0b60Ce1…625A`, an encrypted Foundry keystore plus a paper copy, 12 Oct. It owns the R10 body; registry 1.0.0 adds `transferBody`, so the body can move to the founder's account later
 - [x] Rehearsal key funded: `0x63723f1C…2137` holds Base Sepolia ETH, bridged from the ETHOnline deployer (faucets want a mainnet balance)
 - [x] Mainnet key decided and funded with ~0.005 ETH on Base -- `0xc0b60Ce1…625A`, 0.00465 ETH, 12 Oct
 - [x] Rehearse on Base Sepolia — 17 Sept
@@ -46,8 +46,11 @@ Work happens on `colosseum` only. `main`, `ethonline` and the tag
       both hashes in the browser in WASM and sends only them (`core/`, `docs/shared-verify-plan.md`)
 - [x] Verify page takes body identity from the chain record, and labels the stored PCE as owner-reported
 - [ ] Verify page public, pointed at Base; both Flow C branches live (exact hash; pHash via the subgraph, no re-score)
-- [ ] R10 body registered on mainnet with a camera commitment
-- [ ] 20+ photographs registered, each resolvable from the public verify page
+- [x] R10 body registered on mainnet with a camera commitment — 12 Oct, body `0x653c40dd…3b37`, [tx](https://basescan.org/tx/0x624ab10d31a4fdc9f649c7a9af013ef87239fd921e96dc8c8d576d2c2bf9c881), 96,489 gas
+- [x] 20+ photographs registered, each resolvable from the public verify page — 12 Oct, 20 OsoroPrints JPEGs at PCE 12,117–140,753, each scored against the R10 before registration
+  - **Measured cost:** 227,415 gas per photograph on average, 0.0000013 ETH each including the L1 fee (0.000026 ETH for all 20)
+  - Checked through core's WASM, the verify page's own code: 20/20 exact JPEGs resolve, and 20/20 copies resized to 1600 px, re-encoded at quality 72 and stripped of EXIF trace back by perceptual hash (Hamming distance 0–2 of 64)
+  - Still to do: drive the published page in a browser once `main` is pushed
 - [ ] README for a stranger: verify an image in 60 seconds without `BUILD.md`; `adversarial.md` linked prominently
 - [ ] README and `docs/claims.md` point at the Base address, not Sepolia; the "test registry" caveat updated for a production registry
 - [x] Say what happened to CRE: code removed; `docs/cre.md` and `docs/security.md` say so

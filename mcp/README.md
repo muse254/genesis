@@ -69,15 +69,11 @@ every committed hash fixture, JPEG included.
 | variable | default | meaning |
 |---|---|---|
 | `GENESIS_SUBGRAPH_URL` | — | Read this subgraph. Takes precedence over `GENESIS_CHAIN` |
-| `GENESIS_CHAIN` | `base-sepolia` | Read the subgraph published for this chain: `base-sepolia`, `sepolia` (the older ETHOnline registry), `anvil` (a local graph-node at `127.0.0.1:8000`), or `base` |
+| `GENESIS_CHAIN` | `base` | Read the subgraph published for this chain: `base` (production), `base-sepolia` (the rehearsal registry), `sepolia` (the older ETHOnline registry), or `anvil` (a local graph-node at `127.0.0.1:8000`) |
 
-With neither set, the server reads the Base Sepolia registry. It is the
-registry the verify page uses now:
-`https://api.studio.thegraph.com/query/1758974/genesis/v0.1.0-base-sepolia`.
-
-**Base mainnet is not deployed yet.** `GENESIS_CHAIN=base` stops with an
-error that asks for `GENESIS_SUBGRAPH_URL`. When the mainnet subgraph is
-published, set that variable to its URL, or add the URL to `src/config.ts`.
+With neither set, the server reads the Base mainnet registry 1.0.0, the one
+the verify page uses:
+`https://api.studio.thegraph.com/query/1758974/genesis/v1.0.0-base`.
 
 The Studio query URL above has a rate limit. It is fine for an agent
 checking a few photos. For heavy use, publish the subgraph to The Graph's
@@ -97,7 +93,7 @@ claude mcp add genesis -- node /abs/path/to/certify-the-camera/mcp/dist/server.j
 To read a different registry:
 
 ```sh
-claude mcp add genesis -e GENESIS_CHAIN=sepolia -- node /abs/path/to/certify-the-camera/mcp/dist/server.js
+claude mcp add genesis -e GENESIS_CHAIN=base -- node /abs/path/to/certify-the-camera/mcp/dist/server.js
 ```
 
 Check it with `claude mcp list`, or with `/mcp` inside a session.
@@ -114,7 +110,7 @@ Open *Settings → Developer → Edit Config*. This opens
     "genesis": {
       "command": "node",
       "args": ["/abs/path/to/certify-the-camera/mcp/dist/server.js"],
-      "env": { "GENESIS_CHAIN": "base-sepolia" }
+      "env": { "GENESIS_CHAIN": "base" }
     }
   }
 }

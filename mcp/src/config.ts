@@ -4,21 +4,21 @@
  * `GENESIS_SUBGRAPH_URL` wins when set. Otherwise `GENESIS_CHAIN` (the same
  * keys as the console and verify page: base | base-sepolia | sepolia |
  * anvil) picks the published deployment for that chain, defaulting to
- * base-sepolia, the registry this project currently points at.
+ * base, the production registry 1.0.0.
  */
 
 export const CHAIN_SUBGRAPHS: Record<string, string | null> = {
-  // The Colosseum rehearsal registry (verify/.env.example).
+  // Production: registry 1.0.0, 0xBa5Ea549...48cB (README, "Deployments").
+  base: "https://api.studio.thegraph.com/query/1758974/genesis/v1.0.0-base",
+  // The Colosseum rehearsal registry, a test registry whose records can be wiped.
   "base-sepolia": "https://api.studio.thegraph.com/query/1758974/genesis/v0.1.0-base-sepolia",
-  // Production. Not deployed yet: set GENESIS_SUBGRAPH_URL once it is.
-  base: null,
   // The ETHOnline deployment, still readable.
   sepolia: "https://api.studio.thegraph.com/query/1758974/genesis/v0.0.5",
   // contracts/script/local-e2e.sh with a local graph-node.
   anvil: "http://127.0.0.1:8000/subgraphs/name/genesis",
 };
 
-export const DEFAULT_CHAIN = "base-sepolia";
+export const DEFAULT_CHAIN = "base";
 
 export function subgraphUrl(env: Record<string, string | undefined> = process.env): string {
   if (env.GENESIS_SUBGRAPH_URL) return env.GENESIS_SUBGRAPH_URL;
