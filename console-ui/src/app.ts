@@ -23,6 +23,8 @@ import { api, ETHERSCAN, readContractUrl } from "./api";
 import type { ReferenceLink, State } from "./api";
 import { el, escape, short, utc, verdictCard } from "./components";
 import { verifyStreaming } from "./verifier";
+// The version shown in Settings is the one the installer was built as.
+import tauriConf from "../../desktop/src-tauri/tauri.conf.json";
 
 type ViewId = "home" | "photos" | "verify" | "cameras" | "settings";
 
@@ -624,49 +626,36 @@ async function renderCameras(host: HTMLElement) {
 // --- Settings ---------------------------------------------------------
 
 async function renderSettings(host: HTMLElement) {
-  host.innerHTML = `<h1 class="title">Settings</h1><p class="lede">Loading…</p>`;
-  let state: State;
+  // Written for photographers: no keys, chains or environment variables.
+  // Those are the developer console's business, not this app's.
+  let state: State | undefined;
   try {
     state = await getState(true);
-  } catch (error) {
-    host.innerHTML = "";
-    host.append(failure("CONSOLE UNREACHABLE", (error as Error).message));
-    return;
+  } catch {
+    /* offline: the page still says what it can */
   }
-
-  const rows = state.checks
-    .filter((c) => c.check !== "registry")
-    .map(
-      (c) => `<div class="detail-row"><span class="label">${escape(c.check)}</span>
-        ${c.go ? "" : `<span style="color:var(--error)">⚠ </span>`}${escape(c.measured)}
-        ${!c.go && c.remedy ? `<p class="hint">${escape(c.remedy)}</p>` : ""}</div>`,
-    )
-    .join("");
+  const online = state?.checks.some((c) => c.check.includes("chain id") && c.go) ?? false;
+  const record = state?.chain?.registry
+    ? `${state.chain.etherscan ?? ETHERSCAN}/address/${state.chain.registry}`
+    : "";
 
   host.innerHTML = `
     <h1 class="title">Settings</h1>
-    <p class="lede">What this machine is connected to, and how registrations are signed.</p>
     <div class="panel">
-      <h2>Network</h2>
-      <div class="detail-row"><span class="label">Chain</span>${escape(state.chain?.chainName ?? "unknown")}</div>
-      <div class="detail-row"><span class="label">Registry</span>
-        ${state.chain?.registry
-          ? `<a class="mono" href="${escape(`${state.chain.etherscan ?? ETHERSCAN}/address/${state.chain.registry}`)}" target="_blank" rel="noreferrer">${escape(short(state.chain.registry))} ↗</a>`
-          : "not set"}</div>
-      ${rows}
+      <h2>Account</h2>
+      <div class="detail-row"><span class="label">Sign in</span>With your email (Google). Coming soon.</div>
     </div>
     <div class="panel">
-      <h2>Signing</h2>
-      <p style="font-size:12.5px;color:var(--secondary);line-height:1.6;margin:0">
-        Registrations are signed by the key configured for this app. A per-photographer
-        key that needs no wallet and no gas, held in this device's keychain, is planned —
-        see <span class="mono">docs/colosseum-checklist.md</span>.
-      </p>
+      <h2>Privacy</h2>
+      <div class="detail-row"><span class="label">Your photos</span>Stay on this computer.</div>
+      <div class="detail-row"><span class="label">Your camera's fingerprint</span>Stays on this computer.</div>
+      <div class="detail-row"><span class="label">Public record</span>
+        ${record ? `<a href="${escape(record)}" target="_blank" rel="noreferrer">View ↗</a>` : "Unavailable offline"}</div>
     </div>
     <div class="panel">
       <h2>About</h2>
-      <div class="detail-row"><span class="label">Fingerprint</span>Stays on this machine. Only hashes and commitments leave it.</div>
-      <div class="detail-row"><span class="label">Version</span>Genesis 0.1.0</div>
+      <div class="detail-row"><span class="label">Status</span>${online ? "Online" : "Offline"}</div>
+      <div class="detail-row"><span class="label">Version</span>Genesis ${escape(tauriConf.version)}</div>
     </div>`;
 }
 
@@ -679,9 +668,7 @@ async function heartbeat() {
     const state = await getState(true);
     const ok = state.checks.some((c) => c.check.includes("chain id") && c.go);
     status.classList.toggle("down", !ok);
-    status.querySelector("span")!.textContent = state.chain?.chainName
-      ? (ok ? state.chain.chainName : "unreachable")
-      : "no chain";
+    status.querySelector("span")!.textContent = ok ? "Online" : "Offline";
     const attention = (state.bodyStatus ?? []).some((b) => !b.registered);
     badge.hidden = !attention;
     if (currentView === "home" || currentView === "cameras") {
@@ -690,7 +677,7 @@ async function heartbeat() {
     }
   } catch {
     status.classList.add("down");
-    status.querySelector("span")!.textContent = "unreachable";
+    status.querySelector("span")!.textContent = "Offline";
   }
 }
 

@@ -17,7 +17,8 @@
       "@genesis/core": [
         "../core/src/index.ts"
       ]
-    }
+    },
+    "resolveJsonModule": true
   },
   "include": [
     "src",
