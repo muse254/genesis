@@ -232,6 +232,27 @@ def test_signing_needs_a_key(client, monkeypatch):
         reg._key()
 
 
+def test_a_keystore_signs_without_the_key_on_argv(tmp_path, monkeypatch):
+    from console import registry as reg
+
+    password = tmp_path / "pass"
+    password.write_text("pw")
+    monkeypatch.setenv("DEPLOYER_PRIVATE_KEY", "0x" + "11" * 32)
+    monkeypatch.setenv("DEPLOYER_ACCOUNT", "genesis-deployer")
+    monkeypatch.setenv("DEPLOYER_PASSWORD_FILE", str(password))
+    wallet, secret = reg._signer()
+    assert wallet == ["--account", "genesis-deployer", "--password-file", str(password)]
+    assert secret is None
+
+    monkeypatch.setenv("DEPLOYER_PASSWORD_FILE", str(tmp_path / "missing"))
+    with pytest.raises(Exception):
+        reg._signer()
+
+    monkeypatch.delenv("DEPLOYER_ACCOUNT")
+    wallet, secret = reg._signer()
+    assert wallet == ["--private-key", "0x" + "11" * 32] and secret == "0x" + "11" * 32
+
+
 def test_the_hmac_key_becomes_bytes():
     """It arrives from the environment as str; hmac.new rejects that with a
     TypeError inside the request, which surfaced as a bare 500."""

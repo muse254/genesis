@@ -67,6 +67,28 @@ def _key() -> str:
     return key
 
 
+def _signer() -> tuple[list[str], str | None]:
+    """The wallet flags for `cast send`, and the secret to redact from errors.
+
+    A Foundry keystore (`DEPLOYER_ACCOUNT`, from `cast wallet import`) wins
+    when it is set: the key stays encrypted on disk and never reaches argv.
+    Its password comes from `DEPLOYER_PASSWORD_FILE`, since there is no
+    terminal here to prompt on. `DEPLOYER_PRIVATE_KEY` remains the fallback.
+    """
+    account = os.environ.get("DEPLOYER_ACCOUNT", "").strip()
+    if account:
+        password_file = os.path.expanduser(os.environ.get("DEPLOYER_PASSWORD_FILE", "").strip())
+        if not password_file or not os.path.isfile(password_file):
+            raise HTTPException(
+                503,
+                "DEPLOYER_ACCOUNT is set but DEPLOYER_PASSWORD_FILE is not a readable file; "
+                "the console cannot unlock the keystore",
+            )
+        return ["--account", account, "--password-file", password_file], None
+    key = _key()
+    return ["--private-key", key], key
+
+
 def _invalidate_state() -> None:
     """Drop the cached pre-flight gate after anything that changes it.
 
@@ -96,10 +118,11 @@ def cast_send(args: list[str]) -> dict:
     # Acceptable for a localhost demo driver on the operator's own machine
     # (`docs/security.md`), and not acceptable for anything hosted -- which
     # this is not, and must not become.
+    wallet, secret = _signer()
     command = [
         "cast", "send", chain.REGISTRY, *args,
         "--rpc-url", chain.RPC_URL,
-        "--private-key", _key(),
+        *wallet,
         "--json",
     ]
     try:
@@ -138,7 +161,7 @@ def cast_send(args: list[str]) -> dict:
 
         # stderr can echo the calldata; the key is redacted so a failed
         # transaction cannot spill it into a log or a screen recording.
-        leaked = done.stderr.replace(_key(), "<key>").strip()
+        leaked = (done.stderr.replace(secret, "<key>") if secret else done.stderr).strip()
         raise HTTPException(502, f"transaction failed: {leaked[:400]}")
 
     import json
