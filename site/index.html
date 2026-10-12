@@ -1,94 +1,940 @@
-<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Genesis -- download the desktop app</title>
-  <meta name="description" content="Register your photographs against the camera that took them. Download the Genesis desktop app." />
-  <link rel="icon" href="assets/genesis-mark-ink.png" />
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;600;700;800&display=swap" />
-  <link rel="stylesheet" href="style.css" />
+<!DOCTYPE html>
+<html><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Genesis — an origin registry for photographers</title>
+<meta name="description" content="Register your photographs against the camera that took them. Anyone can check a copy that has already left — resized, re-compressed, stripped — and see whether it traces back to you.">
+<link rel="icon" href="assets/genesis-mark-ink.png">
+<script>window.__resources={"https://unpkg.com/react@18.3.1/umd/react.production.min.js":"assets/landing/react.production.min.js","https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js":"assets/landing/react-dom.production.min.js"};</script>
+<script src="assets/landing/dc-runtime.js"></script>
 </head>
 <body>
-  <header class="top">
-    <div class="wrap">
-      <a href="./"><img src="assets/genesis-lockup-horizontal-ink.png" alt="Genesis" /></a>
-      <nav>
-        <a href="./" aria-current="page">Home</a>
-        <a href="./verify/">Verify</a>
-        <a href="./score/">Score</a>
-        <a href="./dashboard/">Dashboard</a>
-        <a href="https://github.com/muse254/genesis">Source</a>
-      </nav>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+<style>/* vietnamese */
+@font-face {
+  font-family: 'Archivo';
+  font-style: normal;
+  font-weight: 400 900;
+  font-stretch: 62% 125%;
+  font-display: swap;
+  src: url("assets/landing/fonts/d6ee31f7-c12d-40d2-83b8-5572a96d628a.woff2") format('woff2');
+  unicode-range: U+0102-0103, U+0110-0111, U+0128-0129, U+0168-0169, U+01A0-01A1, U+01AF-01B0, U+0300-0301, U+0303-0304, U+0308-0309, U+0323, U+0329, U+1EA0-1EF9, U+20AB;
+}
+/* latin-ext */
+@font-face {
+  font-family: 'Archivo';
+  font-style: normal;
+  font-weight: 400 900;
+  font-stretch: 62% 125%;
+  font-display: swap;
+  src: url("assets/landing/fonts/3237f351-6f91-405b-a563-fc0e08aaf7c9.woff2") format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+/* latin */
+@font-face {
+  font-family: 'Archivo';
+  font-style: normal;
+  font-weight: 400 900;
+  font-stretch: 62% 125%;
+  font-display: swap;
+  src: url("assets/landing/fonts/09f606cb-14d3-4691-b36e-e2a86986532a.woff2") format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+/* cyrillic-ext */
+@font-face {
+  font-family: 'IBM Plex Mono';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("assets/landing/fonts/ffa96370-e6be-45da-8dd7-a1221dfd6981.woff2") format('woff2');
+  unicode-range: U+0460-052F, U+1C80-1C8A, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
+}
+/* cyrillic */
+@font-face {
+  font-family: 'IBM Plex Mono';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("assets/landing/fonts/26b03dcd-4b18-4ff9-af5f-b9671afea832.woff2") format('woff2');
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+/* vietnamese */
+@font-face {
+  font-family: 'IBM Plex Mono';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("assets/landing/fonts/0af707dc-d992-4baa-94a7-5d51c79a39b5.woff2") format('woff2');
+  unicode-range: U+0102-0103, U+0110-0111, U+0128-0129, U+0168-0169, U+01A0-01A1, U+01AF-01B0, U+0300-0301, U+0303-0304, U+0308-0309, U+0323, U+0329, U+1EA0-1EF9, U+20AB;
+}
+/* latin-ext */
+@font-face {
+  font-family: 'IBM Plex Mono';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("assets/landing/fonts/3bc16169-207c-4ccd-a4b7-cc10066ad617.woff2") format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+/* latin */
+@font-face {
+  font-family: 'IBM Plex Mono';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("assets/landing/fonts/13791a54-68c5-4d1f-a51d-925bfae16f08.woff2") format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+/* cyrillic-ext */
+@font-face {
+  font-family: 'IBM Plex Mono';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("assets/landing/fonts/0442e04f-c617-439f-8bd2-142745fd7e8f.woff2") format('woff2');
+  unicode-range: U+0460-052F, U+1C80-1C8A, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
+}
+/* cyrillic */
+@font-face {
+  font-family: 'IBM Plex Mono';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("assets/landing/fonts/1120981f-be11-44df-8f09-3d57e0e3a536.woff2") format('woff2');
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+/* vietnamese */
+@font-face {
+  font-family: 'IBM Plex Mono';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("assets/landing/fonts/d0aa5681-9b0d-403f-8006-d560fdbeb542.woff2") format('woff2');
+  unicode-range: U+0102-0103, U+0110-0111, U+0128-0129, U+0168-0169, U+01A0-01A1, U+01AF-01B0, U+0300-0301, U+0303-0304, U+0308-0309, U+0323, U+0329, U+1EA0-1EF9, U+20AB;
+}
+/* latin-ext */
+@font-face {
+  font-family: 'IBM Plex Mono';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("assets/landing/fonts/a424a8ae-79a7-4e1f-b8dc-ec04dce0db71.woff2") format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+/* latin */
+@font-face {
+  font-family: 'IBM Plex Mono';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("assets/landing/fonts/c212b7fa-654e-4f79-a9e2-a588e2167a16.woff2") format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+/* cyrillic-ext */
+@font-face {
+  font-family: 'IBM Plex Mono';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("assets/landing/fonts/e7a71be5-ea0b-40fc-99ff-2640e945adf4.woff2") format('woff2');
+  unicode-range: U+0460-052F, U+1C80-1C8A, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
+}
+/* cyrillic */
+@font-face {
+  font-family: 'IBM Plex Mono';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("assets/landing/fonts/721ad99c-8b93-47b6-a0c8-db5bb75b9d06.woff2") format('woff2');
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+/* vietnamese */
+@font-face {
+  font-family: 'IBM Plex Mono';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("assets/landing/fonts/d1bb6e62-4e57-4859-8ebe-5e3f6359bed4.woff2") format('woff2');
+  unicode-range: U+0102-0103, U+0110-0111, U+0128-0129, U+0168-0169, U+01A0-01A1, U+01AF-01B0, U+0300-0301, U+0303-0304, U+0308-0309, U+0323, U+0329, U+1EA0-1EF9, U+20AB;
+}
+/* latin-ext */
+@font-face {
+  font-family: 'IBM Plex Mono';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("assets/landing/fonts/96abdaa1-8156-4d7e-b083-baa235698360.woff2") format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+/* latin */
+@font-face {
+  font-family: 'IBM Plex Mono';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("assets/landing/fonts/cfcf9e52-3236-44db-86b3-48831f5c68e4.woff2") format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+/* cyrillic-ext */
+@font-face {
+  font-family: 'Source Sans 3';
+  font-style: italic;
+  font-weight: 400;
+  font-display: swap;
+  src: url("assets/landing/fonts/5d8d27c9-01c6-4841-a430-c63823f1a8bc.woff2") format('woff2');
+  unicode-range: U+0460-052F, U+1C80-1C8A, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
+}
+/* cyrillic */
+@font-face {
+  font-family: 'Source Sans 3';
+  font-style: italic;
+  font-weight: 400;
+  font-display: swap;
+  src: url("assets/landing/fonts/c3c749a5-9938-4e79-9e58-8400fd450393.woff2") format('woff2');
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+/* greek-ext */
+@font-face {
+  font-family: 'Source Sans 3';
+  font-style: italic;
+  font-weight: 400;
+  font-display: swap;
+  src: url("assets/landing/fonts/02afb179-ca12-493a-98e4-62341d3f1dce.woff2") format('woff2');
+  unicode-range: U+1F00-1FFF;
+}
+/* greek */
+@font-face {
+  font-family: 'Source Sans 3';
+  font-style: italic;
+  font-weight: 400;
+  font-display: swap;
+  src: url("assets/landing/fonts/4412aac1-4148-4d7a-aa0f-e904c9b4af41.woff2") format('woff2');
+  unicode-range: U+0370-0377, U+037A-037F, U+0384-038A, U+038C, U+038E-03A1, U+03A3-03FF;
+}
+/* vietnamese */
+@font-face {
+  font-family: 'Source Sans 3';
+  font-style: italic;
+  font-weight: 400;
+  font-display: swap;
+  src: url("assets/landing/fonts/97930b02-4f24-409d-a87d-2d059af2dbec.woff2") format('woff2');
+  unicode-range: U+0102-0103, U+0110-0111, U+0128-0129, U+0168-0169, U+01A0-01A1, U+01AF-01B0, U+0300-0301, U+0303-0304, U+0308-0309, U+0323, U+0329, U+1EA0-1EF9, U+20AB;
+}
+/* latin-ext */
+@font-face {
+  font-family: 'Source Sans 3';
+  font-style: italic;
+  font-weight: 400;
+  font-display: swap;
+  src: url("assets/landing/fonts/958052d4-d557-4007-bf83-d51da0c57040.woff2") format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+/* latin */
+@font-face {
+  font-family: 'Source Sans 3';
+  font-style: italic;
+  font-weight: 400;
+  font-display: swap;
+  src: url("assets/landing/fonts/400adca8-4a6a-4f98-a9bf-3985e54408bb.woff2") format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+/* cyrillic-ext */
+@font-face {
+  font-family: 'Source Sans 3';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("assets/landing/fonts/869f679f-e309-46a2-954d-9466930d9916.woff2") format('woff2');
+  unicode-range: U+0460-052F, U+1C80-1C8A, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
+}
+/* cyrillic */
+@font-face {
+  font-family: 'Source Sans 3';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("assets/landing/fonts/d1ea2768-9eed-48f7-9108-ba9d8c669b71.woff2") format('woff2');
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+/* greek-ext */
+@font-face {
+  font-family: 'Source Sans 3';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("assets/landing/fonts/08fbd5c2-0b3e-480b-a969-3d225df0d446.woff2") format('woff2');
+  unicode-range: U+1F00-1FFF;
+}
+/* greek */
+@font-face {
+  font-family: 'Source Sans 3';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("assets/landing/fonts/d6c6ce3b-271c-4557-9deb-9b3c862b3560.woff2") format('woff2');
+  unicode-range: U+0370-0377, U+037A-037F, U+0384-038A, U+038C, U+038E-03A1, U+03A3-03FF;
+}
+/* vietnamese */
+@font-face {
+  font-family: 'Source Sans 3';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("assets/landing/fonts/f5f90667-98f5-4b87-b360-2ef580b6d947.woff2") format('woff2');
+  unicode-range: U+0102-0103, U+0110-0111, U+0128-0129, U+0168-0169, U+01A0-01A1, U+01AF-01B0, U+0300-0301, U+0303-0304, U+0308-0309, U+0323, U+0329, U+1EA0-1EF9, U+20AB;
+}
+/* latin-ext */
+@font-face {
+  font-family: 'Source Sans 3';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("assets/landing/fonts/926b1650-7b02-4fb5-89f9-e42389094bb3.woff2") format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+/* latin */
+@font-face {
+  font-family: 'Source Sans 3';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("assets/landing/fonts/3ace209c-94fd-400f-a2e4-6b4ce91d44cb.woff2") format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+/* cyrillic-ext */
+@font-face {
+  font-family: 'Source Sans 3';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("assets/landing/fonts/869f679f-e309-46a2-954d-9466930d9916.woff2") format('woff2');
+  unicode-range: U+0460-052F, U+1C80-1C8A, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
+}
+/* cyrillic */
+@font-face {
+  font-family: 'Source Sans 3';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("assets/landing/fonts/d1ea2768-9eed-48f7-9108-ba9d8c669b71.woff2") format('woff2');
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+/* greek-ext */
+@font-face {
+  font-family: 'Source Sans 3';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("assets/landing/fonts/08fbd5c2-0b3e-480b-a969-3d225df0d446.woff2") format('woff2');
+  unicode-range: U+1F00-1FFF;
+}
+/* greek */
+@font-face {
+  font-family: 'Source Sans 3';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("assets/landing/fonts/d6c6ce3b-271c-4557-9deb-9b3c862b3560.woff2") format('woff2');
+  unicode-range: U+0370-0377, U+037A-037F, U+0384-038A, U+038C, U+038E-03A1, U+03A3-03FF;
+}
+/* vietnamese */
+@font-face {
+  font-family: 'Source Sans 3';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("assets/landing/fonts/f5f90667-98f5-4b87-b360-2ef580b6d947.woff2") format('woff2');
+  unicode-range: U+0102-0103, U+0110-0111, U+0128-0129, U+0168-0169, U+01A0-01A1, U+01AF-01B0, U+0300-0301, U+0303-0304, U+0308-0309, U+0323, U+0329, U+1EA0-1EF9, U+20AB;
+}
+/* latin-ext */
+@font-face {
+  font-family: 'Source Sans 3';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("assets/landing/fonts/926b1650-7b02-4fb5-89f9-e42389094bb3.woff2") format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+/* latin */
+@font-face {
+  font-family: 'Source Sans 3';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("assets/landing/fonts/3ace209c-94fd-400f-a2e4-6b4ce91d44cb.woff2") format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+</style>
+<script src="assets/landing/image-slot.js"></script>
+<style>
+html{scroll-behavior:smooth}
+body{margin:0;background:#fbfbf9;-webkit-font-smoothing:antialiased}
+a{color:inherit;text-decoration-thickness:1px;text-underline-offset:3px}
+a:hover{color:#0a8f4d}
+::selection{background:#d8d6d0;color:#1c1c1a}
+:focus-visible{outline:2px solid #2f5fd0;outline-offset:2px}
+</style>
+</helmet>
+<div style="background:#fbfbf9;color:#1c1c1a;font-family:'Source Sans 3',sans-serif;font-size:18px;line-height:1.5;overflow-x:clip">
+<div aria-hidden="true" style="height:6px;background:repeating-linear-gradient(90deg,#d6392b 0 16px,#18a058 16px 32px,#2f5fd0 32px 48px,#0088b0 48px 64px,#d6006c 64px 80px,#f2b705 80px 96px)"></div>
+
+<header data-screen-label="Hero" sc-camel-on-pointer-move="{{ onHeroMove }}" sc-camel-on-pointer-leave="{{ onHeroLeave }}" style="position:relative;background:#141412;color:#f1efe9;overflow:hidden">
+  <canvas ref="{{ r.field }}" aria-hidden="true" style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none"></canvas>
+  <div ref="{{ r.grainHero }}" aria-hidden="true" style="position:absolute;inset:0;pointer-events:none;opacity:0;background-size:140px 140px"></div>
+  <nav style="position:relative;max-width:1280px;margin:0 auto;padding:20px clamp(16px,4vw,48px);display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:16px 32px">
+    <a href="#top" aria-label="Genesis home" style="display:flex;align-items:center;gap:12px;text-decoration:none;color:#f1efe9">
+      <span aria-hidden="true" style="display:grid;grid-template-columns:repeat(3,6px);gap:2px">
+        <span style="height:6px;background:#f1efe9"></span><span style="height:6px;background:#f1efe9"></span><span style="height:6px;background:#f1efe9"></span>
+        <span style="height:6px;background:#d6392b"></span><span style="height:6px;background:#18a058"></span><span style="height:6px;background:#2f5fd0"></span>
+        <span style="height:6px;background:#f1efe9"></span><span style="height:6px;background:#f1efe9"></span><span style="height:6px;background:#f1efe9"></span>
+      </span>
+      <span style="font-family:'Archivo',sans-serif;font-stretch:125%;font-weight:800;font-size:17px;letter-spacing:0.1em">GENESIS</span>
+    </a>
+    <div style="display:flex;flex-wrap:wrap;align-items:center;gap:8px 28px;font-size:16px">
+      <a href="#how" style="text-decoration:none;color:#c9c5bc">How it works</a>
+      <a href="#attacks" style="text-decoration:none;color:#c9c5bc">Attacks</a>
+      <a href="#organisations" style="text-decoration:none;color:#c9c5bc">Organisations</a>
+      <a href="https://github.com/muse254/genesis" style="text-decoration:none;color:#c9c5bc">Source</a>
+      <a href="https://muse254.github.io/genesis/verify/" style="text-decoration:none;color:#141412;background:#f1efe9;padding:8px 14px;font-weight:600" style-hover="background:#ffffff;color:#141412">Check a photo</a>
     </div>
-  </header>
+  </nav>
 
-  <main class="wrap">
-    <h1 class="hero">Register your photographs against the camera that took them</h1>
-    <p class="lede">
-      Genesis learns your camera's sensor fingerprint from RAW files already on your
-      machine, then lets you register photographs under your own signature on a public,
-      on-chain record. The fingerprint and the RAW archive never leave your computer --
-      only hashes and commitments do. Get the desktop app below.
-    </p>
-
-    <div class="downloads" id="downloads">
-      <span class="label">Download</span>
-      <p class="notice pulse">Checking github.com/muse254/genesis for the latest build&hellip;</p>
+  <div id="top" style="position:relative;max-width:1280px;margin:0 auto;padding:clamp(40px,7vw,96px) clamp(16px,4vw,48px) clamp(48px,6vw,80px);display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,440px),1fr));gap:clamp(40px,5vw,72px);align-items:end">
+    <div style="display:flex;flex-direction:column;gap:28px;max-width:640px">
+      <p style="margin:0;display:flex;align-items:center;gap:12px;font-family:'IBM Plex Mono',monospace;font-size:13px;letter-spacing:0.12em;text-transform:uppercase;color:#a9a59c"><span aria-hidden="true" style="display:flex;gap:2px"><span style="width:8px;height:8px;background:#d6392b"></span><span style="width:8px;height:8px;background:#18a058"></span><span style="width:8px;height:8px;background:#2f5fd0"></span></span>An origin registry for photographers</p>
+      <sc-if value="{{ hA }}" hint-placeholder-val="{{ true }}">
+        <h1 style="margin:0;font-family:'Archivo',sans-serif;font-stretch:125%;font-weight:800;font-size:clamp(34px,4.9vw,72px);line-height:1.02;letter-spacing:-0.02em;text-wrap:balance">Your camera already signs every photo. <span style="color:#a9a59c">Genesis lets you prove it was yours.</span></h1>
+      </sc-if>
+      <sc-if value="{{ hB }}" hint-placeholder-val="{{ false }}">
+        <h1 style="margin:0;font-family:'Archivo',sans-serif;font-stretch:125%;font-weight:800;font-size:clamp(34px,4.9vw,72px);line-height:1.02;letter-spacing:-0.02em;text-wrap:balance">Every sensor leaves a birthmark. <span style="color:#a9a59c">Genesis puts your name beside it.</span></h1>
+      </sc-if>
+      <sc-if value="{{ hC }}" hint-placeholder-val="{{ false }}">
+        <h1 style="margin:0;font-family:'Archivo',sans-serif;font-stretch:125%;font-weight:800;font-size:clamp(34px,4.9vw,72px);line-height:1.02;letter-spacing:-0.02em;text-wrap:balance">The photo will leave your hands. <span style="color:#a9a59c">The record of where it came from stays.</span></h1>
+      </sc-if>
+      <p style="margin:0;font-size:clamp(18px,1.6vw,21px);line-height:1.5;color:#d6d2c9;max-width:34em;text-wrap:pretty">Register your photographs against the camera that took them. Then anyone can check a copy that has already left — resized, re-compressed, stripped — and see whether it traces back to you.</p>
+      <div style="display:flex;flex-wrap:wrap;gap:12px">
+        <a href="https://muse254.github.io/genesis/verify/" style="display:inline-flex;align-items:center;gap:10px;min-height:48px;padding:0 22px;background:#f1efe9;color:#141412;text-decoration:none;font-weight:600;font-size:17px" style-hover="background:#ffffff;color:#141412">Check a photo <span aria-hidden="true">→</span></a>
+        <a href="https://github.com/muse254/genesis/releases/latest" style="display:inline-flex;align-items:center;gap:10px;min-height:48px;padding:0 22px;border:1px solid #57544e;color:#f1efe9;text-decoration:none;font-weight:600;font-size:17px" style-hover="border-color:#f1efe9;color:#ffffff">Download the app</a>
+      </div>
+      <dl style="margin:8px 0 0;display:grid;grid-template-columns:auto 1fr;gap:6px 16px;font-family:'IBM Plex Mono',monospace;font-size:13px;line-height:1.5;color:#a9a59c">
+        <dt style="color:#f1efe9;display:flex;align-items:center;gap:8px"><span aria-hidden="true" style="width:7px;height:7px;background:#18a058;display:inline-block"></span>Live</dt>
+        <dd style="margin:0">Registration · public verify page · desktop app for macOS, Windows, Linux</dd>
+        <dt style="color:#f1efe9;display:flex;align-items:center;gap:8px"><span aria-hidden="true" style="width:7px;height:7px;border:1px solid #a9a59c;box-sizing:border-box;display:inline-block"></span>Coming</dt>
+        <dd style="margin:0">Google sign-in · paid plans · organisation tools</dd>
+      </dl>
     </div>
 
-    <span class="label">How it works</span>
-    <ol class="steps">
-      <li>
-        <div class="step-body">
-          <h3>Enrol your camera, once</h3>
-          <p>Point the app at ~40 RAW files already on your machine. It computes your
-            sensor's noise fingerprint locally and commits to it on Base -- the fingerprint
-            itself never leaves your computer.</p>
+    <figure style="margin:0;display:flex;flex-direction:column;gap:12px">
+      <div style="position:relative;aspect-ratio:4/5;background:#232320">
+        <image-slot id="hero-photo" shape="rect" src="assets/photos/hero-carpenter.jpg" placeholder="The carpenter"></image-slot>
+        <div ref="{{ r.heroStamp }}" style="position:absolute;right:16px;bottom:16px;pointer-events:none;display:flex;align-items:center;gap:8px;padding:7px 11px;background:#fbfbf9;color:#0a8f4d;border:1.5px solid #0a8f4d;font-family:'IBM Plex Mono',monospace;font-weight:600;font-size:12px;letter-spacing:0.14em;text-transform:uppercase;transform:rotate(-4deg)">
+          <span aria-hidden="true" style="width:7px;height:7px;background:#0a8f4d;display:inline-block"></span>Registered
         </div>
-      </li>
-      <li>
-        <div class="step-body">
-          <h3>Register a photograph</h3>
-          <p>The app hashes the image and scores it against your fingerprint, then
-            records the registration under your camera's on-chain identity.</p>
+      </div>
+      <figcaption style="display:flex;flex-wrap:wrap;justify-content:space-between;gap:4px 16px;font-family:'IBM Plex Mono',monospace;font-size:12px;color:#a9a59c">
+        <span>Canon R10 · body ··3b37 · registered by owner · 12 Oct 2026, 11:12 UTC</span>
+        <a href="https://basescan.org/address/0xBa5Ea549c9e1414C14038dB050e0caCB4f9E48cB" style="color:#a9a59c">Public record ↗</a>
+      </figcaption>
+    </figure>
+  </div>
+
+  <div style="position:relative;max-width:1280px;margin:0 auto;padding:0 clamp(16px,4vw,48px) clamp(56px,7vw,96px);display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr));gap:16px">
+    <figure style="margin:0;display:flex;flex-direction:column;gap:10px">
+      <div style="position:relative;aspect-ratio:3/2;background:#232320"><image-slot id="gallery-1" shape="rect" src="assets/photos/dhow-zanzibar.jpg" placeholder="Dhow, Zanzibar"></image-slot></div>
+      <figcaption style="display:flex;align-items:center;gap:8px;font-family:'IBM Plex Mono',monospace;font-size:12px;color:#a9a59c"><span aria-hidden="true" style="width:7px;height:7px;background:#d6392b;flex:none"></span>Dhow, Zanzibar · registered 12 Oct 2026</figcaption>
+    </figure>
+    <figure style="margin:0;display:flex;flex-direction:column;gap:10px">
+      <div style="position:relative;aspect-ratio:3/2;background:#232320"><image-slot id="gallery-2" shape="rect" src="assets/photos/jozani-forest.jpg" placeholder="Jozani Forest, Zanzibar"></image-slot></div>
+      <figcaption style="display:flex;align-items:center;gap:8px;font-family:'IBM Plex Mono',monospace;font-size:12px;color:#a9a59c"><span aria-hidden="true" style="width:7px;height:7px;background:#18a058;flex:none"></span>Jozani Forest, Zanzibar · registered 12 Oct 2026</figcaption>
+    </figure>
+    <figure style="margin:0;display:flex;flex-direction:column;gap:10px">
+      <div style="position:relative;aspect-ratio:3/2;background:#232320"><image-slot id="gallery-3" shape="rect" src="assets/photos/football.jpg" placeholder="Football"></image-slot></div>
+      <figcaption style="display:flex;align-items:center;gap:8px;font-family:'IBM Plex Mono',monospace;font-size:12px;color:#a9a59c"><span aria-hidden="true" style="width:7px;height:7px;background:#2f5fd0;flex:none"></span>Football · registered 12 Oct 2026</figcaption>
+    </figure>
+  </div>
+</header>
+
+<section ref="{{ r.sig }}" data-screen-label="Fingerprint" aria-label="How a camera signs a photo" style="position:relative;height:460vh;background:#141412;color:#f1efe9">
+  <div ref="{{ r.grainSig }}" aria-hidden="true" style="position:absolute;inset:0;pointer-events:none;opacity:0;background-size:140px 140px"></div>
+  <div style="position:sticky;top:0;height:100svh;display:flex;align-items:center">
+    <div style="width:100%;max-width:1280px;margin:0 auto;padding:0 clamp(16px,4vw,48px);box-sizing:border-box;display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,340px),1fr));gap:clamp(20px,4vw,64px);align-items:center">
+      <div ref="{{ r.caps }}" style="display:flex;flex-direction:column;gap:20px;max-width:440px">
+        <div style="display:flex;gap:6px;font-family:'IBM Plex Mono',monospace;font-size:12px">
+          <span data-tick="" style="padding:3px 7px;border:1px solid #f1efe9;color:#f1efe9">01</span>
+          <span data-tick="" style="padding:3px 7px;border:1px solid #3d3b37;color:#8b877f">02</span>
+          <span data-tick="" style="padding:3px 7px;border:1px solid #3d3b37;color:#8b877f">03</span>
+          <span data-tick="" style="padding:3px 7px;border:1px solid #3d3b37;color:#8b877f">04</span>
+          <span data-tick="" style="padding:3px 7px;border:1px solid #3d3b37;color:#8b877f">05</span>
         </div>
-      </li>
-      <li>
-        <div class="step-body">
-          <h3>Anyone can check a copy later</h3>
-          <p>A stripped, resized or re-posted copy can still be traced back to the
-            original registration from the public <a href="https://muse254.github.io/genesis/verify/">verify page</a> --
-            no account, no login.</p>
+        <div style="position:relative;min-height:clamp(150px,22vh,230px)">
+          <div data-cap="" style="position:absolute;inset:0 0 auto 0;display:flex;flex-direction:column;gap:10px">
+            <h2 style="margin:0;font-family:'Archivo',sans-serif;font-stretch:125%;font-weight:800;font-size:clamp(24px,2.8vw,40px);line-height:1.05;letter-spacing:-0.015em">A photograph.</h2>
+            <p style="margin:0;color:#c9c5bc;font-size:clamp(16px,1.3vw,19px);text-wrap:pretty">Six thousand pixels across, straight from the camera. Look closer.</p>
+          </div>
+          <div data-cap="" style="position:absolute;inset:0 0 auto 0;display:flex;flex-direction:column;gap:10px;opacity:0">
+            <h2 style="margin:0;font-family:'Archivo',sans-serif;font-stretch:125%;font-weight:800;font-size:clamp(24px,2.8vw,40px);line-height:1.05;letter-spacing:-0.015em">Down to the pixel.</h2>
+            <p style="margin:0;color:#c9c5bc;font-size:clamp(16px,1.3vw,19px);text-wrap:pretty">Each one sits under a red, green or blue filter — the same mosaic as the Genesis mark.</p>
+          </div>
+          <div data-cap="" style="position:absolute;inset:0 0 auto 0;display:flex;flex-direction:column;gap:10px;opacity:0">
+            <h2 style="margin:0;font-family:'Archivo',sans-serif;font-stretch:125%;font-weight:800;font-size:clamp(24px,2.8vw,40px);line-height:1.05;letter-spacing:-0.015em">The birthmark.</h2>
+            <p style="margin:0;color:#c9c5bc;font-size:clamp(16px,1.3vw,19px);text-wrap:pretty">Tiny manufacturing differences make every pixel respond slightly differently. In the noise, that becomes a fixed pattern unique to this one sensor.</p>
+          </div>
+          <div data-cap="" style="position:absolute;inset:0 0 auto 0;display:flex;flex-direction:column;gap:10px;opacity:0">
+            <h2 style="margin:0;font-family:'Archivo',sans-serif;font-stretch:125%;font-weight:800;font-size:clamp(24px,2.8vw,40px);line-height:1.05;letter-spacing:-0.015em">Then it leaves.</h2>
+            <p style="margin:0;color:#c9c5bc;font-size:clamp(16px,1.3vw,19px);text-wrap:pretty">Shrunk to 1200 pixels, re-compressed for the web, every line of metadata stripped.</p>
+          </div>
+          <div data-cap="" style="position:absolute;inset:0 0 auto 0;display:flex;flex-direction:column;gap:10px;opacity:0">
+            <h2 style="margin:0;font-family:'Archivo',sans-serif;font-stretch:125%;font-weight:800;font-size:clamp(24px,2.8vw,40px);line-height:1.05;letter-spacing:-0.015em">It still traces back.</h2>
+            <p style="margin:0;color:#c9c5bc;font-size:clamp(16px,1.3vw,19px);text-wrap:pretty">Enough of the pattern survives to find the record: this photo, this camera body, registered by its owner, on this date.</p>
+          </div>
         </div>
-      </li>
-    </ol>
+      </div>
 
-    <p class="notice">
-      Unsigned builds for now: macOS will ask you to right-click and choose "Open" the
-      first time; Windows will show a SmartScreen prompt -- choose "More info" then
-      "Run anyway". Code signing is on the roadmap, not yet done.
-    </p>
-
-    <span class="label">System status</span>
-    <div class="health" id="health">
-      <p class="notice pulse">Checking&hellip;</p>
+      <div style="position:relative;aspect-ratio:3/2;overflow:hidden;background:#0d0d0c;outline:1px solid #2e2d2a">
+        <div ref="{{ r.photo }}" style="position:absolute;inset:0;transform-origin:62% 44%;will-change:transform">
+          <image-slot id="signature-photo" shape="rect" src="assets/photos/fish-market.jpg" placeholder="Fish market"></image-slot>
+          <div ref="{{ r.jpeg }}" aria-hidden="true" style="position:absolute;inset:0;pointer-events:none;opacity:0;background-image:linear-gradient(rgba(0,0,0,0.28) 1px,transparent 1px),linear-gradient(90deg,rgba(0,0,0,0.28) 1px,transparent 1px);background-size:20px 20px"></div>
+        </div>
+        <canvas ref="{{ r.mosaic }}" aria-hidden="true" style="position:absolute;inset:0;width:100%;height:100%;opacity:0;pointer-events:none"></canvas>
+        <canvas ref="{{ r.noise }}" aria-hidden="true" style="position:absolute;inset:0;width:100%;height:100%;opacity:0;pointer-events:none;image-rendering:pixelated"></canvas>
+        <div ref="{{ r.copyspec }}" style="position:absolute;left:5%;top:calc(50% + 21%);width:40%;opacity:0;pointer-events:none;font-family:'IBM Plex Mono',monospace;font-size:clamp(9px,1vw,12px);line-height:1.4;color:#c9c5bc">1200 × 800 · 87 KB<br>no metadata</div>
+        <div ref="{{ r.line }}" aria-hidden="true" style="position:absolute;left:46%;width:7%;top:50%;height:1px;background:#f1efe9;transform-origin:left center;transform:scaleX(0);pointer-events:none"></div>
+        <div ref="{{ r.card }}" style="position:absolute;right:4%;top:50%;width:42%;transform:translateY(-50%);opacity:0;pointer-events:none;background:#fbfbf9;color:#1c1c1a;padding:clamp(8px,1.6vw,20px);box-sizing:border-box;display:flex;flex-direction:column;gap:clamp(4px,0.8vw,10px);font-family:'IBM Plex Mono',monospace;font-size:clamp(8px,0.95vw,12px);line-height:1.35">
+          <div style="letter-spacing:0.12em;text-transform:uppercase;color:#6f6c66">Public record</div>
+          <canvas ref="{{ r.mini }}" aria-hidden="true" style="width:100%;aspect-ratio:3/2;image-rendering:pixelated;display:block"></canvas>
+          <div style="display:grid;grid-template-columns:auto 1fr;gap:2px 10px">
+            <span style="color:#6f6c66">Camera</span><span>Canon R10 ··3b37</span>
+            <span style="color:#6f6c66">By</span><span>its owner</span>
+            <span style="color:#6f6c66">Date</span><span>2026-10-12</span>
+          </div>
+          <div ref="{{ r.stamp }}" style="align-self:flex-start;display:flex;align-items:center;gap:6px;padding:3px 8px;border:1.5px solid #0a8f4d;color:#0a8f4d;font-weight:600;letter-spacing:0.14em;text-transform:uppercase;opacity:0">
+            <span aria-hidden="true" style="width:6px;height:6px;background:#0a8f4d;display:inline-block"></span>Registered
+          </div>
+        </div>
+        <div ref="{{ r.readout }}" style="position:absolute;left:10px;top:10px;padding:4px 8px;background:rgba(13,13,12,0.78);color:#f1efe9;font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:0.08em;text-transform:uppercase;pointer-events:none">Full frame · 6000 × 4000</div>
+      </div>
     </div>
-  </main>
+  </div>
+</section>
 
-  <footer class="bottom">
-    <div class="wrap">
-      Genesis is built for Colosseum's Crypto World's Fair 2026. What we certify, and what
-      we deliberately don't, is in
-      <a href="https://github.com/muse254/genesis/blob/main/docs/claims.md">docs/claims.md</a>.
-      We attacked our own system -- see
-      <a href="https://github.com/muse254/genesis/blob/main/docs/adversarial.md">docs/adversarial.md</a>.
+<section data-screen-label="Origin, not truth" style="background:#f2b705;color:#1c1c1a"><div style="max-width:1280px;margin:0 auto;padding:clamp(72px,10vw,140px) clamp(16px,4vw,48px);display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr));gap:clamp(24px,5vw,72px);align-items:end">
+  <h2 style="margin:0;font-family:'Archivo',sans-serif;font-stretch:125%;font-weight:800;font-size:clamp(44px,8vw,120px);line-height:0.95;letter-spacing:-0.03em">Origin, not truth.</h2>
+  <div style="display:flex;flex-direction:column;gap:16px;max-width:36em;font-size:clamp(17px,1.4vw,20px);text-wrap:pretty">
+    <p style="margin:0">Everyone else is trying to prove a photo was not made by a machine. That is proving a negative. Genesis records a positive: this photo came from this camera, and its owner said so, on this date.</p>
+    <p style="margin:0;color:#1c1c1a">It says nothing about whether the scene is what it appears to be. And a photo with no record means nothing either way — most photos will never be registered. It works on the camera you already own and the archive you already have. No new hardware, no manufacturer firmware.</p>
+  </div>
+</div></section>
+
+<section id="how" data-screen-label="How it works" style="max-width:1280px;margin:0 auto;padding:clamp(48px,7vw,96px) clamp(16px,4vw,48px)">
+  <p style="margin:0 0 40px;font-family:'IBM Plex Mono',monospace;font-size:13px;letter-spacing:0.12em;text-transform:uppercase;color:#6f6c66">How it works</p>
+  <ol style="list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:clamp(40px,4vw,56px)">
+    <li style="display:flex;flex-direction:column;gap:18px;padding-top:20px;border-top:6px solid #d6392b">
+      <span style="font-family:'Archivo',sans-serif;font-stretch:125%;font-weight:900;font-size:56px;line-height:1;color:#d6392b">01</span>
+      <div aria-hidden="true" style="height:132px;display:flex;align-items:flex-end">
+        <div style="display:grid;grid-template-columns:repeat(10,14px);gap:4px">
+          <sc-for list="{{ rawFiles }}" as="f" hint-placeholder-count="40">
+            <span style="height:18px;background:{{ f.c }}"></span>
+          </sc-for>
+        </div>
+      </div>
+      <h3 style="margin:0;font-family:'Archivo',sans-serif;font-stretch:125%;font-weight:800;font-size:clamp(22px,2vw,28px);line-height:1.1">Add your camera</h3>
+      <p style="margin:0;color:#3d3b37;text-wrap:pretty">Point Genesis at about 40 RAW files you already have from one body. It reads the sensor's fingerprint from them, on your machine.</p>
+    </li>
+    <li style="display:flex;flex-direction:column;gap:18px;padding-top:20px;border-top:6px solid #18a058">
+      <span style="font-family:'Archivo',sans-serif;font-stretch:125%;font-weight:900;font-size:56px;line-height:1;color:#0a8f4d">02</span>
+      <div aria-hidden="true" style="height:132px;display:flex;align-items:flex-end">
+        <div style="width:min(100%,260px);display:flex;flex-direction:column;gap:6px;font-family:'IBM Plex Mono',monospace;font-size:12px">
+          <div style="display:flex;justify-content:space-between;padding:8px 10px;background:#eae8e2"><span>IMG_0191.CR3</span><span style="color:#0a8f4d;font-weight:600">fingerprint ✓</span></div>
+          <div style="display:flex;justify-content:space-between;padding:8px 10px;background:#eae8e2"><span>IMG_0192.CR3</span><span style="color:#0a8f4d;font-weight:600">fingerprint ✓</span></div>
+          <div style="display:flex;justify-content:space-between;padding:8px 10px;border:1px solid #1c1c1a"><span>recorded</span><span>2026-10-12 11:13Z</span></div>
+        </div>
+      </div>
+      <h3 style="margin:0;font-family:'Archivo',sans-serif;font-stretch:125%;font-weight:800;font-size:clamp(22px,2vw,28px);line-height:1.1">Register your photos</h3>
+      <p style="margin:0;color:#3d3b37;text-wrap:pretty">Each photo is checked against the camera's fingerprint first. Only then is it added to the public record, with the date.</p>
+    </li>
+    <li style="display:flex;flex-direction:column;gap:18px;padding-top:20px;border-top:6px solid #2f5fd0">
+      <span style="font-family:'Archivo',sans-serif;font-stretch:125%;font-weight:900;font-size:56px;line-height:1;color:#2f5fd0">03</span>
+      <div aria-hidden="true" style="height:132px;display:flex;align-items:flex-end">
+        <div style="width:min(100%,260px);height:116px;border:1.5px dashed #2f5fd0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;font-family:'IBM Plex Mono',monospace;font-size:12px;color:#6f6c66">
+          <span style="color:#1c1c1a">drop a copy here</span><span>no account · stays on this device</span>
+        </div>
+      </div>
+      <h3 style="margin:0;font-family:'Archivo',sans-serif;font-stretch:125%;font-weight:800;font-size:clamp(22px,2vw,28px);line-height:1.1">Anyone can check</h3>
+      <p style="margin:0;color:#3d3b37;text-wrap:pretty">Drop a copy into the <a href="https://muse254.github.io/genesis/verify/">verify page</a>. No account needed. The photo is analysed in the browser and never uploaded.</p>
+    </li>
+  </ol>
+</section>
+
+<section id="copy" ref="{{ r.copy }}" data-screen-label="The copy that already left" style="max-width:1280px;margin:0 auto;padding:clamp(64px,9vw,128px) clamp(16px,4vw,48px)">
+  <div style="display:flex;flex-direction:column;gap:16px;max-width:760px;margin-bottom:clamp(40px,5vw,64px)">
+    <h2 style="margin:0;font-family:'Archivo',sans-serif;font-stretch:125%;font-weight:800;font-size:clamp(32px,4.4vw,64px);line-height:1;letter-spacing:-0.02em">The copy that already left.</h2>
+    <p style="margin:0;font-size:clamp(17px,1.4vw,20px);color:#3d3b37;text-wrap:pretty">A client posts it. A blog lifts it. A contest shrinks it. By then it's a fraction of the file you made — and it still resolves to the same record.</p>
+  </div>
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,380px),1fr));gap:clamp(40px,5vw,72px)">
+    <div style="display:flex;flex-direction:column;gap:20px">
+      <div style="height:clamp(200px,26vw,340px);display:flex;align-items:flex-start">
+        <div style="position:relative;width:100%;max-width:510px;aspect-ratio:3/2;background:#eae8e2"><image-slot id="copy-original" shape="rect" src="assets/photos/fish-market.jpg" placeholder="Fish market, original"></image-slot></div>
+      </div>
+      <h3 style="margin:0;font-family:'Archivo',sans-serif;font-stretch:125%;font-weight:800;font-size:22px;display:flex;align-items:center;gap:10px"><span aria-hidden="true" style="width:12px;height:12px;background:#18a058"></span>Original</h3>
+      <dl style="margin:0;font-family:'IBM Plex Mono',monospace;font-size:14px;display:grid;grid-template-columns:minmax(0,9em) minmax(0,1fr)">
+        <dt style="padding:9px 0;border-top:1px solid #d8d6d0;color:#6f6c66">Dimensions</dt><dd style="margin:0;padding:9px 0;border-top:1px solid #d8d6d0">6000 × 4000</dd>
+        <dt style="padding:9px 0;border-top:1px solid #d8d6d0;color:#6f6c66">File size</dt><dd style="margin:0;padding:9px 0;border-top:1px solid #d8d6d0">19.7 MB</dd>
+        <dt style="padding:9px 0;border-top:1px solid #d8d6d0;color:#6f6c66">Format</dt><dd style="margin:0;padding:9px 0;border-top:1px solid #d8d6d0">JPEG, full resolution</dd>
+        <dt style="padding:9px 0;border-top:1px solid #d8d6d0;color:#6f6c66">Camera</dt><dd style="margin:0;padding:9px 0;border-top:1px solid #d8d6d0">Canon EOS R10</dd>
+        <dt style="padding:9px 0;border-top:1px solid #d8d6d0;color:#6f6c66">Lens</dt><dd style="margin:0;padding:9px 0;border-top:1px solid #d8d6d0">Tamron 18–300mm F3.5–6.3</dd>
+        <dt style="padding:9px 0;border-top:1px solid #d8d6d0;color:#6f6c66">Captured</dt><dd style="margin:0;padding:9px 0;border-top:1px solid #d8d6d0">2026:07:28 13:43:27</dd>
+        <dt style="padding:9px 0;border-top:1px solid #d8d6d0;color:#6f6c66">GPS</dt><dd style="margin:0;padding:9px 0;border-top:1px solid #d8d6d0">recorded</dd>
+        <dt style="padding:9px 0;border-top:1px solid #d8d6d0;border-bottom:1px solid #d8d6d0;color:#6f6c66">Serial</dt><dd style="margin:0;padding:9px 0;border-top:1px solid #d8d6d0;border-bottom:1px solid #d8d6d0">recorded</dd>
+      </dl>
     </div>
-  </footer>
+    <div style="display:flex;flex-direction:column;gap:20px">
+      <div style="height:clamp(200px,26vw,340px);display:flex;align-items:flex-start">
+        <div style="position:relative;width:34%;max-width:180px;aspect-ratio:3/2;background:#eae8e2"><image-slot id="copy-web" shape="rect" src="assets/photos/fish-market-web-copy.jpg" placeholder="Fish market, web copy"></image-slot></div>
+      </div>
+      <h3 style="margin:0;font-family:'Archivo',sans-serif;font-stretch:125%;font-weight:800;font-size:22px;display:flex;align-items:center;gap:10px"><span aria-hidden="true" style="width:12px;height:12px;background:#2f5fd0"></span>Web copy</h3>
+      <dl style="margin:0;font-family:'IBM Plex Mono',monospace;font-size:14px;display:grid;grid-template-columns:minmax(0,9em) minmax(0,1fr)">
+        <dt style="padding:9px 0;border-top:1px solid #d8d6d0;color:#6f6c66">Dimensions</dt><dd style="margin:0;padding:9px 0;border-top:1px solid #d8d6d0">1200 × 800</dd>
+        <dt style="padding:9px 0;border-top:1px solid #d8d6d0;color:#6f6c66">File size</dt><dd style="margin:0;padding:9px 0;border-top:1px solid #d8d6d0">87 KB</dd>
+        <dt style="padding:9px 0;border-top:1px solid #d8d6d0;color:#6f6c66">Format</dt><dd style="margin:0;padding:9px 0;border-top:1px solid #d8d6d0">JPEG, quality 72</dd>
+        <dt style="padding:9px 0;border-top:1px solid #d8d6d0;color:#6f6c66">Camera</dt><dd style="margin:0;padding:9px 0;border-top:1px solid #d8d6d0;display:flex;gap:10px;flex-wrap:wrap"><span data-strike="" style="text-decoration:line-through;color:#6f6c66">Canon EOS R10</span><span data-gone="">stripped</span></dd>
+        <dt style="padding:9px 0;border-top:1px solid #d8d6d0;color:#6f6c66">Lens</dt><dd style="margin:0;padding:9px 0;border-top:1px solid #d8d6d0;display:flex;gap:10px;flex-wrap:wrap"><span data-strike="" style="text-decoration:line-through;color:#6f6c66">Tamron 18–300mm F3.5–6.3</span><span data-gone="">stripped</span></dd>
+        <dt style="padding:9px 0;border-top:1px solid #d8d6d0;color:#6f6c66">Captured</dt><dd style="margin:0;padding:9px 0;border-top:1px solid #d8d6d0;display:flex;gap:10px;flex-wrap:wrap"><span data-strike="" style="text-decoration:line-through;color:#6f6c66">2026:07:28 13:43:27</span><span data-gone="">stripped</span></dd>
+        <dt style="padding:9px 0;border-top:1px solid #d8d6d0;color:#6f6c66">GPS</dt><dd style="margin:0;padding:9px 0;border-top:1px solid #d8d6d0;display:flex;gap:10px;flex-wrap:wrap"><span data-strike="" style="text-decoration:line-through;color:#6f6c66">recorded</span><span data-gone="">stripped</span></dd>
+        <dt style="padding:9px 0;border-top:1px solid #d8d6d0;border-bottom:1px solid #d8d6d0;color:#6f6c66">Serial</dt><dd style="margin:0;padding:9px 0;border-top:1px solid #d8d6d0;border-bottom:1px solid #d8d6d0;display:flex;gap:10px;flex-wrap:wrap"><span data-strike="" style="text-decoration:line-through;color:#6f6c66">recorded</span><span data-gone="">stripped</span></dd>
+      </dl>
+    </div>
+  </div>
+  <div aria-hidden="true" data-draw="" style="margin:28px 12% 0;height:28px;border:1px solid #1c1c1a;border-top:none;transform-origin:center top"></div>
+  <div style="display:flex;justify-content:center;margin-top:-1px">
+    <div style="display:flex;flex-direction:column;align-items:center;gap:12px">
+      <div style="width:1px;height:28px;background:#1c1c1a"></div>
+      <div style="display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:12px 20px;padding:14px 20px;background:#eae8e2;font-family:'IBM Plex Mono',monospace;font-size:14px">
+        <span style="color:#6f6c66">Both resolve to</span>
+        <span>record 0x8ef2…0039</span>
+        <span data-stamp4="" style="display:flex;align-items:center;gap:8px;padding:4px 10px;border:1.5px solid #0a8f4d;color:#0a8f4d;font-weight:600;letter-spacing:0.14em;text-transform:uppercase;font-size:12px;transform:rotate(-3deg);background:#fbfbf9"><span aria-hidden="true" style="width:6px;height:6px;background:#0a8f4d;display:inline-block"></span>Registered</span>
+      </div>
+      <p style="margin:0;font-size:15px;color:#6f6c66;text-align:center;max-width:32em">Checked in the browser. The copy never leaves the viewer's device.</p>
+    </div>
+  </div>
+</section>
 
-  <script src="app.js"></script>
-  <script src="health.js"></script>
-</body>
-</html>
+<section id="attacks" data-screen-label="We attacked our own system" style="background:#141412;color:#f1efe9">
+  <div style="max-width:1280px;margin:0 auto;padding:clamp(64px,9vw,128px) clamp(16px,4vw,48px);display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:clamp(32px,4vw,56px);align-items:start">
+    <h2 style="margin:0;font-family:'Archivo',sans-serif;font-stretch:125%;font-weight:800;font-size:clamp(32px,4vw,56px);line-height:1;letter-spacing:-0.02em;text-wrap:balance">We attacked our <span style="color:#ff6fb0">own</span> system.</h2>
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <p style="margin:0;font-family:'IBM Plex Mono',monospace;font-size:13px;letter-spacing:0.12em;text-transform:uppercase;color:#ff6fb0;display:flex;align-items:center;gap:8px"><span aria-hidden="true" style="width:8px;height:8px;background:#d6006c"></span>The attack</p>
+      <p style="margin:0;text-wrap:pretty;color:#d6d2c9">Anyone holding one RAW file from your camera can estimate its fingerprint and plant it in a different image. We did it. So the fingerprint on its own is never the claim.</p>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <p style="margin:0;font-family:'IBM Plex Mono',monospace;font-size:13px;letter-spacing:0.12em;text-transform:uppercase;color:#3ccf7f;display:flex;align-items:center;gap:8px"><span aria-hidden="true" style="width:8px;height:8px;background:#18a058"></span>The claim</p>
+      <p style="margin:0;text-wrap:pretty;color:#d6d2c9">The claim is the owner's registration. Only the camera's owner can register photos to it, and each registration is dated. A planted fingerprint can match a camera. It can't produce the owner's record.</p>
+      <a href="https://github.com/muse254/genesis/blob/main/docs/adversarial.md" style="margin-top:8px;font-weight:600;align-self:flex-start;color:#f1efe9" style-hover="color:#ff6fb0">Read the attacks →</a>
+    </div>
+  </div>
+</section>
+
+<section id="organisations" data-screen-label="For organisations" style="background:#d7eef6"><div style="max-width:1280px;margin:0 auto;padding:clamp(64px,9vw,128px) clamp(16px,4vw,48px);display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:clamp(32px,4vw,56px);align-items:start">
+  <div style="display:flex;flex-direction:column;gap:18px">
+    <span style="align-self:flex-start;padding:3px 9px;background:#0088b0;color:#ffffff;font-family:'IBM Plex Mono',monospace;font-size:12px;letter-spacing:0.12em;text-transform:uppercase">Coming</span>
+    <h2 style="margin:0;font-family:'Archivo',sans-serif;font-stretch:125%;font-weight:800;font-size:clamp(28px,3.2vw,44px);line-height:1.05;letter-spacing:-0.015em;text-wrap:balance">For contests, archives and marketplaces.</h2>
+    <p style="margin:0;color:#3d3b37;text-wrap:pretty">For anyone who needs to know where a submitted photo came from — print and stock marketplaces included.</p>
+  </div>
+  <div style="display:flex;flex-direction:column;gap:12px;padding-top:20px;border-top:1px solid #1c1c1a">
+    <h3 style="margin:0;font-family:'Archivo',sans-serif;font-stretch:125%;font-weight:800;font-size:22px">Intake check</h3>
+    <p style="margin:0;color:#3d3b37;text-wrap:pretty">Run submissions through Genesis as they arrive and see which ones trace back to a registration, and to which camera owner.</p>
+  </div>
+  <div style="display:flex;flex-direction:column;gap:12px;padding-top:20px;border-top:1px solid #1c1c1a">
+    <h3 style="margin:0;font-family:'Archivo',sans-serif;font-stretch:125%;font-weight:800;font-size:22px">Shareable verification links</h3>
+    <p style="margin:0;color:#3d3b37;text-wrap:pretty">Send a judge, editor or buyer a link that opens the record for one photo. A missing record is not a red flag; it simply tells you nothing.</p>
+    <a href="https://github.com/muse254/genesis" style="margin-top:8px;font-weight:600;align-self:flex-start">Follow progress on GitHub →</a>
+  </div>
+</div></section>
+
+<footer id="source" data-screen-label="Open source + footer" style="background:#141412;color:#f1efe9">
+  <div style="max-width:1280px;margin:0 auto;padding:clamp(64px,8vw,112px) clamp(16px,4vw,48px) 32px;display:flex;flex-direction:column;gap:clamp(48px,6vw,80px)">
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,360px),1fr));gap:32px;align-items:end">
+      <h2 style="margin:0;font-family:'Archivo',sans-serif;font-stretch:125%;font-weight:800;font-size:clamp(30px,4vw,56px);line-height:1;letter-spacing:-0.02em;text-wrap:balance">Open source. Read the code that reads your camera.</h2>
+      <div style="display:flex;flex-direction:column;gap:20px;max-width:30em">
+        <p style="margin:0;color:#c9c5bc">Genesis is MIT-licensed. The fingerprinting, the verify page and our own attacks on it are all public.</p>
+        <div style="display:flex;flex-wrap:wrap;gap:12px">
+          <a href="https://github.com/muse254/genesis" style="display:inline-flex;align-items:center;min-height:48px;padding:0 22px;background:#f1efe9;color:#141412;text-decoration:none;font-weight:600" style-hover="background:#ffffff;color:#141412">View on GitHub</a>
+          <a href="https://github.com/muse254/genesis/releases/latest" style="display:inline-flex;align-items:center;min-height:48px;padding:0 22px;border:1px solid #57544e;color:#f1efe9;text-decoration:none;font-weight:600" style-hover="border-color:#f1efe9;color:#ffffff">Download the app</a>
+        </div>
+      </div>
+    </div>
+    <div style="display:flex;flex-wrap:wrap;justify-content:space-between;gap:32px;padding-top:28px;border-top:1px solid #3d3b37">
+      <a href="#top" aria-label="Genesis home" style="display:flex;align-items:center;gap:12px;text-decoration:none;color:#f1efe9;align-self:flex-start">
+        <span aria-hidden="true" style="display:grid;grid-template-columns:repeat(3,6px);gap:2px">
+          <span style="height:6px;background:#f1efe9"></span><span style="height:6px;background:#f1efe9"></span><span style="height:6px;background:#f1efe9"></span>
+          <span style="height:6px;background:#d6392b"></span><span style="height:6px;background:#18a058"></span><span style="height:6px;background:#2f5fd0"></span>
+          <span style="height:6px;background:#f1efe9"></span><span style="height:6px;background:#f1efe9"></span><span style="height:6px;background:#f1efe9"></span>
+        </span>
+        <span style="font-family:'Archivo',sans-serif;font-stretch:125%;font-weight:800;font-size:17px;letter-spacing:0.1em">GENESIS</span>
+      </a>
+      <div style="display:flex;flex-wrap:wrap;gap:12px 32px;font-size:16px">
+        <a href="https://muse254.github.io/genesis/verify/" style="color:#c9c5bc">Verify page</a>
+        <a href="https://github.com/muse254/genesis/releases/latest" style="color:#c9c5bc">Downloads</a>
+        <a href="https://github.com/muse254/genesis" style="color:#c9c5bc">GitHub</a>
+        <a href="https://muse254.github.io/genesis/status.html" style="color:#c9c5bc">Status</a>
+      </div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:6px;font-family:'IBM Plex Mono',monospace;font-size:12px;line-height:1.6;color:#a9a59c">
+      <span>Registrations are written to a public record on Base.</span>
+      <a href="https://basescan.org/address/0xBa5Ea549c9e1414C14038dB050e0caCB4f9E48cB" style="color:#a9a59c;word-break:break-all">Registry 0xBa5Ea549c9e1414C14038dB050e0caCB4f9E48cB (Base mainnet) ↗</a>
+      <span>MIT License · © 2026 Genesis</span>
+    </div>
+    <div aria-hidden="true" style="display:flex;flex-direction:column;gap:14px;overflow:hidden">
+      <div style="font-family:'Archivo',sans-serif;font-stretch:125%;font-weight:900;font-size:clamp(52px,14.6vw,206px);line-height:0.82;letter-spacing:-0.02em;white-space:nowrap;display:flex"><span>GEN</span><span style="color:#d6392b">E</span><span style="color:#18a058">S</span><span style="color:#2f5fd0">I</span><span>S</span></div>
+      <div style="height:10px;background:repeating-linear-gradient(90deg,#d6392b 0 16px,#18a058 16px 32px,#2f5fd0 32px 48px,#0088b0 48px 64px,#d6006c 64px 80px,#f2b705 80px 96px)"></div>
+    </div>
+  </div>
+</footer>
+
+<sc-if value="{{ showNotes }}" hint-placeholder-val="{{ true }}">
+<aside data-screen-label="Design notes" style="background:#fbfbf9;border-top:1px dashed #6f6c66">
+  <div style="max-width:1280px;margin:0 auto;padding:56px clamp(16px,4vw,48px) 80px;display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:40px;font-size:16px;color:#3d3b37">
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <p style="margin:0;font-family:'IBM Plex Mono',monospace;font-size:12px;letter-spacing:0.12em;text-transform:uppercase;color:#6f6c66">Design note · not part of the page</p>
+      <h3 style="margin:0;font-family:'Archivo',sans-serif;font-stretch:125%;font-weight:800;font-size:20px;color:#1c1c1a">Headline options</h3>
+      <p style="margin:0">Switch in Tweaks. A: “Your camera already signs every photo. Genesis lets you prove it was yours.” B: “Every sensor leaves a birthmark. Genesis puts your name beside it.” C: “The photo will leave your hands. The record of where it came from stays.”</p>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <h3 style="margin:22px 0 0;font-family:'Archivo',sans-serif;font-stretch:125%;font-weight:800;font-size:20px;color:#1c1c1a">Hero + fingerprint motion</h3>
+      <p style="margin:0">Hero stays light: no video, one 140px grain tile, a 30 fps pixel field where Bayer cells light up under the pointer with per-cell flicker like sensor noise (a slow drift on touch; static with reduced motion), and the Registered stamp settles once (overshoot to 1.0, ~500 ms). The fingerprint sequence is scroll-scrubbed across ~4.5 screens, sticky: zoom ×1→×7 into the photo; the RGGB mosaic fades in over it; sensor noise flickers then freezes into a fixed pattern; the frame pulls back and shrinks to a web copy with a JPEG block grid; a hairline draws to the record card and the stamp lands. Nothing loops; scrolling back reverses it exactly.</p>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <h3 style="margin:22px 0 0;font-family:'Archivo',sans-serif;font-stretch:125%;font-weight:800;font-size:20px;color:#1c1c1a">“The copy that already left”</h3>
+      <p style="margin:0">Triggered once when a third of the section is visible. The web copy's metadata rows strike through one at a time (140 ms apart) and “stripped” appears; then the bracket joining both columns draws down (700 ms) and the shared Registered stamp settles. Without JavaScript, the final state shows.</p>
+    </div>
+  </div>
+</aside>
+</sc-if>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script="" data-props="{&quot;headline&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;camera-signs&quot;,&quot;birthmark&quot;,&quot;record-stays&quot;],&quot;default&quot;:&quot;camera-signs&quot;,&quot;tsType&quot;:&quot;'camera-signs'|'birthmark'|'record-stays'&quot;,&quot;section&quot;:&quot;Hero&quot;},&quot;pixelField&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Hero&quot;},&quot;grain&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Texture&quot;},&quot;showNotes&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Review&quot;}}">
+class Component extends DCLogic {
+  r = Object.fromEntries(['sig','photo','mosaic','noise','jpeg','readout','card','stamp','line','copyspec','mini','grainHero','grainSig','heroStamp','copy','caps','field'].map(k => [k, React.createRef()]));
+
+  renderVals() {
+    const h = this.props.headline ?? 'camera-signs';
+    return {
+      r: this.r,
+      hA: h === 'camera-signs', hB: h === 'birthmark', hC: h === 'record-stays',
+      showNotes: this.props.showNotes ?? false,
+      rawFiles: Array.from({ length: 40 }, (_, i) => { const x = i % 10, y = (i / 10) | 0; return { c: y % 2 === 0 ? (x % 2 === 0 ? '#d6392b' : '#18a058') : (x % 2 === 0 ? '#18a058' : '#2f5fd0') }; }),
+      onHeroMove: e => { const r = e.currentTarget.getBoundingClientRect(); this.ptr = { x: e.clientX - r.left, y: e.clientY - r.top }; },
+      onHeroLeave: () => { this.ptr = null; },
+    };
+  }
+
+  componentDidMount() {
+    this.makeGrain();
+    this.makeCanvases();
+    this.onScroll = () => { if (!this.raf) this.raf = requestAnimationFrame(() => { this.raf = 0; this.tick(); }); };
+    addEventListener('scroll', this.onScroll, { passive: true });
+    addEventListener('resize', this.onScroll);
+    this.tick();
+    this.setupCopy();
+    this.heroIn();
+    this.startField();
+  }
+
+  startField() {
+    const cv = this.r.field.current; if (!cv) return;
+    const ctx = cv.getContext('2d');
+    const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const cell = 16, R = 200, C = ['#d6392b', '#18a058', '#2f5fd0'];
+    const resize = () => { const b = cv.getBoundingClientRect(), d = Math.min(2, devicePixelRatio || 1); this.fw = b.width; this.fh = b.height; cv.width = b.width * d; cv.height = b.height * d; ctx.setTransform(d, 0, 0, d, 0, 0); };
+    resize(); this.fieldResize = resize; addEventListener('resize', resize);
+    this.cx = this.fw * 0.7; this.cy = this.fh * 0.4;
+    const hash = (x, y, k) => { const s = Math.sin(x * 12.9898 + y * 78.233 + k * 0.371) * 43758.5453; return s - Math.floor(s); };
+    const draw = t => {
+      ctx.clearRect(0, 0, this.fw, this.fh);
+      if ((this.props.pixelField ?? true) === false) return;
+      const tx = this.ptr ? this.ptr.x : this.fw * (0.62 + 0.3 * Math.sin(t / 5200));
+      const ty = this.ptr ? this.ptr.y : this.fh * (0.45 + 0.3 * Math.sin(t / 3700));
+      this.cx += (tx - this.cx) * 0.14; this.cy += (ty - this.cy) * 0.14;
+      const x0 = Math.max(0, Math.floor((this.cx - R * 2) / cell)), x1 = Math.ceil((this.cx + R * 2) / cell);
+      const y0 = Math.max(0, Math.floor((this.cy - R * 2) / cell)), y1 = Math.ceil((this.cy + R * 2) / cell);
+      const tick = Math.floor(t / 110);
+      for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) {
+        const dx = x * cell + cell / 2 - this.cx, dy = y * cell + cell / 2 - this.cy;
+        const f = Math.exp(-(dx * dx + dy * dy) / (2 * R * R / 2.2));
+        if (f < 0.03) continue;
+        ctx.globalAlpha = f * (0.12 + 0.38 * hash(x, y, tick));
+        ctx.fillStyle = C[y % 2 === 0 ? (x % 2 === 0 ? 0 : 1) : (x % 2 === 0 ? 1 : 2)];
+        ctx.fillRect(x * cell + 1, y * cell + 1, cell - 2, cell - 2);
+      }
+      ctx.globalAlpha = 1;
+    };
+    if (reduce) { draw(0); return; }
+    let last = 0;
+    const loop = t => {
+      this.fieldRaf = requestAnimationFrame(loop);
+      if (t - last < 33) return; last = t;
+      if (cv.getBoundingClientRect().bottom < 0) return;
+      draw(t);
+    };
+    this.fieldRaf = requestAnimationFrame(loop);
+  }
+  componentDidUpdate() { this.applyGrain(); this.tick(); }
+  componentWillUnmount() {
+    removeEventListener('scroll', this.onScroll); removeEventListener('resize', this.onScroll);
+    if (this.io) this.io.disconnect();
+    cancelAnimationFrame(this.fieldRaf); removeEventListener('resize', this.fieldResize);
+  }
+
+  makeGrain() {
+    const c = document.createElement('canvas'); c.width = c.height = 140;
+    const ctx = c.getContext('2d'), img = ctx.createImageData(140, 140);
+    for (let i = 0; i < img.data.length; i += 4) {
+      const v = Math.random() * 255;
+      img.data[i] = img.data[i + 1] = img.data[i + 2] = v; img.data[i + 3] = 60;
+    }
+    ctx.putImageData(img, 0, 0);
+    this.grainUrl = c.toDataURL();
+    this.applyGrain();
+  }
+  applyGrain() {
+    const on = this.props.grain ?? true;
+    [this.r.grainHero, this.r.grainSig].forEach(ref => {
+      const el = ref.current; if (!el) return;
+      el.style.backgroundImage = `url(${this.grainUrl})`;
+      el.style.opacity = on ? '0.07' : '0';
+    });
+  }
+
+  makeCanvases() {
+    let s = 4417;
+    const rnd = () => { s |= 0; s = s + 0x6D2B79F5 | 0; let t = Math.imul(s ^ s >>> 15, 1 | s); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
+    const W = 96, H = 64; this.W = W; this.H = H;
+    const col = Array.from({ length: W }, () => rnd() * 2 - 1);
+    const row = Array.from({ length: H }, () => rnd() * 2 - 1);
+    this.pattern = new Float32Array(W * H);
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+      const g = (rnd() + rnd() + rnd() - 1.5) / 1.5;
+      this.pattern[y * W + x] = Math.max(-1, Math.min(1, g * 0.7 + col[x] * 0.35 + row[y] * 0.15));
+    }
+    const m = this.r.mosaic.current;
+    if (m) {
+      m.width = 600; m.height = 400;
+      const ctx = m.getContext('2d'), cell = 15;
+      const C = { r: [214, 57, 43], g: [24, 160, 88], b: [47, 95, 208] };
+      for (let y = 0; y < 400 / cell + 1; y++) for (let x = 0; x < 600 / cell; x++) {
+        const k = y % 2 === 0 ? (x % 2 === 0 ? 'r' : 'g') : (x % 2 === 0 ? 'g' : 'b');
+        const b = 0.3 + 0.6 * rnd(), c = C[k];
+        ctx.fillStyle = `rgb(${c[0] * b | 0},${c[1] * b | 0},${c[2] * b | 0})`;
+        ctx.fillRect(x * cell, y * cell, cell, cell);
+      }
+      ctx.strokeStyle = 'rgba(8,8,7,0.85)'; ctx.lineWidth = 1.5;
+      for (let x = 0; x <= 600; x += cell) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, 400); ctx.stroke(); }
+      for (let y = 0; y <= 400; y += cell) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(600, y); ctx.stroke(); }
+    }
+    const n = this.r.noise.current; if (n) { n.width = W; n.height = H; this.drawNoise(n, 0); }
+    const mi = this.r.mini.current; if (mi) { mi.width = W; mi.height = H; this.drawNoise(mi, 1); }
+  }
+  drawNoise(cv, k) {
+    const ctx = cv.getContext('2d'), img = ctx.createImageData(this.W, this.H), d = img.data;
+    const amp = 100 * (0.6 + 0.4 * k);
+    for (let i = 0; i < this.pattern.length; i++) {
+      const v = this.pattern[i] * k + (Math.random() * 2 - 1) * (1 - k);
+      const g = 128 + v * amp;
+      d[i * 4] = d[i * 4 + 1] = d[i * 4 + 2] = g; d[i * 4 + 3] = 255;
+    }
+    ctx.putImageData(img, 0, 0);
+  }
+
+  tick() {
+    const el = this.r.sig.current; if (!el) return;
+    const rect = el.getBoundingClientRect();
+    if (rect.bottom < -50 || rect.top > innerHeight + 50) return;
+    const cl = v => Math.max(0, Math.min(1, v));
+    const seg = (a, b) => cl((p - a) / (b - a));
+    const ease = t => t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+    const p = cl(-rect.top / Math.max(1, rect.height - innerHeight));
+
+    let s = 1 + 6 * ease(seg(0.06, 0.30)), tx = 0, ty = 0, blur = 0;
+    if (p > 0.52) s = 7 - 6 * ease(seg(0.52, 0.62));
+    if (p > 0.62) { const k = ease(seg(0.62, 0.74)); s = 1 - 0.6 * k; tx = -32.2 * k; ty = 3.6 * k; blur = 0.5 * k; }
+    const ph = this.r.photo.current;
+    if (ph) { ph.style.transform = `translate(${tx}%,${ty}%) scale(${s})`; ph.style.filter = blur ? `blur(${blur}px) saturate(0.85)` : 'none'; }
+
+    const mo = this.r.mosaic.current;
+    if (mo) { const t = ease(seg(0.16, 0.27)); mo.style.opacity = (t * (1 - seg(0.48, 0.54))).toFixed(3); mo.style.transform = `scale(${1.8 - 0.8 * t})`; }
+
+    const nk = ease(seg(0.34, 0.48));
+    const no = this.r.noise.current;
+    if (no) {
+      no.style.opacity = (ease(seg(0.28, 0.36)) * (1 - seg(0.50, 0.56))).toFixed(3);
+      if (p > 0.26 && p < 0.58 && Math.abs(nk - (this.lastK ?? -1)) > 0.002) { this.drawNoise(no, nk); this.lastK = nk; }
+    }
+    const jp = this.r.jpeg.current; if (jp) jp.style.opacity = ease(seg(0.64, 0.72)).toFixed(3);
+    const cs = this.r.copyspec.current; if (cs) cs.style.opacity = seg(0.70, 0.76).toFixed(3);
+    const ln = this.r.line.current; if (ln) ln.style.transform = `scaleX(${ease(seg(0.78, 0.86))})`;
+    const cd = this.r.card.current;
+    if (cd) { const c = ease(seg(0.80, 0.88)); cd.style.opacity = c.toFixed(3); cd.style.transform = `translateY(calc(-50% + ${(1 - c) * 16}px))`; }
+    const st = this.r.stamp.current;
+    if (st) { const e = seg(0.88, 0.95), b = 1 - Math.pow(1 - e, 3); st.style.opacity = e.toFixed(3); st.style.transform = `scale(${1.6 - 0.6 * b}) rotate(${-14 + 10 * b}deg)`; }
+
+    const bounds = [0, 0.14, 0.32, 0.52, 0.76];
+    let idx = 0; bounds.forEach((b, i) => { if (p >= b) idx = i; });
+    const caps = this.r.caps.current;
+    if (caps && idx !== this.lastIdx) {
+      caps.querySelectorAll('[data-cap]').forEach((c, i) => {
+        c.style.transition = 'opacity 320ms ease, transform 320ms ease';
+        c.style.opacity = i === idx ? '1' : '0';
+        c.style.transform = `translateY(${i === idx ? 0 : i < idx ? -8 : 8}px)`;
+      });
+      caps.querySelectorAll('[data-tick]').forEach((t, i) => {
+        const P = ['#d6392b', '#18a058', '#2f5fd0', '#0088b0', '#d6006c'];
+        t.style.borderColor = i <= idx ? P[i] : '#3d3b37';
+        t.style.background = i === idx ? P[i] : 'transparent';
+        t.style.color = i === idx ? '#ffffff' : i < idx ? '#f1efe9' : '#8b877f';
+      });
+      this.lastIdx = idx;
+    }
+    const ro = this.r.readout.current;
+    if (ro) {
+      const txt = ['Full frame · 6000 × 4000', `Pixel level · RGGB mosaic · ×${s.toFixed(1)}`, nk < 1 ? 'Sensor noise · resolving' : 'Sensor noise · pattern fixed', 'Web copy · 1200 × 800 · 87 KB', 'Traced · public record'][idx];
+      if (ro.textContent !== txt) ro.textContent = txt;
+    }
+  }
+
+  setupCopy() {
+    const root = this.r.copy.current; if (!root) return;
+    const strikes = [...root.querySelectorAll('[data-strike]')], gones = [...root.querySelectorAll('[data-gone]')];
+    const draw = root.querySelector('[data-draw]'), stamp = root.querySelector('[data-stamp4]');
+    if (root.getBoundingClientRect().top < innerHeight * 0.8) return;
+    strikes.forEach(s => { s.style.textDecoration = 'none'; s.style.color = '#1c1c1a'; s.style.transition = 'color 300ms'; });
+    gones.forEach(g => { g.style.opacity = '0'; g.style.transition = 'opacity 300ms'; });
+    if (draw) { draw.style.transform = 'scaleY(0)'; draw.style.transition = 'transform 700ms cubic-bezier(.3,0,.2,1)'; }
+    if (stamp) { stamp.style.opacity = '0'; stamp.style.transform = 'rotate(-12deg) scale(1.5)'; stamp.style.transition = 'transform 450ms cubic-bezier(.2,1.4,.4,1), opacity 200ms'; }
+    this.io = new IntersectionObserver(es => {
+      if (!es.some(e => e.isIntersecting)) return;
+      this.io.disconnect();
+      strikes.forEach((s, i) => setTimeout(() => { s.style.textDecoration = 'line-through'; s.style.color = '#6f6c66'; gones[i] && (gones[i].style.opacity = '1'); }, 300 + i * 140));
+      const t = 300 + strikes.length * 140 + 200;
+      setTimeout(() => { if (draw) draw.style.transform = 'scaleY(1)'; }, t);
+      setTimeout(() => { if (stamp) { stamp.style.opacity = '1'; stamp.style.transform = 'rotate(-3deg) scale(1)'; } }, t + 750);
+    }, { threshold: 0.3 });
+    this.io.observe(root);
+  }
+
+  heroIn() {
+    const el = this.r.heroStamp.current; if (!el) return;
+    el.style.opacity = '0'; el.style.transform = 'rotate(-12deg) scale(1.5)';
+    void el.offsetWidth;
+    setTimeout(() => {
+      el.style.transition = 'transform 500ms cubic-bezier(.2,1.3,.4,1), opacity 180ms';
+      el.style.opacity = '1'; el.style.transform = 'rotate(-4deg) scale(1)';
+    }, 600);
+  }
+}
+</script>
+
+
+</body></html>
