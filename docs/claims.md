@@ -9,18 +9,20 @@ Two claims. Anything not on this list is out of scope, and saying so is the
 discipline — not modesty.
 
 **1. Record integrity.** A registration for this image exists on chain, signed
-by the body's owner, at time T. Verifiable by anyone against
-`0xd1bbDB8A6BfD25563d2e6444fA41E4C5230Ed3C9` without taking our word for it.
+by the body's owner, at time T. Verifiable by anyone against the Base mainnet
+registry `0xBa5Ea549c9e1414C14038dB050e0caCB4f9E48cB` without taking our word
+for it.
 This is the claim that survived every attack in `docs/adversarial.md`.
 
-**On the current deployment, the "at time T" half is provisional.** It is a
-*test* registry: `testMode` is true, and its administrator can wipe every
-record with `resetAll` so the demo can be rehearsed without redeploying. A
-registry that can withdraw a date cannot support a claim about dates, so the
-verify page reads the flag and says so on every verdict. A production registry
-is deployed with the flag false and the contract refuses it outside a testnet
-— but until then, claim 1 here means "a registration exists", not "and no
-earlier one was ever withdrawn".
+**On the production registry, "at time T" holds.** Registry 1.0.0 on Base
+mainnet has `testMode` false and no admin, so `resetAll` always reverts and
+no record can be withdrawn. The chain sets `registeredAt` from the block, and
+the contract ignores any date the caller passes. The contract is not
+upgradeable either: a new version is a new deployment, and this one stays
+readable. The Base Sepolia rehearsal registry is a *test* registry whose
+administrator can wipe it, and the verify page says so on every verdict it
+gives from that registry. Claim 1 holds only against the mainnet address
+above.
 
 **2. Pixel linkage.** These pixels correlate with body X's fingerprint at
 PCE *p* against a threshold of 100. This is evidence of a link, **not proof

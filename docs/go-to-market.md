@@ -88,13 +88,17 @@ Stated as it stands, not as hoped:
 - **Measured:** the method works on a real Canon R10 and survives stripping,
   resizing and re-encoding (`docs/gates.md`), and we published the attacks that
   break the fingerprint alone (`docs/adversarial.md`).
-- **In progress (week 3, 1–7 October):** ten enrolled cameras that are not the
-  founder's, one written note per onboarding covering what confused them and
-  what they would pay for, and the first osoroprints customer through the live
-  integration.
+- **Live (12 October):** the registry on Base mainnet, the founder's Canon
+  R10 registered with its camera commitment, and 20 of the founder's
+  photographs registered. Each resolves from its file, and again after being
+  resized, re-encoded and stripped. One registration costs about
+  0.0000013 ETH in gas.
+- **Planned for week 3, not done:** ten enrolled cameras that are not the
+  founder's, one written note per onboarding, and the first osoroprints
+  customer through the live integration. None of these happened before
+  submission. Onboarding other photographers is the next step.
 - **Not yet:** a paying customer, or a conversation with a competition
-  organiser. Both are the next step after week 3, and the submission will
-  report whatever week 3 actually produced.
+  organiser.
 
 ## Why this founder
 

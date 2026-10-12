@@ -27,7 +27,7 @@ Work happens on `colosseum` only. `main`, `ethonline` and the tag
   - test registry [`0x0C0F3Ec87339F985c509c01dEE8474BB8f5b0EB2`](https://sepolia.basescan.org/address/0x0c0f3ec87339f985c509c01dee8474bb8f5b0eb2), `testMode` true, verified on Basescan
   - R10 body registered ([tx](https://sepolia.basescan.org/tx/0xec7bf4dee6428634bc7ecf2a1a75f2a70554a47f2ad75c59ec870323301833aa)); IMG_0191 registered at PCE 220,907 ([tx](https://sepolia.basescan.org/tx/0xa7cba6cae1f5677ce756e23bd5faa533747d60ef805c7526de24e05f8b8b4e83))
   - public scorer (`GENESIS_PUBLIC=1`, no references) refuses `/score` and returns the pixel hash, which resolves on chain to the R10 body
-- [ ] Verify page driven in a browser against the Base Sepolia registry
+- [x] ~~Verify page driven in a browser against the Base Sepolia registry~~ — superseded: the page moved to Base mainnet on 12 Oct; see the mainnet verify item below
 - [x] Deploy to Base mainnet, `REGISTRY_TEST_MODE` unset (false) -- 12 Oct, block 52505470, 0.000008 ETH
 - [x] Verified on Basescan; address and deploy tx pinned in README and `.env.example` -- [`0xBa5Ea549c9e1414C14038dB050e0caCB4f9E48cB`](https://basescan.org/address/0xBa5Ea549c9e1414C14038dB050e0caCB4f9E48cB), [tx](https://basescan.org/tx/0x24d5f952de05e5280406923be51c281dd1b1feb5bf174141ee079d90e4da6582)
 - [x] Subgraph on Base Sepolia for the rehearsal — `genesis` v0.1.0-base-sepolia
@@ -38,21 +38,21 @@ Work happens on `colosseum` only. `main`, `ethonline` and the tag
       Ethereum Sepolia the whole time -- a different chain, a different
       contract, silently answering with someone else's data instead of
       erroring. All repointed at the Base Sepolia deployment.
-- [ ] Subgraph on Base: `subgraph.yaml` network `base`, new address, `startBlock`; deployed and **published** —
+- [ ] Subgraph on Base: `subgraph.yaml` network `base`, new address, `startBlock`; deployed and **published** — **deployed 12 Oct** as `genesis` v1.0.0-base from block 52505470, synced with no errors; **publishing is still to do** (needs the founder's wallet in Studio) —
       the Studio development URL is capped at 3,000 queries/day and is for testing only; a published
       subgraph queried with an API key has 100,000 free queries/month, then $2 per 100,000
 - [x] Scoring service has a public mode: no K, hashes only, refuses to start beside a reference
 - [x] ~~Scoring service hosted with `GENESIS_PUBLIC=1`~~ -- not needed: since 29 Sept the verify page computes
       both hashes in the browser in WASM and sends only them (`core/`, `docs/shared-verify-plan.md`)
 - [x] Verify page takes body identity from the chain record, and labels the stored PCE as owner-reported
-- [ ] Verify page public, pointed at Base; both Flow C branches live (exact hash; pHash via the subgraph, no re-score)
+- [ ] Verify page public, pointed at Base; both Flow C branches live (exact hash; pHash via the subgraph, no re-score) — config committed (`5bd05ac`), and both branches checked through core's WASM with 20/20 each; goes live when `main` is pushed
 - [x] R10 body registered on mainnet with a camera commitment — 12 Oct, body `0x653c40dd…3b37`, [tx](https://basescan.org/tx/0x624ab10d31a4fdc9f649c7a9af013ef87239fd921e96dc8c8d576d2c2bf9c881), 96,489 gas
 - [x] 20+ photographs registered, each resolvable from the public verify page — 12 Oct, 20 OsoroPrints JPEGs at PCE 12,117–140,753, each scored against the R10 before registration
   - **Measured cost:** 227,415 gas per photograph on average, 0.0000013 ETH each including the L1 fee (0.000026 ETH for all 20)
   - Checked through core's WASM, the verify page's own code: 20/20 exact JPEGs resolve, and 20/20 copies resized to 1600 px, re-encoded at quality 72 and stripped of EXIF trace back by perceptual hash (Hamming distance 0–2 of 64)
   - Still to do: drive the published page in a browser once `main` is pushed
 - [ ] README for a stranger: verify an image in 60 seconds without `BUILD.md`; `adversarial.md` linked prominently
-- [ ] README and `docs/claims.md` point at the Base address, not Sepolia; the "test registry" caveat updated for a production registry
+- [x] README and `docs/claims.md` point at the Base address, not Sepolia; the "test registry" caveat updated for a production registry — 12 Oct
 - [x] Say what happened to CRE: code removed; `docs/cre.md` and `docs/security.md` say so
 - [x] README rewritten for Colosseum: intro, how it works, maths references (474 → 124 lines)
 - [ ] Push
@@ -60,8 +60,8 @@ Work happens on `colosseum` only. `main`, `ethonline` and the tag
 ## Week 2 — 24–30 Sept
 
 - [ ] Hot-pixel and defect map — `adversarial.md` §"Proposals, ranked", tier 1 item 2 (items 1 and 3 shipped 8 Sept)
-- [ ] MCP server real, not sketched: runs against the Base subgraph, `verify_image` / `lookup_body` / `image_lineage` answer from live data
-- [ ] MCP: an agent can check an image it holds, not only a hash it already knows (core/'s `hashImage` computes them; the public service is no longer needed for it)
+- [x] MCP server real, not sketched: runs against the Base subgraph (its default since 12 Oct), `verify_image` / `lookup_body` / `image_lineage` answer from live data
+- [x] MCP: an agent can check an image it holds, not only a hash it already knows (`verify_image_file`, `e7d4cc2`; used on 12 Oct to check all 20 mainnet registrations) (core/'s `hashImage` computes them; the public service is no longer needed for it)
 - [ ] MCP: install instructions a stranger can follow; one recorded agent session
 - [ ] Push
 - [x] Rust port of the scoring core (not enrolment), compiled to WASM for
@@ -98,14 +98,14 @@ Work happens on `colosseum` only. `main`, `ethonline` and the tag
 - [ ] Pitch covers: the insight sentence, the adversarial work, the Nikon paragraph, the paywall map, PRNU for the archive and C2PA for new captures, the market
 - [ ] Name the prior art before a judge does: Birthmark Standard (arXiv 2602.04933), OpenOrigins (Galaxy-backed); nearest Colosseum projects `decentracam`, `certana`, `here.`
 - [x] Go-to-market written: `docs/go-to-market.md` (competitions → licensing/print → agencies buying from freelancers; not a fake-news pitch)
-- [ ] Update its demand-validation section with what week 3 actually produced
+- [x] Update its demand-validation section with what week 3 actually produced — 12 Oct: the outside onboarding did not happen, and the doc says so
 - [ ] Every sentence checked against `docs/claims.md`
-- [ ] **LICENSE** chosen and committed — open-source status is scored
+- [x] **LICENSE** chosen and committed — open-source status is scored. MIT (`185ad94`), with LibRaw under LGPL 2.1 in `THIRD_PARTY_NOTICES.md`
 - [x] CI green on every push: pytest ≥75% coverage, Foundry with 10k fuzz runs and Registry at 100% coverage, Slither, subgraph, MCP, web, desktop clippy (17 Sept)
-- [ ] Prior-work disclosure: `git log ethonline-submission..colosseum`, with the tag as the boundary
+- [x] Prior-work disclosure: `git log ethonline-submission..main` (work moved back to `main` on 20 Sept), with the tag as the boundary — `docs/prior-work.md`
 - [ ] Confirm the event: Crypto World's Fair 14 Sept – 12 Oct vs the blog's Fall hackathon 28 Sept – 2 Nov
 - [ ] Submission form complete; links resolve from a logged-out browser
-- [ ] Tell Osoro it is ready — **the merge to `main` is theirs to make**
+- [ ] Tell Osoro it is ready. ~~The merge to `main` is theirs to make~~: no merge needed, since `colosseum` was fast-forwarded into `main` on 20 Sept and work has landed on `main` since
 
 ## Scoring without Chainlink
 
@@ -165,8 +165,8 @@ Open before building:
 - [ ] Onboarding screens for photographers; hide the presenter-only screens (pre-flight, reset) —
       largely done by the sidebar rebuild; recheck against `console/app.py`'s `/reset` (not exposed
       in the new UI, confirm nothing else presenter-only leaked through)
-- [ ] App key in the OS keychain with a recovery phrase; signs ERC-2771 requests instead of calling `cast`
-- [ ] Registry: ERC-2771 forwarder support (before the mainnet deploy)
+- [ ] ~~App key in the OS keychain with a recovery phrase; signs ERC-2771 requests instead of calling `cast`~~ — replaced: Google sign-in with an embedded signer and no visible keys (`docs/desktop-parity.md`)
+- [x] ~~Registry: ERC-2771 forwarder support (before the mainnet deploy)~~ — not needed: per-user smart accounts with a paymaster work with registry 1.0.0 unchanged, and keep the owner as the signer (`docs/desktop-parity.md`)
 - [ ] Relayer service: invite codes, per-body quotas, pays gas; hosted
 - [ ] Code signing: deferred; unsigned installers with instructions on the landing page
 - [x] Landing page on GitHub Pages: download links pulled live from the
