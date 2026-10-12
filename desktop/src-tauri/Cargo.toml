@@ -1,6 +1,6 @@
 [package]
 name = "genesis"
-version = "0.1.1"
+version = "0.1.2"
 description = "Genesis: register photographs against the camera that took them"
 authors = ["Osoro Bironga"]
 license = ""

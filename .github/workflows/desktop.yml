@@ -91,3 +91,49 @@ jobs:
             Windows: choose "More info" then "Run anyway" on the SmartScreen prompt.
           releaseDraft: true
           prerelease: true
+
+  # Publish the draft once every platform has built: installers renamed to
+  # genesis-<version>-<os>-<arch>.<ext>, a SHA256SUMS.txt, then a normal
+  # release, so the landing page's releases/latest link finds it. Runs even
+  # if one platform failed, publishing whatever did build.
+  publish:
+    needs: build
+    if: ${{ !cancelled() && github.ref_type == 'tag' }}
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      TAG: ${{ github.ref_name }}
+    steps:
+      - name: Rename installers, add checksums, publish
+        shell: bash
+        run: |
+          set -euo pipefail
+          V="${TAG#desktop-v}"
+          mkdir dist && cd dist
+          gh release download "$TAG" --repo "$GITHUB_REPOSITORY"
+          ls -la
+          for f in *; do
+            case "$f" in
+              *.dmg)          new="genesis-$V-macos-aarch64.dmg" ;;
+              *-setup.exe)    new="genesis-$V-windows-x64-setup.exe" ;;
+              *.msi)          new="genesis-$V-windows-x64.msi" ;;
+              *.AppImage)     new="genesis-$V-linux-x86_64.AppImage" ;;
+              *.deb)          new="genesis-$V-linux-x86_64.deb" ;;
+              *.rpm)          new="genesis-$V-linux-x86_64.rpm" ;;
+              *)              new="" ;;   # updater archives and signatures are not offered
+            esac
+            gh release delete-asset "$TAG" "$f" --repo "$GITHUB_REPOSITORY" --yes
+            if [ -n "$new" ]; then mv "$f" "$new"; else rm "$f"; fi
+          done
+          sha256sum genesis-* > SHA256SUMS.txt
+          gh release upload "$TAG" genesis-* SHA256SUMS.txt --repo "$GITHUB_REPOSITORY"
+          {
+            echo "## Install"
+            echo
+            echo "- **macOS (Apple silicon):** open the .dmg and drag Genesis into Applications. The app is not notarized yet: the first time, right-click Genesis in Applications and choose Open."
+            echo "- **Windows:** run the -setup.exe (or the .msi). On the SmartScreen prompt choose More info, then Run anyway."
+            echo "- **Linux:** the .AppImage runs as is (chmod +x first); .deb and .rpm install system-wide."
+            echo
+            echo "Check a download against SHA256SUMS.txt: shasum -a 256 -c SHA256SUMS.txt --ignore-missing"
+          } > notes.md
+          gh release edit "$TAG" --repo "$GITHUB_REPOSITORY" --draft=false --prerelease=false --latest --notes-file notes.md
