@@ -20,8 +20,10 @@ serde-wasm-bindgen = "0.6"
 opt-level = "s"
 lto = true
 
-# Recent Rust emits WASM features (bulk memory, reference types, multivalue,
-# ...) that the wasm-opt wasm-pack downloads rejects unless told to expect
-# them: "Fatal: error in parsing input" on the macOS desktop build.
+
+# wasm-opt off: the binaryen wasm-pack downloads differs by runner, and each
+# version rejects a different set of the features recent Rust emits (macOS:
+# "error in parsing input", then "Unknown option '--enable-multivalue'").
+# rustc's own release build (opt-level "s", lto) is what ships.
 [package.metadata.wasm-pack.profile.release]
-wasm-opt = ["-Os", "--enable-bulk-memory", "--enable-nontrapping-float-to-int", "--enable-sign-ext", "--enable-mutable-globals", "--enable-reference-types", "--enable-multivalue"]
+wasm-opt = false
