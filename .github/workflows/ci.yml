@@ -97,9 +97,18 @@ jobs:
         with:
           python-version: "3.12"
       - run: python -m pip install slither-analyzer
-      - name: Slither (zero findings on 17 Sept; any new one fails the job)
+      # Zero findings on 17 Sept; any new one fails the job. Two detectors are
+      # excluded since registry 1.0.0 (12 Oct): registerImage writes
+      # block.timestamp into its in-memory record, so slither treats every
+      # comparison on that record (hashes, modification level, parent) as a
+      # timestamp comparison (`timestamp`) and a strict equality on it
+      # (`incorrect-equality`). None of them compares a time. Registry.sol
+      # cannot carry slither-disable comments instead: it must stay
+      # byte-identical to the source verified on Basescan for the mainnet
+      # registry 0xBa5Ea549...48cB.
+      - name: Slither
         working-directory: contracts
-        run: slither . --filter-paths "lib/|test/|script/" --fail-low
+        run: slither . --filter-paths "lib/|test/|script/" --exclude timestamp,incorrect-equality --fail-low
 
   subgraph:
     runs-on: ubuntu-22.04
