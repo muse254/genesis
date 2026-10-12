@@ -179,6 +179,15 @@ export const api = {
     );
   },
 
+  /** Bring back a camera enrolled before, from its fingerprint file. */
+  importBody(file: File) {
+    const form = new FormData();
+    form.append("file", file);
+    return call<{ bodyId: string; name: string; registered: boolean | null }>(
+      "/bodies/import", { method: "POST", body: form },
+    );
+  },
+
   /** Screen 04. Quality has no default here either -- see `/degrade`'s docstring. */
   async degrade(file: File, longestEdge: number, quality: number): Promise<File> {
     const form = new FormData();

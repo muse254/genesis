@@ -253,6 +253,33 @@ def test_a_keystore_signs_without_the_key_on_argv(tmp_path, monkeypatch):
     assert wallet == ["--private-key", "0x" + "11" * 32] and secret == "0x" + "11" * 32
 
 
+def test_a_camera_comes_back_from_its_fingerprint_file(client, tmp_path, monkeypatch):
+    import io
+    import numpy as np
+    from fingerprint import prnu
+    from scoring.app import _bodies
+
+    monkeypatch.setenv("GENESIS_REFERENCES", str(tmp_path / "refs"))
+    monkeypatch.setattr("scoring.app.REFERENCES", tmp_path / "refs")
+    monkeypatch.setattr(console_app, "_bodies", _bodies)  # the real one, not the fixture's stub
+    _bodies.cache_clear()
+    monkeypatch.setattr("console.chain.body", lambda body_id: None)
+
+    src = tmp_path / "my-camera.npz"
+    prnu.save_fingerprint(src, {0: np.ones((8, 8), np.float32)}, {"frames": 40})
+    first = client.post("/bodies/import", files={"file": ("my-camera.npz", src.read_bytes())})
+    assert first.status_code == 200, first.text
+    assert first.json()["name"] == "my-camera" and first.json()["registered"] is False
+    assert (tmp_path / "refs" / "my-camera.npz").exists()
+
+    again = client.post("/bodies/import", files={"file": ("copy.npz", src.read_bytes())})
+    assert again.status_code == 409
+
+    junk = client.post("/bodies/import", files={"file": ("x.npz", io.BytesIO(b"not a fingerprint"))})
+    assert junk.status_code == 422
+    _bodies.cache_clear()
+
+
 def test_the_hmac_key_becomes_bytes():
     """It arrives from the environment as str; hmac.new rejects that with a
     TypeError inside the request, which surfaced as a bare 500."""

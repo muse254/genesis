@@ -248,6 +248,46 @@ async def bodies() -> list[dict]:
     ]
 
 
+@app.post("/bodies/import")
+async def import_body(file: UploadFile = File(...)) -> dict:
+    """Bring back a camera enrolled before, from its fingerprint file.
+
+    Enrolling again would not do it: a fresh enrolment estimates a different
+    K, so a different commitment and body id than the one on the record. The
+    original file is the camera's identity. It is copied into this machine's
+    references only, like an enrolment, and the record is read to say whether
+    that camera is already registered.
+    """
+    handle = tempfile.NamedTemporaryFile(suffix=".npz", delete=False)
+    try:
+        handle.write(await file.read())
+        handle.close()
+        try:
+            planes, _meta = prnu.load_fingerprint(handle.name)
+        except Exception:
+            raise HTTPException(422, "that file is not a Genesis camera fingerprint (.npz)")
+        body_id = record.body_id(prnu.commitment(planes)).hex()
+        if body_id in _bodies():
+            raise HTTPException(409, f"this camera is already on this computer as {_bodies()[body_id]['name']}")
+
+        stem = "".join(c for c in Path(file.filename or "camera").stem if c.isalnum() or c in "-_") or "camera"
+        references = Path(os.environ.get("GENESIS_REFERENCES", "data/references"))
+        references.mkdir(parents=True, exist_ok=True)
+        name, n = stem, 2
+        while (references / f"{name}.npz").exists():
+            name, n = f"{stem}-{n}", n + 1
+        os.replace(handle.name, references / f"{name}.npz")
+        _bodies.cache_clear()
+    finally:
+        Path(handle.name).unlink(missing_ok=True)
+
+    try:
+        registered = chain.body("0x" + body_id) is not None
+    except chain.ChainError:
+        registered = None  # offline: the camera is restored, its status unknown
+    return {"bodyId": "0x" + body_id, "name": name, "registered": registered}
+
+
 @app.get("/bodies/{body_id}/fingerprint")
 async def fingerprint(body_id: str) -> FileResponse:
     """One body's K file, for core/ to score against in the app's webview.

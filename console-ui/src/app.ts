@@ -214,12 +214,16 @@ async function renderHome(host: HTMLElement) {
   const bodies = state.bodyStatus ?? [];
   if (bodies.length === 0) {
     host.innerHTML = `<h1 class="title">Home</h1><p class="lede">Everything starts with a camera.</p>`;
-    host.append(el(`
+    const empty = el(`
       <div class="empty-state">
         <p>Genesis learns your camera's sensor pattern from photos you already have,
-           then lets you register your work under it. Add your first camera to begin.</p>
-        <button class="btn" data-go="cameras">Add your first camera</button>
-      </div>`));
+           then lets you register your work under it.</p>
+        <div style="display:flex;flex-wrap:wrap;gap:12px;justify-content:center">
+          <button class="btn" data-go="cameras">Add a new camera</button>
+        </div>
+      </div>`);
+    empty.querySelector("div")!.append(restoreCamera(() => renderHome(host)));
+    host.append(empty);
     host.querySelector("[data-go]")!.addEventListener("click", () => show("cameras"));
     return;
   }
@@ -502,8 +506,8 @@ async function renderCameras(host: HTMLElement) {
 
   host.innerHTML = `
     <h1 class="title">Cameras</h1>
-    <p class="lede">Every camera enrolled on this machine. Its sensor pattern (K)
-       never leaves it — only a commitment goes on chain.</p>`;
+    <p class="lede">The cameras on this computer. Their sensor patterns never leave it.</p>`;
+  host.append(restoreCamera(() => renderCameras(host), "flex-start"));
 
   const addPanel = el(`
     <div class="panel" hidden>
@@ -621,6 +625,40 @@ async function renderCameras(host: HTMLElement) {
     grid.append(card);
   }
   host.append(grid);
+}
+
+/**
+ * "I already have a camera": a camera enrolled before comes back from its
+ * fingerprint file. Enrolling again would not work, since a fresh enrolment
+ * is a different fingerprint than the one on the record.
+ */
+function restoreCamera(done: () => void, align: "center" | "flex-start" = "center"): HTMLElement {
+  const box = el(`
+    <div style="display:flex;flex-direction:column;align-items:${align};gap:8px;margin-bottom:16px">
+      <label class="btn secondary" style="cursor:pointer">I already have a camera
+        <input type="file" accept=".npz" hidden />
+      </label>
+      <p class="hint" data-out style="margin:0">Choose its fingerprint file (.npz) from your backup.</p>
+    </div>`);
+  const input = box.querySelector("input") as HTMLInputElement;
+  const out = box.querySelector("[data-out]") as HTMLElement;
+  input.addEventListener("change", async () => {
+    const file = input.files?.[0];
+    if (!file) return;
+    out.textContent = "Restoring…";
+    try {
+      const camera = await api.importBody(file);
+      out.textContent = camera.registered
+        ? `Welcome back. ${camera.name} is restored and already registered, so you can register photos.`
+        : `${camera.name} is restored.`;
+      invalidate();
+      setTimeout(done, 1200);
+    } catch (error) {
+      out.textContent = (error as Error).message;
+    }
+    input.value = "";
+  });
+  return box;
 }
 
 // --- Settings ---------------------------------------------------------
