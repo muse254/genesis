@@ -428,8 +428,8 @@ a:hover{color:#0a8f4d}
     </div>
 
     <figure style="margin:0;display:flex;flex-direction:column;gap:12px">
-      <div style="position:relative;aspect-ratio:4/5;background:#232320">
-        <image-slot id="hero-photo" shape="rect" src="assets/photos/hero-carpenter.jpg" placeholder="The carpenter"></image-slot>
+      <div style="position:relative;aspect-ratio:2/3;width:100%;max-width:560px;background:#232320">
+        <image-slot id="hero-photo" shape="rect" fit="contain" src="assets/photos/hero-carpenter.jpg" placeholder="The carpenter"></image-slot>
         <div ref="{{ r.heroStamp }}" style="position:absolute;right:16px;bottom:16px;pointer-events:none;display:flex;align-items:center;gap:8px;padding:7px 11px;background:#fbfbf9;color:#0a8f4d;border:1.5px solid #0a8f4d;font-family:'IBM Plex Mono',monospace;font-weight:600;font-size:12px;letter-spacing:0.14em;text-transform:uppercase;transform:rotate(-4deg)">
           <span aria-hidden="true" style="width:7px;height:7px;background:#0a8f4d;display:inline-block"></span>Registered
         </div>
@@ -441,18 +441,26 @@ a:hover{color:#0a8f4d}
     </figure>
   </div>
 
-  <div style="position:relative;max-width:1280px;margin:0 auto;padding:0 clamp(16px,4vw,48px) clamp(56px,7vw,96px);display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr));gap:16px">
-    <figure style="margin:0;display:flex;flex-direction:column;gap:10px">
-      <div style="position:relative;aspect-ratio:3/2;background:#232320"><image-slot id="gallery-1" shape="rect" src="assets/photos/dhow-zanzibar.jpg" placeholder="Dhow, Zanzibar"></image-slot></div>
-      <figcaption style="display:flex;align-items:center;gap:8px;font-family:'IBM Plex Mono',monospace;font-size:12px;color:#a9a59c"><span aria-hidden="true" style="width:7px;height:7px;background:#d6392b;flex:none"></span>Dhow, Zanzibar · registered 12 Oct 2026</figcaption>
+    <div style="position:relative;max-width:1280px;margin:0 auto;padding:0 clamp(16px,4vw,48px) clamp(40px,6vw,80px);columns:4 220px;column-gap:16px">
+    <figure style="margin:0 0 16px;display:flex;flex-direction:column;gap:10px;break-inside:avoid">
+      <div style="position:relative;aspect-ratio:3 / 2;background:#232320"><image-slot id="gallery-1" shape="rect" fit="contain" src="assets/photos/wire-lines.jpg" placeholder="Wire lines"></image-slot></div>
+      <figcaption style="display:flex;align-items:center;gap:8px;font-family:'IBM Plex Mono',monospace;font-size:12px;color:#a9a59c"><span aria-hidden="true" style="width:7px;height:7px;background:#d6392b;flex:none"></span>Wire lines · Canon R10</figcaption>
     </figure>
-    <figure style="margin:0;display:flex;flex-direction:column;gap:10px">
-      <div style="position:relative;aspect-ratio:3/2;background:#232320"><image-slot id="gallery-2" shape="rect" src="assets/photos/jozani-forest.jpg" placeholder="Jozani Forest, Zanzibar"></image-slot></div>
-      <figcaption style="display:flex;align-items:center;gap:8px;font-family:'IBM Plex Mono',monospace;font-size:12px;color:#a9a59c"><span aria-hidden="true" style="width:7px;height:7px;background:#18a058;flex:none"></span>Jozani Forest, Zanzibar · registered 12 Oct 2026</figcaption>
+    <figure style="margin:0 0 16px;display:flex;flex-direction:column;gap:10px;break-inside:avoid">
+      <div style="position:relative;aspect-ratio:3 / 2;background:#232320"><image-slot id="gallery-2" shape="rect" fit="contain" src="assets/photos/lotus.jpg" placeholder="Lotus"></image-slot></div>
+      <figcaption style="display:flex;align-items:center;gap:8px;font-family:'IBM Plex Mono',monospace;font-size:12px;color:#a9a59c"><span aria-hidden="true" style="width:7px;height:7px;background:#2f5fd0;flex:none"></span>Lotus · Canon R10</figcaption>
     </figure>
-    <figure style="margin:0;display:flex;flex-direction:column;gap:10px">
-      <div style="position:relative;aspect-ratio:3/2;background:#232320"><image-slot id="gallery-3" shape="rect" src="assets/photos/football.jpg" placeholder="Football"></image-slot></div>
-      <figcaption style="display:flex;align-items:center;gap:8px;font-family:'IBM Plex Mono',monospace;font-size:12px;color:#a9a59c"><span aria-hidden="true" style="width:7px;height:7px;background:#2f5fd0;flex:none"></span>Football · registered 12 Oct 2026</figcaption>
+    <figure style="margin:0 0 16px;display:flex;flex-direction:column;gap:10px;break-inside:avoid">
+      <div style="position:relative;aspect-ratio:2 / 3;background:#232320"><image-slot id="gallery-3" shape="rect" fit="contain" src="assets/photos/bird-on-line.jpg" placeholder="Bird on a line"></image-slot></div>
+      <figcaption style="display:flex;align-items:center;gap:8px;font-family:'IBM Plex Mono',monospace;font-size:12px;color:#a9a59c"><span aria-hidden="true" style="width:7px;height:7px;background:#18a058;flex:none"></span>Bird on a line · Canon R10</figcaption>
+    </figure>
+    <figure style="margin:0 0 16px;display:flex;flex-direction:column;gap:10px;break-inside:avoid">
+      <div style="position:relative;aspect-ratio:2 / 3;background:#232320"><image-slot id="gallery-4" shape="rect" fit="contain" src="assets/photos/plane-trail.jpg" placeholder="Plane trail"></image-slot></div>
+      <figcaption style="display:flex;align-items:center;gap:8px;font-family:'IBM Plex Mono',monospace;font-size:12px;color:#a9a59c"><span aria-hidden="true" style="width:7px;height:7px;background:#0088b0;flex:none"></span>Plane trail · Canon R10</figcaption>
+    </figure>
+    <figure style="margin:0 0 16px;display:flex;flex-direction:column;gap:10px;break-inside:avoid">
+      <div style="position:relative;aspect-ratio:2 / 3;background:#232320"><image-slot id="gallery-5" shape="rect" fit="contain" src="assets/photos/highway.jpg" placeholder="Highway"></image-slot></div>
+      <figcaption style="display:flex;align-items:center;gap:8px;font-family:'IBM Plex Mono',monospace;font-size:12px;color:#a9a59c"><span aria-hidden="true" style="width:7px;height:7px;background:#d6006c;flex:none"></span>Highway · Canon R10</figcaption>
     </figure>
   </div>
 </header>
