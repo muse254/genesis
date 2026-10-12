@@ -29,7 +29,7 @@
  */
 
 import { cropKey, type Analysis, type Candidate, type OnStep, type RawInput, type Signals } from "./analyse";
-import { nearest, type ChainReader } from "./chain";
+import { nearAll, type ChainReader } from "./chain";
 import type { Engine } from "./engine";
 import { readExif } from "./exif";
 import { isRaw } from "./hashes";
@@ -83,6 +83,21 @@ export interface VerifyResult {
     explorerUrl?: string;
   } | null;
   derivedFrom: { imageHash: `0x${string}`; hammingDistance: number; matchedBy: "perceptual hash" } | null;
+  /**
+   * Other registrations the chain confirms for a near-identical image
+   * (perceptual hash within `MAX_HAMMING`), other than the one reported.
+   * `earlier` is true when it was registered before the reported one, by
+   * the chain's own clock. A registration is a claim to priority, and
+   * priority goes to whoever registered first: a later copy under another
+   * body must not look like the original.
+   */
+  competing: {
+    imageHash: `0x${string}`;
+    bodyId: string;
+    hammingDistance: number;
+    registeredAt: number;
+    earlier: boolean;
+  }[];
   consistency: Signals | null;
   stages: Stage[];
   /** On `no-record`: why there was nothing to find, when it can be measured. */
@@ -113,6 +128,9 @@ export interface VerifyOptions {
   fetch?: typeof fetch;
 }
 
+/** Near-duplicate registrations read off the chain per verify. */
+const MAX_CONFIRMED = 10;
+
 export async function verify(file: File, options: VerifyOptions): Promise<VerifyResult> {
   const { engine, chain, bodies = [], onStep } = options;
   const bytes = new Uint8Array(await file.arrayBuffer());
@@ -136,6 +154,8 @@ export async function verify(file: File, options: VerifyOptions): Promise<Verify
 
   let registration = null as Awaited<ReturnType<ChainReader["image"]>>;
   let derivedFrom: VerifyResult["derivedFrom"] = null;
+  let reported: `0x${string}` = analysis.imageHash;
+  const competing: VerifyResult["competing"] = [];
   if (chain) {
     try {
       registration = await chain.image(analysis.imageHash);
@@ -143,20 +163,42 @@ export async function verify(file: File, options: VerifyOptions): Promise<Verify
       throw withheld(error);
     }
     // The perceptual branch: a degraded copy has a different pixel hash, so
-    // the exact read missed. The index proposes; the chain confirms.
-    if (!registration && options.subgraphUrl) {
-      const near = await nearest(options.subgraphUrl, analysis.perceptualHash, options.fetch);
-      if (near) {
-        let parent;
+    // the exact read missed. The index proposes; the chain confirms. It also
+    // runs after an exact hit, to find an earlier registration of the same
+    // picture. Reads are capped so a crowded pHash cannot turn one verify
+    // into an unbounded run of RPC calls.
+    if (options.subgraphUrl) {
+      const near = (await nearAll(options.subgraphUrl, analysis.perceptualHash, options.fetch))
+        .filter((m) => m.imageHash !== analysis.imageHash)
+        .slice(0, MAX_CONFIRMED);
+      const found: { match: (typeof near)[number]; record: NonNullable<typeof registration> }[] = [];
+      for (const match of near) {
+        let record;
         try {
-          parent = await chain.image(near.imageHash);
+          record = await chain.image(match.imageHash);
         } catch (error) {
           throw withheld(error);
         }
-        if (parent) {
-          registration = parent;
-          derivedFrom = { imageHash: near.imageHash, hammingDistance: near.hammingDistance, matchedBy: "perceptual hash" };
-        }
+        if (record) found.push({ match, record });
+      }
+
+      // The earliest confirmed registration owns the picture. Ties go to the
+      // nearer hash, which the sort in `nearAll` already ordered.
+      const earliest = found.length ? found.reduce((a, b) => (b.record.registeredAt < a.record.registeredAt ? b : a)) : null;
+      if (!registration && earliest) {
+        registration = earliest.record;
+        derivedFrom = { imageHash: earliest.match.imageHash, hammingDistance: earliest.match.hammingDistance, matchedBy: "perceptual hash" };
+        reported = earliest.match.imageHash;
+      }
+      for (const f of found) {
+        if (f.match.imageHash === reported) continue;
+        competing.push({
+          imageHash: f.match.imageHash,
+          bodyId: f.record.bodyId,
+          hammingDistance: f.match.hammingDistance,
+          registeredAt: f.record.registeredAt,
+          earlier: registration !== null && f.record.registeredAt < registration.registeredAt,
+        });
       }
     }
   }
@@ -183,6 +225,7 @@ export async function verify(file: File, options: VerifyOptions): Promise<Verify
     body: null,
     registration: null,
     derivedFrom,
+    competing,
     consistency: analysis.signals,
     stages: best
       ? stages({

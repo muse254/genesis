@@ -131,6 +131,40 @@ describe("the web page: no enrolled bodies", () => {
     expect(result.derivedFrom).toMatchObject({ imageHash: NEARER, hammingDistance: 2 });
   });
 
+  it("gives a near-duplicate to whoever registered first, not whoever is nearest", async () => {
+    const LATER = `0x${"ee".repeat(32)}` as const;
+    const { fetch } = graph([
+      { imageHash: PARENT, perceptualHash: flip(PHASH, 6) },
+      { imageHash: LATER, perceptualHash: flip(PHASH, 1) },
+    ]);
+    const result = await run(photo(), {
+      chain: chain({ [PARENT]: record(PARENT), [LATER]: { ...record(LATER), registeredAt: 1_760_000_000 } }),
+      subgraphUrl: SUBGRAPH,
+      fetch,
+    });
+    expect(result.derivedFrom).toMatchObject({ imageHash: PARENT });
+    expect(result.competing).toMatchObject([{ imageHash: LATER, earlier: false, registeredAt: 1_760_000_000 }]);
+  });
+
+  it("flags an exact hit when a near-duplicate was registered earlier", async () => {
+    const { fetch } = graph([{ imageHash: PARENT, perceptualHash: flip(PHASH, 2) }]);
+    const result = await run(photo(), {
+      chain: chain({
+        [IMAGE]: { ...record(IMAGE), registeredAt: 1_760_000_000 },
+        [PARENT]: { ...record(PARENT), bodyId: `0x${"33".repeat(32)}` },
+      }),
+      subgraphUrl: SUBGRAPH,
+      fetch,
+    });
+    expect(result.verdict).toBe("registered");
+    expect(result.competing).toMatchObject([{ imageHash: PARENT, earlier: true, hammingDistance: 2 }]);
+  });
+
+  it("has no competing registrations when there is one", async () => {
+    const result = await run(photo(), { chain: chain({ [IMAGE]: record(IMAGE) }) });
+    expect(result.competing).toEqual([]);
+  });
+
   it("ignores a perceptual match beyond 10 bits", async () => {
     const { fetch } = graph([{ imageHash: PARENT, perceptualHash: flip(PHASH, 11) }]);
     const result = await run(photo(), { chain: chain({ [PARENT]: record(PARENT) }), subgraphUrl: SUBGRAPH, fetch });

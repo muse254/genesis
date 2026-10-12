@@ -152,17 +152,22 @@ export function createChainReader(config: ChainConfig): ChainReader {
  */
 export const MAX_HAMMING = 10;
 
+export interface NearMatch {
+  imageHash: `0x${string}`;
+  hammingDistance: number;
+}
+
 /**
- * The registered image whose pHash is nearest, if within `MAX_HAMMING`.
- * A candidate only: the caller must read it off the chain before saying
- * anything, because an index is not an authority. Returns null when the
- * index cannot answer -- a missing index costs a link, never a verdict.
+ * Every indexed image whose pHash is within `MAX_HAMMING`, nearest first.
+ * Candidates only: each must be read off the chain before anything is said.
+ * Returns an empty list when the index cannot answer -- a missing index costs
+ * a link, never a verdict.
  */
-export async function nearest(
+export async function nearAll(
   subgraphUrl: string,
   perceptualHash: string,
   fetchImpl: typeof fetch = fetch,
-): Promise<{ imageHash: `0x${string}`; hammingDistance: number } | null> {
+): Promise<NearMatch[]> {
   let images: { imageHash: `0x${string}`; perceptualHash: string }[];
   try {
     const response = await fetchImpl(subgraphUrl, {
@@ -170,21 +175,30 @@ export async function nearest(
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ query: "{ images(first: 1000) { imageHash perceptualHash } }" }),
     });
-    if (!response.ok) return null;
+    if (!response.ok) return [];
     const payload = (await response.json()) as { data?: { images?: typeof images }; errors?: unknown };
-    if (payload.errors) return null;
+    if (payload.errors) return [];
     images = payload.data?.images ?? [];
   } catch {
-    return null;
+    return [];
   }
 
   const target = BigInt(perceptualHash);
-  let best: { imageHash: `0x${string}`; hammingDistance: number } | null = null;
+  const matches: NearMatch[] = [];
   for (const image of images) {
     let bits = target ^ BigInt(image.perceptualHash);
     let distance = 0;
     for (; bits; bits >>= 1n) distance += Number(bits & 1n);
-    if (!best || distance < best.hammingDistance) best = { imageHash: image.imageHash, hammingDistance: distance };
+    if (distance <= MAX_HAMMING) matches.push({ imageHash: image.imageHash, hammingDistance: distance });
   }
-  return best && best.hammingDistance <= MAX_HAMMING ? best : null;
+  return matches.sort((a, b) => a.hammingDistance - b.hammingDistance);
+}
+
+/** The nearest `nearAll` match, or null. */
+export async function nearest(
+  subgraphUrl: string,
+  perceptualHash: string,
+  fetchImpl: typeof fetch = fetch,
+): Promise<NearMatch | null> {
+  return (await nearAll(subgraphUrl, perceptualHash, fetchImpl))[0] ?? null;
 }

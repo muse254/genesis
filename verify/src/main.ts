@@ -113,6 +113,7 @@ function render(result: VerifyResult): void {
     }
     if (registeredAt) say("Original registered", registeredAt);
     sayTestRegistry(result, rows);
+    sayCompeting(result, rows);
     rows.push(
       "<p class=\"caveat\">The original was registered by its owner at the time " +
         "shown, and this image matches it perceptually. That is a weaker link " +
@@ -138,6 +139,7 @@ function render(result: VerifyResult): void {
       say("Modification level", ["unedited raw", "adjusted", "generative edit"][result.registration.modificationLevel]);
     }
     sayTestRegistry(result, rows);
+    sayCompeting(result, rows);
     rows.push(
       "<p class=\"caveat\">Origin, not truth. The owner of this body signed for " +
         "this image at the time shown. That does not say the scene was real.</p>",
@@ -146,6 +148,31 @@ function render(result: VerifyResult): void {
 
   section.innerHTML = `<dl>${rows.join("")}</dl>`;
   section.hidden = false;
+}
+
+/**
+ * A near-identical image registered by someone else. Priority is by the
+ * chain's clock, so an earlier one is said first and loudest: a later copy
+ * under another body must not read as the original.
+ */
+function sayCompeting(result: VerifyResult, rows: string[]): void {
+  const earlier = result.competing.filter((c) => c.earlier);
+  if (earlier.length) {
+    const first = earlier.reduce((a, b) => (b.registeredAt < a.registeredAt ? b : a));
+    rows.push(
+      "<p class=\"caveat\"><strong>Registered earlier.</strong> A near-identical image " +
+        `(${first.hammingDistance} of 64 bits apart) was registered on ` +
+        `${new Date(first.registeredAt * 1000).toISOString().slice(0, 10)}, before the record above. ` +
+        "The earlier registration has priority; treat this one as a later claim over the same picture.</p>",
+    );
+  }
+  const later = result.competing.length - earlier.length;
+  if (later > 0) {
+    rows.push(
+      `<p class="caveat">${later} later registration${later === 1 ? "" : "s"} of a near-identical image ` +
+        "exist under other records.</p>",
+    );
+  }
 }
 
 function sayTestRegistry(result: VerifyResult, rows: string[]): void {
