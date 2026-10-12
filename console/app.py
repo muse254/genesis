@@ -72,12 +72,14 @@ async def health() -> dict:
 #: Gas: the demo sends four transactions -- registerBody, registerImage,
 #: commitSession, commit -- which on Sepolia or Base costs far under 0.01 ETH. The
 #: handoff asked for 0.05, which the deployer's 0.0484 would fail for no real
-#: reason.
+#: reason. On Base mainnet a registerImage measured ~204k gas, about
+#: 0.000001 ETH at 0.005 gwei, so 0.001 ETH is hundreds of registrations;
+#: 0.01 read NO-GO against a funded 0.0046 ETH mainnet deployer.
 #:
 #: Bodies: one. Two would be better and needs a second physical camera
 #: (`docs/e2e-checklist.md` §1), so gating the demo on it would gate it on
 #: hardware nobody has.
-MIN_BALANCE_WEI = 10**16          # 0.01 ETH
+MIN_BALANCE_WEI = 10**15          # 0.001 ETH
 MIN_BODIES = 1
 MAX_BLOCK_AGE = 60                # seconds; Sepolia blocks are ~12s, Base ~2s
 
