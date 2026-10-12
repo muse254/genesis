@@ -6,12 +6,13 @@
     "genesis-mcp": "./dist/server.js"
   },
   "scripts": {
-    "build": "tsc",
+    "build": "tsc && node scripts/bundle-core.mjs",
     "start": "node dist/server.js",
     "test": "node --test dist/*.test.js"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.0.0",
+    "viem": "^2.57.1",
     "zod": "^4.5.4"
   },
   "devDependencies": {

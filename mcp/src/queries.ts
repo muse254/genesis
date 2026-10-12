@@ -43,7 +43,7 @@ const IMAGE_FIELDS = `
 
 export class SubgraphClient {
   constructor(
-    private readonly url: string,
+    readonly url: string,
     private readonly fetchImpl: typeof fetch = fetch,
   ) {}
 

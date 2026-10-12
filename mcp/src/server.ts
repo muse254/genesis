@@ -9,7 +9,8 @@
  * registration needs the fingerprint, which never leaves the photographer's
  * machine, so an agent could not do it even if it wanted to.
  *
- *   GENESIS_SUBGRAPH_URL=https://... node dist/server.js
+ * Which subgraph: GENESIS_SUBGRAPH_URL, else GENESIS_CHAIN (config.ts).
+ * Install and client setup: mcp/README.md.
  */
 
 import { resolve } from "node:path";
@@ -19,6 +20,8 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
 
+import { subgraphUrl } from "./config.js";
+import { checkImageFile, describeFileCheck } from "./image.js";
 import {
   SubgraphClient,
   describeBody,
@@ -42,12 +45,19 @@ export const tools = [
     description:
       "Walk parentImageHash to return the edit graph for an image: its original and every registered derivative.",
   },
+  {
+    name: "verify_image_file",
+    description:
+      "Given the path of an image file on this machine (JPEG, PNG or TIFF), hash it locally exactly as the public verify page does and return its provenance record, or the nearest registered image by perceptual hash. The file never leaves the machine. Reports origin only — never authenticity.",
+  },
 ];
 
-const SUBGRAPH_URL =
-  process.env.GENESIS_SUBGRAPH_URL ?? "http://127.0.0.1:8000/subgraphs/name/genesis";
+// Resolved on first use, so importing this module (the tests do) never
+// throws over configuration.
+let defaultClient: SubgraphClient | undefined;
+const client = () => (defaultClient ??= new SubgraphClient(subgraphUrl()));
 
-export function createServer(client = new SubgraphClient(SUBGRAPH_URL)): McpServer {
+export function createServer(client = new SubgraphClient(subgraphUrl())): McpServer {
   const server = new McpServer({ name: "genesis", version: "0.1.0" });
 
   const text = (body: string) => ({ content: [{ type: "text" as const, text: body }] });
@@ -82,20 +92,35 @@ export function createServer(client = new SubgraphClient(SUBGRAPH_URL)): McpServ
     async ({ hash }) => text(describeLineage(await client.imageByHash(hash), hash)),
   );
 
+  server.tool(
+    "verify_image_file",
+    tools[3].description,
+    {
+      path: z
+        .string()
+        .describe("Absolute path (or ~/...) of a JPEG, PNG or TIFF on this machine. RAW files are refused: export one first."),
+    },
+    async ({ path }) => text(describeFileCheck(await checkImageFile(path, client))),
+  );
+
   return server;
 }
 
-export async function verifyImage(hash: string, client = new SubgraphClient(SUBGRAPH_URL)) {
-  return describeImage(await client.imageByHash(hash), hash);
+export async function verifyImage(hash: string, subgraph = client()) {
+  return describeImage(await subgraph.imageByHash(hash), hash);
 }
 
-export async function lookupBody(query: string, client = new SubgraphClient(SUBGRAPH_URL)) {
-  const record = (await client.bodyById(query)) ?? (await client.bodyByCommitment(query));
+export async function lookupBody(query: string, subgraph = client()) {
+  const record = (await subgraph.bodyById(query)) ?? (await subgraph.bodyByCommitment(query));
   return describeBody(record, query);
 }
 
-export async function imageLineage(hash: string, client = new SubgraphClient(SUBGRAPH_URL)) {
-  return describeLineage(await client.imageByHash(hash), hash);
+export async function imageLineage(hash: string, subgraph = client()) {
+  return describeLineage(await subgraph.imageByHash(hash), hash);
+}
+
+export async function verifyImageFile(path: string, subgraph = client()) {
+  return describeFileCheck(await checkImageFile(path, subgraph));
 }
 
 // Only start a transport when this file *is* the program. A looser check
