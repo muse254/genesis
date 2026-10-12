@@ -87,7 +87,7 @@ jobs:
           tagName: ${{ github.ref_type == 'tag' && github.ref_name || 'desktop-v__VERSION__' }}
           releaseName: Genesis desktop v__VERSION__
           releaseBody: |
-            Unsigned builds. macOS: right-click the app and choose Open the first time.
+            Unsigned builds. macOS: System Settings > Privacy & Security > Open Anyway the first time.
             Windows: choose "More info" then "Run anyway" on the SmartScreen prompt.
           releaseDraft: true
           prerelease: true
@@ -130,7 +130,7 @@ jobs:
           {
             echo "## Install"
             echo
-            echo "- **macOS (Apple silicon):** open the .dmg and drag Genesis into Applications. The app is not notarized yet: the first time, right-click Genesis in Applications and choose Open."
+            echo "- **macOS (Apple silicon):** open the .dmg and drag Genesis into Applications. The app is not notarized yet, so macOS says it \"could not verify\" Genesis the first time. Click Done, then open System Settings > Privacy & Security and click Open Anyway next to Genesis. Or run: xattr -dr com.apple.quarantine /Applications/Genesis.app"
             echo "- **Windows:** run the -setup.exe (or the .msi). On the SmartScreen prompt choose More info, then Run anyway."
             echo "- **Linux:** the .AppImage runs as is (chmod +x first); .deb and .rpm install system-wide."
             echo

@@ -58,8 +58,8 @@ async function loadRelease() {
     panel.innerHTML = `
       <span class="label">Download</span>
       <div class="platform-picks">${buttons.join("")}</div>
-      <p class="version">${release.tag_name} · unsigned builds -- macOS: right-click and choose
-        Open the first time. Windows: choose "More info" then "Run anyway" on the SmartScreen
+      <p class="version">${release.tag_name} · unsigned builds. macOS: if it "could not verify" Genesis, open
+        System Settings, Privacy &amp; Security, and click Open Anyway. Windows: choose "More info" then "Run anyway" on the SmartScreen
         prompt.</p>
       <p class="fallback">All installers, checksums and release notes:
         <a href="${release.html_url}">${release.html_url}</a></p>`;
