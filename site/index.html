@@ -4,6 +4,17 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Genesis — an origin registry for photographers</title>
 <meta name="description" content="Register your photographs against the camera that took them. Anyone can check a copy that has already left — resized, re-compressed, stripped — and see whether it traces back to you.">
+<style>
+/* Phone layout. The design's inline styles assume a wide nav and fixed-height
+   copy frames; at phone width the nav wrapped to three rows and the original
+   photo spilled onto its heading. */
+@media (max-width: 640px) {
+  .gn-navlink { display: none !important; }
+}
+@media (max-width: 820px) {
+  .gn-copyframe { height: auto !important; }
+}
+</style>
 <link rel="icon" href="assets/genesis-mark-ink.png">
 <script>window.__resources={"https://unpkg.com/react@18.3.1/umd/react.production.min.js":"assets/landing/react.production.min.js","https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js":"assets/landing/react-dom.production.min.js"};</script>
 <script src="assets/landing/dc-runtime.js"></script>
@@ -394,10 +405,10 @@ a:hover{color:#0a8f4d}
       <span style="font-family:'Archivo',sans-serif;font-stretch:125%;font-weight:800;font-size:17px;letter-spacing:0.1em">GENESIS</span>
     </a>
     <div style="display:flex;flex-wrap:wrap;align-items:center;gap:8px 28px;font-size:16px">
-      <a href="#how" style="text-decoration:none;color:#c9c5bc">How it works</a>
-      <a href="#attacks" style="text-decoration:none;color:#c9c5bc">Attacks</a>
-      <a href="#organisations" style="text-decoration:none;color:#c9c5bc">Organisations</a>
-      <a href="https://github.com/muse254/genesis" style="text-decoration:none;color:#c9c5bc">Source</a>
+      <a class="gn-navlink" href="#how" style="text-decoration:none;color:#c9c5bc">How it works</a>
+      <a class="gn-navlink" href="#attacks" style="text-decoration:none;color:#c9c5bc">Attacks</a>
+      <a class="gn-navlink" href="#organisations" style="text-decoration:none;color:#c9c5bc">Organisations</a>
+      <a class="gn-navlink" href="https://github.com/muse254/genesis" style="text-decoration:none;color:#c9c5bc">Source</a>
       <a href="https://muse254.github.io/genesis/verify/" style="text-decoration:none;color:#141412;background:#f1efe9;padding:8px 14px;font-weight:600" style-hover="background:#ffffff;color:#141412">Check a photo</a>
     </div>
   </nav>
@@ -428,7 +439,7 @@ a:hover{color:#0a8f4d}
     </div>
 
     <figure style="margin:0;display:flex;flex-direction:column;gap:12px">
-      <div style="position:relative;aspect-ratio:2/3;width:100%;max-width:560px;background:#232320">
+      <div style="position:relative;aspect-ratio:2/3;width:100%;max-width:560px;background:#232320;overflow:hidden">
         <image-slot id="hero-photo" shape="rect" fit="contain" src="assets/photos/hero-carpenter.jpg" placeholder="The carpenter"></image-slot>
         <div ref="{{ r.heroStamp }}" style="position:absolute;right:16px;bottom:16px;pointer-events:none;display:flex;align-items:center;gap:8px;padding:7px 11px;background:#fbfbf9;color:#0a8f4d;border:1.5px solid #0a8f4d;font-family:'IBM Plex Mono',monospace;font-weight:600;font-size:12px;letter-spacing:0.14em;text-transform:uppercase;transform:rotate(-4deg)">
           <span aria-hidden="true" style="width:7px;height:7px;background:#0a8f4d;display:inline-block"></span>Registered
@@ -441,7 +452,7 @@ a:hover{color:#0a8f4d}
     </figure>
   </div>
 
-    <div style="position:relative;max-width:1280px;margin:0 auto;padding:0 clamp(16px,4vw,48px) clamp(40px,6vw,80px);columns:4 220px;column-gap:16px">
+    <div style="position:relative;max-width:1280px;margin:0 auto;padding:0 clamp(16px,4vw,48px) clamp(40px,6vw,80px);columns:4 150px;column-gap:12px">
     <figure style="margin:0 0 16px;display:flex;flex-direction:column;gap:10px;break-inside:avoid">
       <div style="position:relative;aspect-ratio:3 / 2;background:#232320"><image-slot id="gallery-1" shape="rect" fit="contain" src="assets/photos/wire-lines.jpg" placeholder="Wire lines"></image-slot></div>
       <figcaption style="display:flex;align-items:center;gap:8px;font-family:'IBM Plex Mono',monospace;font-size:12px;color:#a9a59c"><span aria-hidden="true" style="width:7px;height:7px;background:#d6392b;flex:none"></span>Wire lines · Canon R10</figcaption>
@@ -583,7 +594,7 @@ a:hover{color:#0a8f4d}
   </div>
   <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,380px),1fr));gap:clamp(40px,5vw,72px)">
     <div style="display:flex;flex-direction:column;gap:20px">
-      <div style="height:clamp(200px,26vw,340px);display:flex;align-items:flex-start">
+      <div class="gn-copyframe" style="height:clamp(200px,26vw,340px);display:flex;align-items:flex-start">
         <div style="position:relative;width:100%;max-width:510px;aspect-ratio:3/2;background:#eae8e2"><image-slot id="copy-original" shape="rect" src="assets/photos/fish-market.jpg" placeholder="Fish market, original"></image-slot></div>
       </div>
       <h3 style="margin:0;font-family:'Archivo',sans-serif;font-stretch:125%;font-weight:800;font-size:22px;display:flex;align-items:center;gap:10px"><span aria-hidden="true" style="width:12px;height:12px;background:#18a058"></span>Original</h3>
@@ -599,7 +610,7 @@ a:hover{color:#0a8f4d}
       </dl>
     </div>
     <div style="display:flex;flex-direction:column;gap:20px">
-      <div style="height:clamp(200px,26vw,340px);display:flex;align-items:flex-start">
+      <div class="gn-copyframe" style="height:clamp(200px,26vw,340px);display:flex;align-items:flex-start">
         <div style="position:relative;width:34%;max-width:180px;aspect-ratio:3/2;background:#eae8e2"><image-slot id="copy-web" shape="rect" src="assets/photos/fish-market-web-copy.jpg" placeholder="Fish market, web copy"></image-slot></div>
       </div>
       <h3 style="margin:0;font-family:'Archivo',sans-serif;font-stretch:125%;font-weight:800;font-size:22px;display:flex;align-items:center;gap:10px"><span aria-hidden="true" style="width:12px;height:12px;background:#2f5fd0"></span>Web copy</h3>
