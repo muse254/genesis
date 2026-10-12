@@ -9,9 +9,9 @@
 // the console pointed at the wrong chain's registry for days without
 // erroring, because a subgraph and an RPC both answer happily regardless
 // of which contract you meant.
-const REGISTRY = "0x0C0F3Ec87339F985c509c01dEE8474BB8f5b0EB2";
-const RPC = "https://sepolia.base.org";
-const SUBGRAPH = "https://api.studio.thegraph.com/query/1758974/genesis/v0.1.0-base-sepolia";
+const REGISTRY = "0xBa5Ea549c9e1414C14038dB050e0caCB4f9E48cB";
+const RPC = "https://mainnet.base.org";
+const SUBGRAPH = "https://api.studio.thegraph.com/query/1758974/genesis/v1.0.0-base";
 
 function row(name, status, detail) {
   const dotClass = status === "up" ? "up" : status === "down" ? "down" : "unknown";
@@ -39,10 +39,10 @@ async function checkRpc() {
     const [block, code] = await Promise.all([blockRes.json(), codeRes.json()]);
     const blockNumber = parseInt(block.result, 16);
     const hasCode = (code.result ?? "0x").length > 2;
-    if (!hasCode) return row("Base Sepolia registry", "down", `RPC up (block ${blockNumber}) but no contract code at ${REGISTRY}`);
-    return row("Base Sepolia registry", "up", `block ${blockNumber} · <a href="https://sepolia.basescan.org/address/${REGISTRY}">${REGISTRY.slice(0, 10)}…</a>`);
+    if (!hasCode) return row("Base registry", "down", `RPC up (block ${blockNumber}) but no contract code at ${REGISTRY}`);
+    return row("Base registry", "up", `block ${blockNumber} · <a href="https://basescan.org/address/${REGISTRY}">${REGISTRY.slice(0, 10)}…</a>`);
   } catch (err) {
-    return row("Base Sepolia registry", "down", `RPC unreachable (${err.message})`);
+    return row("Base registry", "down", `RPC unreachable (${err.message})`);
   }
 }
 

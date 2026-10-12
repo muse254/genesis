@@ -7,17 +7,16 @@ schema:
 dataSources:
   - kind: ethereum
     name: Registry
-    network: base-sepolia
+    network: base
     source:
-      # The Colosseum rehearsal registry (docs/colosseum-checklist.md,
-      # "Rehearse on Base Sepolia"), not the ETHOnline registry this
-      # pointed at before -- that one is on Ethereum Sepolia, a different
-      # chain, and this subgraph indexing it was reading a fossil.
-      address: "0x0C0F3Ec87339F985c509c01dEE8474BB8f5b0EB2"
+      # The Base mainnet registry 1.0.0 (README, "Deployments"). The Base
+      # Sepolia rehearsal registry 0x0C0F3Ec8...0EB2 was indexed from
+      # block 46937327 by v0.1.0-base-sepolia, which stays queryable.
+      address: "0xBa5Ea549c9e1414C14038dB050e0caCB4f9E48cB"
       abi: Registry
       # The deploy block. Zero here means indexing from genesis:
       # hours of work to find nothing.
-      startBlock: 46937327
+      startBlock: 52505470
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.7

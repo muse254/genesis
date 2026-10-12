@@ -71,16 +71,15 @@ jobs:
         # Public config only (an RPC URL, a contract address, a subgraph
         # URL) -- nothing here is a secret, and none of it can be, since it
         # all has to be readable by a browser that already fetched this
-        # page. Base Sepolia rehearsal values (verify/.env.example) until
-        # the Base mainnet deploy lands (docs/colosseum-checklist.md, Week
-        # 1) -- not Ethereum Sepolia, which is the ETHOnline registry, a
-        # different contract this project no longer points at.
+        # page. The Base mainnet registry 1.0.0 (README, "Deployments"),
+        # deployed 12 Oct 2026. The Base Sepolia rehearsal registry and
+        # its subgraph stay readable, but the page no longer points there.
         env:
-          VITE_RPC_URL: https://sepolia.base.org
-          VITE_REGISTRY_ADDRESS: "0x0C0F3Ec87339F985c509c01dEE8474BB8f5b0EB2"
-          VITE_CHAIN: base-sepolia
-          VITE_SUBGRAPH_URL: https://api.studio.thegraph.com/query/1758974/genesis/v0.1.0-base-sepolia
-          VITE_EXPLORER_URL: https://sepolia.basescan.org
+          VITE_RPC_URL: https://mainnet.base.org
+          VITE_REGISTRY_ADDRESS: "0xBa5Ea549c9e1414C14038dB050e0caCB4f9E48cB"
+          VITE_CHAIN: base
+          VITE_SUBGRAPH_URL: https://api.studio.thegraph.com/query/1758974/genesis/v1.0.0-base
+          VITE_EXPLORER_URL: https://basescan.org
         # `npm run build` builds core's two WASM modules first (prebuild).
         run: |
           npm ci
@@ -90,8 +89,8 @@ jobs:
       - name: Dashboard
         working-directory: dashboard
         env:
-          VITE_SUBGRAPH_URL: https://api.studio.thegraph.com/query/1758974/genesis/v0.1.0-base-sepolia
-          VITE_EXPLORER_URL: https://sepolia.basescan.org
+          VITE_SUBGRAPH_URL: https://api.studio.thegraph.com/query/1758974/genesis/v1.0.0-base
+          VITE_EXPLORER_URL: https://basescan.org
         run: |
           npm ci
           npx tsc --noEmit -p .
