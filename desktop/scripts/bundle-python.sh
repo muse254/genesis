@@ -22,13 +22,15 @@ RUNTIME="$RESOURCES/python-runtime"
 APP_SRC="$RESOURCES/app-src"
 PY_VERSION="3.12.9"
 
+# uv's download key is cpython-<version>-<os>-<arch>-<libc>; it no longer
+# accepts Rust target triples (`uv python list --only-downloads` shows keys).
 case "$(uname -s)" in
-  Darwin) TRIPLE="aarch64-apple-darwin" ;;
-  Linux)  TRIPLE="x86_64-unknown-linux-gnu" ;;
-  MINGW*|MSYS*|CYGWIN*) TRIPLE="x86_64-pc-windows-msvc" ;;
+  Darwin) TRIPLE="macos-aarch64-none" ;;
+  Linux)  TRIPLE="linux-x86_64-gnu" ;;
+  MINGW*|MSYS*|CYGWIN*) TRIPLE="windows-x86_64-none" ;;
   *) echo "unrecognised platform: $(uname -s)" >&2; exit 1 ;;
 esac
-PY_BUILD="cpython-$PY_VERSION-$TRIPLE-none"
+PY_BUILD="cpython-$PY_VERSION-$TRIPLE"
 
 # Windows lays out a standalone Python differently: `python.exe` and
 # `Lib\site-packages` at the root, not `bin/python3.12` and
