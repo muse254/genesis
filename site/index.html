@@ -5,15 +5,9 @@
 <title>Genesis: an origin registry for photographers</title>
 <meta name="description" content="Register photos against the camera that took them. Anyone can check if a copy traces back to you.">
 <style>
-/* Phone layout. The design's inline styles assume a wide nav and fixed-height
-   copy frames; at phone width the nav wrapped to three rows and the original
-   photo spilled onto its heading. */
-@media (max-width: 640px) {
-  .gn-navlink { display: none !important; }
-}
-@media (max-width: 820px) {
-  .gn-copyframe { height: auto !important; }
-}
+/* Phone layout: the nav keeps the logo and "Check a photo"; copy frames size to their photo. */
+@media (max-width: 640px) { .gn-navlink { display: none !important; } }
+@media (max-width: 820px) { .gn-copyframe { height: auto !important; } }
 </style>
 <link rel="icon" href="assets/genesis-mark-ink.png">
 <script>window.__resources={"https://unpkg.com/react@18.3.1/umd/react.production.min.js":"assets/landing/react.production.min.js","https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js":"assets/landing/react-dom.production.min.js"};</script>
@@ -31,7 +25,7 @@
   font-weight: 400 900;
   font-stretch: 62% 125%;
   font-display: swap;
-  src: url("assets/landing/fonts/d6ee31f7-c12d-40d2-83b8-5572a96d628a.woff2") format('woff2');
+  src: url("assets/landing/fonts/b056083b-a4ec-4400-9dc7-e1ec21028588.woff2") format('woff2');
   unicode-range: U+0102-0103, U+0110-0111, U+0128-0129, U+0168-0169, U+01A0-01A1, U+01AF-01B0, U+0300-0301, U+0303-0304, U+0308-0309, U+0323, U+0329, U+1EA0-1EF9, U+20AB;
 }
 /* latin-ext */
@@ -41,7 +35,7 @@
   font-weight: 400 900;
   font-stretch: 62% 125%;
   font-display: swap;
-  src: url("assets/landing/fonts/3237f351-6f91-405b-a563-fc0e08aaf7c9.woff2") format('woff2');
+  src: url("assets/landing/fonts/68bd3160-8741-4dfc-8e03-143868e71d38.woff2") format('woff2');
   unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF;
 }
 /* latin */
@@ -51,7 +45,7 @@
   font-weight: 400 900;
   font-stretch: 62% 125%;
   font-display: swap;
-  src: url("assets/landing/fonts/09f606cb-14d3-4691-b36e-e2a86986532a.woff2") format('woff2');
+  src: url("assets/landing/fonts/cbedf4f3-babb-4f3c-bbb5-7c1e5157203d.woff2") format('woff2');
   unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
 }
 /* cyrillic-ext */
@@ -60,7 +54,7 @@
   font-style: normal;
   font-weight: 400;
   font-display: swap;
-  src: url("assets/landing/fonts/ffa96370-e6be-45da-8dd7-a1221dfd6981.woff2") format('woff2');
+  src: url("assets/landing/fonts/c5b912d5-3657-4842-a557-7878c95bfbc2.woff2") format('woff2');
   unicode-range: U+0460-052F, U+1C80-1C8A, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
 }
 /* cyrillic */
@@ -69,7 +63,7 @@
   font-style: normal;
   font-weight: 400;
   font-display: swap;
-  src: url("assets/landing/fonts/26b03dcd-4b18-4ff9-af5f-b9671afea832.woff2") format('woff2');
+  src: url("assets/landing/fonts/cc9bc8fc-d4ee-4c60-a8f3-1212ca06e920.woff2") format('woff2');
   unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
 }
 /* vietnamese */
@@ -78,7 +72,7 @@
   font-style: normal;
   font-weight: 400;
   font-display: swap;
-  src: url("assets/landing/fonts/0af707dc-d992-4baa-94a7-5d51c79a39b5.woff2") format('woff2');
+  src: url("assets/landing/fonts/dc4c5780-cd43-459b-b5d9-f943926a1142.woff2") format('woff2');
   unicode-range: U+0102-0103, U+0110-0111, U+0128-0129, U+0168-0169, U+01A0-01A1, U+01AF-01B0, U+0300-0301, U+0303-0304, U+0308-0309, U+0323, U+0329, U+1EA0-1EF9, U+20AB;
 }
 /* latin-ext */
@@ -87,7 +81,7 @@
   font-style: normal;
   font-weight: 400;
   font-display: swap;
-  src: url("assets/landing/fonts/3bc16169-207c-4ccd-a4b7-cc10066ad617.woff2") format('woff2');
+  src: url("assets/landing/fonts/424684cf-40d2-4950-84fc-07942f0d0975.woff2") format('woff2');
   unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF;
 }
 /* latin */
@@ -96,7 +90,7 @@
   font-style: normal;
   font-weight: 400;
   font-display: swap;
-  src: url("assets/landing/fonts/13791a54-68c5-4d1f-a51d-925bfae16f08.woff2") format('woff2');
+  src: url("assets/landing/fonts/aa837aaf-adb1-4ee4-a8d5-f5a57a7aa05d.woff2") format('woff2');
   unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
 }
 /* cyrillic-ext */
@@ -105,7 +99,7 @@
   font-style: normal;
   font-weight: 500;
   font-display: swap;
-  src: url("assets/landing/fonts/0442e04f-c617-439f-8bd2-142745fd7e8f.woff2") format('woff2');
+  src: url("assets/landing/fonts/88922794-d1e8-4222-9ca4-8625fd8b0c57.woff2") format('woff2');
   unicode-range: U+0460-052F, U+1C80-1C8A, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
 }
 /* cyrillic */
@@ -114,7 +108,7 @@
   font-style: normal;
   font-weight: 500;
   font-display: swap;
-  src: url("assets/landing/fonts/1120981f-be11-44df-8f09-3d57e0e3a536.woff2") format('woff2');
+  src: url("assets/landing/fonts/f24bbf70-4fa2-4a40-aedb-4a6b667f5798.woff2") format('woff2');
   unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
 }
 /* vietnamese */
@@ -123,7 +117,7 @@
   font-style: normal;
   font-weight: 500;
   font-display: swap;
-  src: url("assets/landing/fonts/d0aa5681-9b0d-403f-8006-d560fdbeb542.woff2") format('woff2');
+  src: url("assets/landing/fonts/c711ef88-33d7-4f85-8bbe-fbb9b4f9abf8.woff2") format('woff2');
   unicode-range: U+0102-0103, U+0110-0111, U+0128-0129, U+0168-0169, U+01A0-01A1, U+01AF-01B0, U+0300-0301, U+0303-0304, U+0308-0309, U+0323, U+0329, U+1EA0-1EF9, U+20AB;
 }
 /* latin-ext */
@@ -132,7 +126,7 @@
   font-style: normal;
   font-weight: 500;
   font-display: swap;
-  src: url("assets/landing/fonts/a424a8ae-79a7-4e1f-b8dc-ec04dce0db71.woff2") format('woff2');
+  src: url("assets/landing/fonts/aa254728-ea24-4144-87f7-3b84f52107ec.woff2") format('woff2');
   unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF;
 }
 /* latin */
@@ -141,7 +135,7 @@
   font-style: normal;
   font-weight: 500;
   font-display: swap;
-  src: url("assets/landing/fonts/c212b7fa-654e-4f79-a9e2-a588e2167a16.woff2") format('woff2');
+  src: url("assets/landing/fonts/87afd383-74b0-44ce-b90b-7d5935ddf543.woff2") format('woff2');
   unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
 }
 /* cyrillic-ext */
@@ -150,7 +144,7 @@
   font-style: normal;
   font-weight: 600;
   font-display: swap;
-  src: url("assets/landing/fonts/e7a71be5-ea0b-40fc-99ff-2640e945adf4.woff2") format('woff2');
+  src: url("assets/landing/fonts/269858ca-d348-4e07-bcfc-d81b40d8bbbe.woff2") format('woff2');
   unicode-range: U+0460-052F, U+1C80-1C8A, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
 }
 /* cyrillic */
@@ -159,7 +153,7 @@
   font-style: normal;
   font-weight: 600;
   font-display: swap;
-  src: url("assets/landing/fonts/721ad99c-8b93-47b6-a0c8-db5bb75b9d06.woff2") format('woff2');
+  src: url("assets/landing/fonts/4623c92f-aba1-4553-9177-d0ee743b4e29.woff2") format('woff2');
   unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
 }
 /* vietnamese */
@@ -168,7 +162,7 @@
   font-style: normal;
   font-weight: 600;
   font-display: swap;
-  src: url("assets/landing/fonts/d1bb6e62-4e57-4859-8ebe-5e3f6359bed4.woff2") format('woff2');
+  src: url("assets/landing/fonts/ca0ce484-2c88-407d-8e76-1b380f773a44.woff2") format('woff2');
   unicode-range: U+0102-0103, U+0110-0111, U+0128-0129, U+0168-0169, U+01A0-01A1, U+01AF-01B0, U+0300-0301, U+0303-0304, U+0308-0309, U+0323, U+0329, U+1EA0-1EF9, U+20AB;
 }
 /* latin-ext */
@@ -177,7 +171,7 @@
   font-style: normal;
   font-weight: 600;
   font-display: swap;
-  src: url("assets/landing/fonts/96abdaa1-8156-4d7e-b083-baa235698360.woff2") format('woff2');
+  src: url("assets/landing/fonts/7a597ba9-25ad-442f-aad4-527221e067c1.woff2") format('woff2');
   unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF;
 }
 /* latin */
@@ -186,7 +180,7 @@
   font-style: normal;
   font-weight: 600;
   font-display: swap;
-  src: url("assets/landing/fonts/cfcf9e52-3236-44db-86b3-48831f5c68e4.woff2") format('woff2');
+  src: url("assets/landing/fonts/34b4d9c1-a375-4546-9407-052befee9235.woff2") format('woff2');
   unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
 }
 /* cyrillic-ext */
@@ -195,7 +189,7 @@
   font-style: italic;
   font-weight: 400;
   font-display: swap;
-  src: url("assets/landing/fonts/5d8d27c9-01c6-4841-a430-c63823f1a8bc.woff2") format('woff2');
+  src: url("assets/landing/fonts/e5fdea3d-eeb6-471e-ad6e-f1c97124f480.woff2") format('woff2');
   unicode-range: U+0460-052F, U+1C80-1C8A, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
 }
 /* cyrillic */
@@ -204,7 +198,7 @@
   font-style: italic;
   font-weight: 400;
   font-display: swap;
-  src: url("assets/landing/fonts/c3c749a5-9938-4e79-9e58-8400fd450393.woff2") format('woff2');
+  src: url("assets/landing/fonts/744c21f6-108a-41b4-94b6-c1f9c467fdd8.woff2") format('woff2');
   unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
 }
 /* greek-ext */
@@ -213,7 +207,7 @@
   font-style: italic;
   font-weight: 400;
   font-display: swap;
-  src: url("assets/landing/fonts/02afb179-ca12-493a-98e4-62341d3f1dce.woff2") format('woff2');
+  src: url("assets/landing/fonts/cb2487c3-c52b-454c-ac1b-10aaf7da7457.woff2") format('woff2');
   unicode-range: U+1F00-1FFF;
 }
 /* greek */
@@ -222,7 +216,7 @@
   font-style: italic;
   font-weight: 400;
   font-display: swap;
-  src: url("assets/landing/fonts/4412aac1-4148-4d7a-aa0f-e904c9b4af41.woff2") format('woff2');
+  src: url("assets/landing/fonts/b1199f7a-d4b3-493c-ad4f-96eaed599713.woff2") format('woff2');
   unicode-range: U+0370-0377, U+037A-037F, U+0384-038A, U+038C, U+038E-03A1, U+03A3-03FF;
 }
 /* vietnamese */
@@ -231,7 +225,7 @@
   font-style: italic;
   font-weight: 400;
   font-display: swap;
-  src: url("assets/landing/fonts/97930b02-4f24-409d-a87d-2d059af2dbec.woff2") format('woff2');
+  src: url("assets/landing/fonts/9df9c985-250a-46a8-827c-ad4f15d06aa8.woff2") format('woff2');
   unicode-range: U+0102-0103, U+0110-0111, U+0128-0129, U+0168-0169, U+01A0-01A1, U+01AF-01B0, U+0300-0301, U+0303-0304, U+0308-0309, U+0323, U+0329, U+1EA0-1EF9, U+20AB;
 }
 /* latin-ext */
@@ -240,7 +234,7 @@
   font-style: italic;
   font-weight: 400;
   font-display: swap;
-  src: url("assets/landing/fonts/958052d4-d557-4007-bf83-d51da0c57040.woff2") format('woff2');
+  src: url("assets/landing/fonts/88b33345-6dc1-4827-bca1-eb69b4efaaf5.woff2") format('woff2');
   unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF;
 }
 /* latin */
@@ -249,7 +243,7 @@
   font-style: italic;
   font-weight: 400;
   font-display: swap;
-  src: url("assets/landing/fonts/400adca8-4a6a-4f98-a9bf-3985e54408bb.woff2") format('woff2');
+  src: url("assets/landing/fonts/5718e921-3a58-4ba0-902c-f451a0d385cc.woff2") format('woff2');
   unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
 }
 /* cyrillic-ext */
@@ -258,7 +252,7 @@
   font-style: normal;
   font-weight: 400;
   font-display: swap;
-  src: url("assets/landing/fonts/869f679f-e309-46a2-954d-9466930d9916.woff2") format('woff2');
+  src: url("assets/landing/fonts/0f998991-88fa-4ab6-a238-7b2ee31bf096.woff2") format('woff2');
   unicode-range: U+0460-052F, U+1C80-1C8A, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
 }
 /* cyrillic */
@@ -267,7 +261,7 @@
   font-style: normal;
   font-weight: 400;
   font-display: swap;
-  src: url("assets/landing/fonts/d1ea2768-9eed-48f7-9108-ba9d8c669b71.woff2") format('woff2');
+  src: url("assets/landing/fonts/4279cfbb-6dab-47e2-b45f-2f20068539e6.woff2") format('woff2');
   unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
 }
 /* greek-ext */
@@ -276,7 +270,7 @@
   font-style: normal;
   font-weight: 400;
   font-display: swap;
-  src: url("assets/landing/fonts/08fbd5c2-0b3e-480b-a969-3d225df0d446.woff2") format('woff2');
+  src: url("assets/landing/fonts/3697ce74-d33d-4355-bc2c-43432f2a1363.woff2") format('woff2');
   unicode-range: U+1F00-1FFF;
 }
 /* greek */
@@ -285,7 +279,7 @@
   font-style: normal;
   font-weight: 400;
   font-display: swap;
-  src: url("assets/landing/fonts/d6c6ce3b-271c-4557-9deb-9b3c862b3560.woff2") format('woff2');
+  src: url("assets/landing/fonts/3214a251-4223-46ac-8f78-e539091df859.woff2") format('woff2');
   unicode-range: U+0370-0377, U+037A-037F, U+0384-038A, U+038C, U+038E-03A1, U+03A3-03FF;
 }
 /* vietnamese */
@@ -294,7 +288,7 @@
   font-style: normal;
   font-weight: 400;
   font-display: swap;
-  src: url("assets/landing/fonts/f5f90667-98f5-4b87-b360-2ef580b6d947.woff2") format('woff2');
+  src: url("assets/landing/fonts/1a5b7665-6e96-4205-adb4-c3a92918a091.woff2") format('woff2');
   unicode-range: U+0102-0103, U+0110-0111, U+0128-0129, U+0168-0169, U+01A0-01A1, U+01AF-01B0, U+0300-0301, U+0303-0304, U+0308-0309, U+0323, U+0329, U+1EA0-1EF9, U+20AB;
 }
 /* latin-ext */
@@ -303,7 +297,7 @@
   font-style: normal;
   font-weight: 400;
   font-display: swap;
-  src: url("assets/landing/fonts/926b1650-7b02-4fb5-89f9-e42389094bb3.woff2") format('woff2');
+  src: url("assets/landing/fonts/eb09084b-5e5e-4dd0-9ff9-263591ef6435.woff2") format('woff2');
   unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF;
 }
 /* latin */
@@ -312,7 +306,7 @@
   font-style: normal;
   font-weight: 400;
   font-display: swap;
-  src: url("assets/landing/fonts/3ace209c-94fd-400f-a2e4-6b4ce91d44cb.woff2") format('woff2');
+  src: url("assets/landing/fonts/7eeedaa3-2e3b-44a9-b6c3-3e1811ff50bb.woff2") format('woff2');
   unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
 }
 /* cyrillic-ext */
@@ -321,7 +315,7 @@
   font-style: normal;
   font-weight: 600;
   font-display: swap;
-  src: url("assets/landing/fonts/869f679f-e309-46a2-954d-9466930d9916.woff2") format('woff2');
+  src: url("assets/landing/fonts/0f998991-88fa-4ab6-a238-7b2ee31bf096.woff2") format('woff2');
   unicode-range: U+0460-052F, U+1C80-1C8A, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
 }
 /* cyrillic */
@@ -330,7 +324,7 @@
   font-style: normal;
   font-weight: 600;
   font-display: swap;
-  src: url("assets/landing/fonts/d1ea2768-9eed-48f7-9108-ba9d8c669b71.woff2") format('woff2');
+  src: url("assets/landing/fonts/4279cfbb-6dab-47e2-b45f-2f20068539e6.woff2") format('woff2');
   unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
 }
 /* greek-ext */
@@ -339,7 +333,7 @@
   font-style: normal;
   font-weight: 600;
   font-display: swap;
-  src: url("assets/landing/fonts/08fbd5c2-0b3e-480b-a969-3d225df0d446.woff2") format('woff2');
+  src: url("assets/landing/fonts/3697ce74-d33d-4355-bc2c-43432f2a1363.woff2") format('woff2');
   unicode-range: U+1F00-1FFF;
 }
 /* greek */
@@ -348,7 +342,7 @@
   font-style: normal;
   font-weight: 600;
   font-display: swap;
-  src: url("assets/landing/fonts/d6c6ce3b-271c-4557-9deb-9b3c862b3560.woff2") format('woff2');
+  src: url("assets/landing/fonts/3214a251-4223-46ac-8f78-e539091df859.woff2") format('woff2');
   unicode-range: U+0370-0377, U+037A-037F, U+0384-038A, U+038C, U+038E-03A1, U+03A3-03FF;
 }
 /* vietnamese */
@@ -357,7 +351,7 @@
   font-style: normal;
   font-weight: 600;
   font-display: swap;
-  src: url("assets/landing/fonts/f5f90667-98f5-4b87-b360-2ef580b6d947.woff2") format('woff2');
+  src: url("assets/landing/fonts/1a5b7665-6e96-4205-adb4-c3a92918a091.woff2") format('woff2');
   unicode-range: U+0102-0103, U+0110-0111, U+0128-0129, U+0168-0169, U+01A0-01A1, U+01AF-01B0, U+0300-0301, U+0303-0304, U+0308-0309, U+0323, U+0329, U+1EA0-1EF9, U+20AB;
 }
 /* latin-ext */
@@ -366,7 +360,7 @@
   font-style: normal;
   font-weight: 600;
   font-display: swap;
-  src: url("assets/landing/fonts/926b1650-7b02-4fb5-89f9-e42389094bb3.woff2") format('woff2');
+  src: url("assets/landing/fonts/eb09084b-5e5e-4dd0-9ff9-263591ef6435.woff2") format('woff2');
   unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF;
 }
 /* latin */
@@ -375,7 +369,7 @@
   font-style: normal;
   font-weight: 600;
   font-display: swap;
-  src: url("assets/landing/fonts/3ace209c-94fd-400f-a2e4-6b4ce91d44cb.woff2") format('woff2');
+  src: url("assets/landing/fonts/7eeedaa3-2e3b-44a9-b6c3-3e1811ff50bb.woff2") format('woff2');
   unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
 }
 </style>
@@ -409,6 +403,7 @@ a:hover{color:#0a8f4d}
       <a class="gn-navlink" href="#attacks" style="text-decoration:none;color:#c9c5bc">Attacks</a>
       <a class="gn-navlink" href="#organisations" style="text-decoration:none;color:#c9c5bc">Organisations</a>
       <a class="gn-navlink" href="https://github.com/muse254/genesis" style="text-decoration:none;color:#c9c5bc">Source</a>
+      <a class="gn-navlink" href="https://muse254.github.io/genesis/dashboard/" style="text-decoration:none;color:#c9c5bc">Dashboard</a>
       <a href="https://muse254.github.io/genesis/verify/" style="text-decoration:none;color:#141412;background:#f1efe9;padding:8px 14px;font-weight:600" style-hover="background:#ffffff;color:#141412">Check a photo</a>
     </div>
   </nav>
@@ -428,9 +423,7 @@ a:hover{color:#0a8f4d}
       <p style="margin:0;font-size:clamp(18px,1.6vw,21px);line-height:1.5;color:#d6d2c9;max-width:34em;text-wrap:pretty">Register photos against the camera that took them. Anyone can check if a copy traces back to you, even resized, re-compressed or stripped.</p>
       <div style="display:flex;flex-wrap:wrap;gap:12px">
         <a href="https://muse254.github.io/genesis/verify/" style="display:inline-flex;align-items:center;gap:10px;min-height:48px;padding:0 22px;background:#f1efe9;color:#141412;text-decoration:none;font-weight:600;font-size:17px" style-hover="background:#ffffff;color:#141412">Check a photo <span aria-hidden="true">→</span></a>
-        <a data-os="macos" aria-label="Download Genesis for macOS" href="https://github.com/muse254/genesis/releases/latest" style="display:inline-flex;align-items:center;gap:10px;min-height:48px;padding:0 18px;border:1px solid #57544e;color:#f1efe9;text-decoration:none;font-weight:600;font-size:17px" style-hover="border-color:#f1efe9;color:#ffffff"><svg aria-hidden="true" viewBox="0 0 24 24" width="18" height="18" fill="currentColor" style="flex:none"><path d="M12.152 6.896c-.948 0-2.415-1.078-3.96-1.04-2.04.027-3.91 1.183-4.961 3.014-2.117 3.675-.546 9.103 1.519 12.09 1.013 1.454 2.208 3.09 3.792 3.039 1.52-.065 2.09-.987 3.935-.987 1.831 0 2.35.987 3.96.948 1.637-.026 2.676-1.48 3.676-2.948 1.156-1.688 1.636-3.325 1.662-3.415-.039-.013-3.182-1.221-3.22-4.857-.026-3.04 2.48-4.494 2.597-4.559-1.429-2.09-3.623-2.324-4.39-2.376-2-.156-3.675 1.09-4.61 1.09zM15.53 3.83c.843-1.012 1.4-2.427 1.245-3.83-1.207.052-2.662.805-3.532 1.818-.78.896-1.454 2.338-1.273 3.714 1.338.104 2.715-.688 3.559-1.701"/></svg>macOS</a>
-        <a data-os="windows" aria-label="Download Genesis for Windows" href="https://github.com/muse254/genesis/releases/latest" style="display:inline-flex;align-items:center;gap:10px;min-height:48px;padding:0 18px;border:1px solid #57544e;color:#f1efe9;text-decoration:none;font-weight:600;font-size:17px" style-hover="border-color:#f1efe9;color:#ffffff"><svg aria-hidden="true" viewBox="0 0 24 24" width="18" height="18" fill="currentColor" style="flex:none"><path d="M0,0H11.377V11.372H0ZM12.623,0H24V11.372H12.623ZM0,12.623H11.377V24H0Zm12.623,0H24V24H12.623"/></svg>Windows</a>
-        <a data-os="linux" aria-label="Download Genesis for Linux" href="https://github.com/muse254/genesis/releases/latest" style="display:inline-flex;align-items:center;gap:10px;min-height:48px;padding:0 18px;border:1px solid #57544e;color:#f1efe9;text-decoration:none;font-weight:600;font-size:17px" style-hover="border-color:#f1efe9;color:#ffffff"><svg aria-hidden="true" viewBox="0 0 24 24" width="18" height="18" fill="currentColor" style="flex:none"><path d="M12.504 0c-.155 0-.315.008-.48.021-4.226.333-3.105 4.807-3.17 6.298-.076 1.092-.3 1.953-1.05 3.02-.885 1.051-2.127 2.75-2.716 4.521-.278.832-.41 1.684-.287 2.489a.424.424 0 00-.11.135c-.26.268-.45.6-.663.839-.199.199-.485.267-.797.4-.313.136-.658.269-.864.68-.09.189-.136.394-.132.602 0 .199.027.4.055.536.058.399.116.728.04.97-.249.68-.28 1.145-.106 1.484.174.334.535.47.94.601.81.2 1.91.135 2.774.6.926.466 1.866.67 2.616.47.526-.116.97-.464 1.208-.946.587-.003 1.23-.269 2.26-.334.699-.058 1.574.267 2.577.2.025.134.063.198.114.333l.003.003c.391.778 1.113 1.132 1.884 1.071.771-.06 1.592-.536 2.257-1.306.631-.765 1.683-1.084 2.378-1.503.348-.199.629-.469.649-.853.023-.4-.2-.811-.714-1.376v-.097l-.003-.003c-.17-.2-.25-.535-.338-.926-.085-.401-.182-.786-.492-1.046h-.003c-.059-.054-.123-.067-.188-.135a.357.357 0 00-.19-.064c.431-1.278.264-2.55-.173-3.694-.533-1.41-1.465-2.638-2.175-3.483-.796-1.005-1.576-1.957-1.56-3.368.026-2.152.236-6.133-3.544-6.139zm.529 3.405h.013c.213 0 .396.062.584.198.19.135.33.332.438.533.105.259.158.459.166.724 0-.02.006-.04.006-.06v.105a.086.086 0 01-.004-.021l-.004-.024a1.807 1.807 0 01-.15.706.953.953 0 01-.213.335.71.71 0 00-.088-.042c-.104-.045-.198-.064-.284-.133a1.312 1.312 0 00-.22-.066c.05-.06.146-.133.183-.198.053-.128.082-.264.088-.402v-.02a1.21 1.21 0 00-.061-.4c-.045-.134-.101-.2-.183-.333-.084-.066-.167-.132-.267-.132h-.016c-.093 0-.176.03-.262.132a.8.8 0 00-.205.334 1.18 1.18 0 00-.09.4v.019c.002.089.008.179.02.267-.193-.067-.438-.135-.607-.202a1.635 1.635 0 01-.018-.2v-.02a1.772 1.772 0 01.15-.768c.082-.22.232-.406.43-.533a.985.985 0 01.594-.2zm-2.962.059h.036c.142 0 .27.048.399.135.146.129.264.288.344.465.09.199.14.4.153.667v.004c.007.134.006.2-.002.266v.08c-.03.007-.056.018-.083.024-.152.055-.274.135-.393.2.012-.09.013-.18.003-.267v-.015c-.012-.133-.04-.2-.082-.333a.613.613 0 00-.166-.267.248.248 0 00-.183-.064h-.021c-.071.006-.13.04-.186.132a.552.552 0 00-.12.27.944.944 0 00-.023.33v.015c.012.135.037.2.08.334.046.134.098.2.166.268.01.009.02.018.034.024-.07.057-.117.07-.176.136a.304.304 0 01-.131.068 2.62 2.62 0 01-.275-.402 1.772 1.772 0 01-.155-.667 1.759 1.759 0 01.08-.668 1.43 1.43 0 01.283-.535c.128-.133.26-.2.418-.2zm1.37 1.706c.332 0 .733.065 1.216.399.293.2.523.269 1.052.468h.003c.255.136.405.266.478.399v-.131a.571.571 0 01.016.47c-.123.31-.516.643-1.063.842v.002c-.268.135-.501.333-.775.465-.276.135-.588.292-1.012.267a1.139 1.139 0 01-.448-.067 3.566 3.566 0 01-.322-.198c-.195-.135-.363-.332-.612-.465v-.005h-.005c-.4-.246-.616-.512-.686-.71-.07-.268-.005-.47.193-.6.224-.135.38-.271.483-.336.104-.074.143-.102.176-.131h.002v-.003c.169-.202.436-.47.839-.601.139-.036.294-.065.466-.065zm2.8 2.142c.358 1.417 1.196 3.475 1.735 4.473.286.534.855 1.659 1.102 3.024.156-.005.33.018.513.064.646-1.671-.546-3.467-1.089-3.966-.22-.2-.232-.335-.123-.335.59.534 1.365 1.572 1.646 2.757.13.535.16 1.104.021 1.67.067.028.135.06.205.067 1.032.534 1.413.938 1.23 1.537v-.043c-.06-.003-.12 0-.18 0h-.016c.151-.467-.182-.825-1.065-1.224-.915-.4-1.646-.336-1.77.465-.008.043-.013.066-.018.135-.068.023-.139.053-.209.064-.43.268-.662.669-.793 1.187-.13.533-.17 1.156-.205 1.869v.003c-.02.334-.17.838-.319 1.35-1.5 1.072-3.58 1.538-5.348.334a2.645 2.645 0 00-.402-.533 1.45 1.45 0 00-.275-.333c.182 0 .338-.03.465-.067a.615.615 0 00.314-.334c.108-.267 0-.697-.345-1.163-.345-.467-.931-.995-1.788-1.521-.63-.4-.986-.87-1.15-1.396-.165-.534-.143-1.085-.015-1.645.245-1.07.873-2.11 1.274-2.763.107-.065.037.135-.408.974-.396.751-1.14 2.497-.122 3.854a8.123 8.123 0 01.647-2.876c.564-1.278 1.743-3.504 1.836-5.268.048.036.217.135.289.202.218.133.38.333.59.465.21.201.477.335.876.335.039.003.075.006.11.006.412 0 .73-.134.997-.268.29-.134.52-.334.74-.4h.005c.467-.135.835-.402 1.044-.7zm2.185 8.958c.037.6.343 1.245.882 1.377.588.134 1.434-.333 1.791-.765l.211-.01c.315-.007.577.01.847.268l.003.003c.208.199.305.53.391.876.085.4.154.78.409 1.066.486.527.645.906.636 1.14l.003-.007v.018l-.003-.012c-.015.262-.185.396-.498.595-.63.401-1.746.712-2.457 1.57-.618.737-1.37 1.14-2.036 1.191-.664.053-1.237-.2-1.574-.898l-.005-.003c-.21-.4-.12-1.025.056-1.69.176-.668.428-1.344.463-1.897.037-.714.076-1.335.195-1.814.12-.465.308-.797.641-.984l.045-.022zm-10.814.049h.01c.053 0 .105.005.157.014.376.055.706.333 1.023.752l.91 1.664.003.003c.243.533.754 1.064 1.189 1.637.434.598.77 1.131.729 1.57v.006c-.057.744-.48 1.148-1.125 1.294-.645.135-1.52.002-2.395-.464-.968-.536-2.118-.469-2.857-.602-.369-.066-.61-.2-.723-.4-.11-.2-.113-.602.123-1.23v-.004l.002-.003c.117-.334.03-.752-.027-1.118-.055-.401-.083-.71.043-.94.16-.334.396-.4.69-.533.294-.135.64-.202.915-.47h.002v-.002c.256-.268.445-.601.668-.838.19-.201.38-.336.663-.336zm7.159-9.074c-.435.201-.945.535-1.488.535-.542 0-.97-.267-1.28-.466-.154-.134-.28-.268-.373-.335-.164-.134-.144-.333-.074-.333.109.016.129.134.199.2.096.066.215.2.36.333.292.2.68.467 1.167.467.485 0 1.053-.267 1.398-.466.195-.135.445-.334.648-.467.156-.136.149-.267.279-.267.128.016.034.134-.147.332a8.097 8.097 0 01-.69.468zm-1.082-1.583V5.64c-.006-.02.013-.042.029-.05.074-.043.18-.027.26.004.063 0 .16.067.15.135-.006.049-.085.066-.135.066-.055 0-.092-.043-.141-.068-.052-.018-.146-.008-.163-.065zm-.551 0c-.02.058-.113.049-.166.066-.047.025-.086.068-.14.068-.05 0-.13-.02-.136-.068-.01-.066.088-.133.15-.133.08-.031.184-.047.259-.005.019.009.036.03.03.05v.02h.003z"/></svg>Linux</a>
+        <a href="#download" style="display:inline-flex;align-items:center;gap:10px;min-height:48px;padding:0 22px;border:1px solid #57544e;color:#f1efe9;text-decoration:none;font-weight:600;font-size:17px" style-hover="border-color:#f1efe9;color:#ffffff">Download the app</a>
       </div>
       <dl style="margin:8px 0 0;display:grid;grid-template-columns:auto 1fr;gap:6px 16px;font-family:'IBM Plex Mono',monospace;font-size:13px;line-height:1.5;color:#a9a59c">
         <dt style="color:#f1efe9;display:flex;align-items:center;gap:8px"><span aria-hidden="true" style="width:7px;height:7px;background:#18a058;display:inline-block"></span>Live</dt>
@@ -454,7 +447,7 @@ a:hover{color:#0a8f4d}
     </figure>
   </div>
 
-    <div style="position:relative;max-width:1280px;margin:0 auto;padding:0 clamp(16px,4vw,48px) clamp(40px,6vw,80px);columns:4 150px;column-gap:12px">
+  <div style="position:relative;max-width:1280px;margin:0 auto;padding:0 clamp(16px,4vw,48px) clamp(40px,6vw,80px);columns:4 150px;column-gap:12px">
     <figure style="margin:0 0 16px;display:flex;flex-direction:column;gap:10px;break-inside:avoid">
       <div style="position:relative;aspect-ratio:3 / 2;background:#232320;overflow:hidden"><img src="assets/photos/wire-lines.jpg" alt="Power lines and poles against a pale sky" width="1400" height="933" style="display:block;position:absolute;inset:0;width:100%;height:100%;object-fit:cover"></div>
       <figcaption style="display:flex;align-items:center;gap:8px;font-family:'IBM Plex Mono',monospace;font-size:12px;color:#a9a59c"><span aria-hidden="true" style="width:7px;height:7px;background:#d6392b;flex:none"></span>Wire lines · Canon R10</figcaption>
@@ -588,6 +581,89 @@ a:hover{color:#0a8f4d}
   </ol>
 </section>
 
+<section id="check" data-screen-label="Check a photo" sc-camel-on-drag-over="{{ onDOver }}" sc-camel-on-drag-leave="{{ onDLeave }}" sc-camel-on-drop="{{ onDDrop }}" style="position:relative;background:#141412;color:#f1efe9">
+  <input ref="{{ r.dinput }}" id="gx-drop" type="file" accept=".jpg,.jpeg,.png,.tif,.tiff,image/jpeg,image/png,image/tiff" sc-camel-on-change="{{ onDPick }}" style="position:absolute;width:1px;height:1px;opacity:0;pointer-events:none">
+  <div style="max-width:1280px;margin:0 auto;padding:clamp(64px,9vw,128px) clamp(16px,4vw,48px);box-sizing:border-box;display:flex;flex-wrap:wrap-reverse;align-items:flex-end;gap:clamp(28px,4vw,64px)">
+    <div style="flex:1 1 min(100%,340px);max-width:520px;display:flex;flex-direction:column;gap:20px">
+      <p style="margin:0;font-family:'IBM Plex Mono',monospace;font-size:13px;letter-spacing:0.12em;text-transform:uppercase;color:#a9a59c;display:flex;align-items:center;gap:12px"><span aria-hidden="true" style="display:flex;gap:2px"><span style="width:8px;height:8px;background:#d6392b"></span><span style="width:8px;height:8px;background:#18a058"></span><span style="width:8px;height:8px;background:#2f5fd0"></span></span>Try it</p>
+      <h2 style="margin:0;font-family:'Archivo',sans-serif;font-stretch:125%;font-weight:800;font-size:clamp(32px,4.4vw,64px);line-height:1;letter-spacing:-0.02em">Check a photo.</h2>
+      <p style="margin:0;font-size:clamp(17px,1.4vw,20px);color:#d6d2c9;text-wrap:pretty">Got a copy of a photo? The verify page shows if it traces back to a registered camera, and when its owner registered it.</p>
+      <p style="margin:0;font-size:15px;color:#a9a59c">RAW files are checked in the <a href="#download" style="color:#f1efe9">desktop app</a>.</p>
+    </div>
+    <div style="flex:1.5 1 min(100%,480px);min-width:0;display:flex;flex-direction:column;gap:14px">
+      <sc-if value="{{ dEmpty }}" hint-placeholder-val="{{ true }}">
+        <a ref="{{ r.dz }}" href="https://muse254.github.io/genesis/verify/" style="text-decoration:none;color:inherit;position:relative;min-height:clamp(280px,44vh,460px);display:flex;flex-direction:column;align-items:flex-start;justify-content:flex-end;gap:14px;padding:clamp(22px,3.4vw,44px);box-sizing:border-box;cursor:pointer;border:1.5px dashed {{ dzBorder }};background:{{ dzBg }};transition:border-color 160ms, background 160ms" style-hover="border-color:#c9c5bc">
+          <span aria-hidden="true" style="position:absolute;top:clamp(22px,3.4vw,44px);left:clamp(22px,3.4vw,44px);display:grid;grid-template-columns:repeat(3,14px);gap:4px">
+            <span style="height:14px;background:#f1efe9"></span><span style="height:14px;background:#f1efe9"></span><span style="height:14px;background:#f1efe9"></span>
+            <span style="height:14px;background:#d6392b"></span><span style="height:14px;background:#18a058"></span><span style="height:14px;background:#2f5fd0"></span>
+            <span style="height:14px;background:#f1efe9"></span><span style="height:14px;background:#f1efe9"></span><span style="height:14px;background:#f1efe9"></span>
+          </span>
+          <span style="font-family:'Archivo',sans-serif;font-stretch:125%;font-weight:800;font-size:clamp(40px,6vw,88px);line-height:0.95;letter-spacing:-0.03em">{{ dzTitle }}</span>
+          <span style="display:flex;flex-wrap:wrap;align-items:center;gap:10px 18px">
+            <span style="display:inline-flex;align-items:center;min-height:48px;padding:0 22px;background:#f1efe9;color:#141412;font-weight:600;font-size:17px">Open the verify page →</span>
+            <span style="font-family:'IBM Plex Mono',monospace;font-size:13px;letter-spacing:0.08em;color:#a9a59c">JPEG · PNG · TIFF</span>
+          </span>
+        </a>
+        <p style="margin:0;display:flex;align-items:center;gap:10px;font-family:'IBM Plex Mono',monospace;font-size:13px;color:#c9c5bc"><span aria-hidden="true" style="width:8px;height:8px;background:#18a058;flex:none"></span>Checked in your browser. Nothing is uploaded.</p>
+      </sc-if>
+      <sc-if value="{{ dHasPhoto }}" hint-placeholder-val="{{ false }}">
+        <figure style="margin:0;display:flex;flex-direction:column;gap:12px;align-items:flex-start">
+          <div style="position:relative;max-width:100%;line-height:0;outline:1px solid #2e2d2a">
+            <sc-if value="{{ dPreview }}" hint-placeholder-val="{{ false }}">
+              <img ref="{{ r.dimg }}" alt="{{ dName }}" style="display:block;max-width:100%;max-height:min(60vh,560px);width:auto;height:auto;transition:filter 700ms ease">
+            </sc-if>
+            <sc-if value="{{ dNoPreview }}" hint-placeholder-val="{{ false }}">
+              <div style="width:min(100vw - 32px,520px);aspect-ratio:3/2;background:#232320;display:flex;align-items:center;justify-content:center;line-height:1.4;font-family:'IBM Plex Mono',monospace;font-size:13px;color:#a9a59c;text-align:center;padding:16px;box-sizing:border-box">TIFF · no preview in this browser</div>
+            </sc-if>
+            <sc-if value="{{ dReg }}" hint-placeholder-val="{{ false }}">
+              <div ref="{{ r.dstamp }}" style="position:absolute;right:16px;bottom:16px;line-height:1;pointer-events:none;display:flex;align-items:center;gap:8px;padding:8px 12px;background:#fbfbf9;color:#0a8f4d;border:1.5px solid #0a8f4d;font-family:'IBM Plex Mono',monospace;font-weight:600;font-size:13px;letter-spacing:0.14em;text-transform:uppercase;transform:rotate(-4deg)"><span aria-hidden="true" style="width:7px;height:7px;background:#0a8f4d;display:inline-block"></span>Registered</div>
+            </sc-if>
+          </div>
+          <figcaption style="display:flex;flex-wrap:wrap;gap:4px 16px;font-family:'IBM Plex Mono',monospace;font-size:12px;color:#a9a59c"><span style="color:#f1efe9;word-break:break-all">{{ dName }}</span><span>{{ dMeta }}</span><span>stayed on this device</span></figcaption>
+        </figure>
+      </sc-if>
+      <sc-if value="{{ dChecking }}" hint-placeholder-val="{{ false }}">
+        <div role="status" style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;font-family:'IBM Plex Mono',monospace;font-size:12px">
+          <sc-for list="{{ dSteps }}" as="s" hint-placeholder-count="3">
+            <div style="display:flex;flex-direction:column;gap:6px;padding:10px 12px;border:1px solid {{ s.border }};background:{{ s.bg }};color:{{ s.fg }};transition:background 240ms, border-color 240ms, color 240ms">
+              <span style="display:flex;justify-content:space-between"><span>{{ s.n }}</span><span>{{ s.mark }}</span></span>
+              <span style="font-size:13px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase">{{ s.label }}</span>
+            </div>
+          </sc-for>
+        </div>
+      </sc-if>
+      <sc-if value="{{ dResult }}" hint-placeholder-val="{{ false }}">
+        <div style="background:#fbfbf9;color:#1c1c1a;padding:clamp(18px,2.4vw,28px);display:flex;flex-direction:column;gap:12px" aria-live="polite">
+          <sc-if value="{{ dReg }}" hint-placeholder-val="{{ false }}">
+            <p style="margin:0;font-family:'IBM Plex Mono',monospace;font-size:13px;letter-spacing:0.12em;text-transform:uppercase;font-weight:600;color:#0a8f4d;display:flex;align-items:center;gap:10px"><span aria-hidden="true" style="width:9px;height:9px;background:#0a8f4d"></span>Registered</p>
+            <h3 style="margin:0;font-family:'Archivo',sans-serif;font-stretch:125%;font-weight:800;font-size:clamp(22px,2.2vw,30px);line-height:1.08">Registered by the body's owner.</h3>
+            <p style="margin:0;font-family:'IBM Plex Mono',monospace;font-size:14px;color:#3d3b37">Canon R10 · body ··3b37 · 12 Oct 2026, 11:12 UTC</p>
+          </sc-if>
+          <sc-if value="{{ dNone }}" hint-placeholder-val="{{ false }}">
+            <p style="margin:0;font-family:'IBM Plex Mono',monospace;font-size:13px;letter-spacing:0.12em;text-transform:uppercase;font-weight:600;color:#6f6c66;display:flex;align-items:center;gap:10px"><span aria-hidden="true" style="width:9px;height:9px;border:1.5px solid #6f6c66;box-sizing:border-box"></span>Not registered</p>
+            <h3 style="margin:0;font-family:'Archivo',sans-serif;font-stretch:125%;font-weight:800;font-size:clamp(22px,2.2vw,30px);line-height:1.08">No record.</h3>
+            <p style="margin:0;color:#3d3b37;text-wrap:pretty">Nothing on the public record matches this photo. That means nothing either way. Most photos are simply never registered.</p>
+          </sc-if>
+          <div style="display:flex;flex-wrap:wrap;gap:10px 20px;align-items:center;padding-top:4px">
+            <a href="https://muse254.github.io/genesis/verify/" style="font-weight:600">See the full result →</a>
+            <button type="button" sc-camel-on-click="{{ dReset }}" style="appearance:none;border:none;cursor:pointer;min-height:44px;padding:0 18px;background:#141412;color:#f1efe9;font-family:'Source Sans 3',sans-serif;font-weight:600;font-size:16px" style-hover="background:#2f5fd0">Check another photo</button>
+          </div>
+        </div>
+      </sc-if>
+      <sc-if value="{{ dError }}" hint-placeholder-val="{{ false }}">
+        <div role="alert" style="min-height:clamp(240px,36vh,380px);display:flex;flex-direction:column;justify-content:flex-end;gap:14px;padding:clamp(22px,3.4vw,44px);box-sizing:border-box;border:1.5px solid #57544e">
+          <p style="margin:0;font-family:'IBM Plex Mono',monospace;font-size:13px;letter-spacing:0.12em;text-transform:uppercase;font-weight:600;color:#ff8a7e;display:flex;align-items:center;gap:10px"><span aria-hidden="true" style="width:9px;height:9px;background:#d6392b"></span>{{ dErrLabel }}</p>
+          <h3 style="margin:0;font-family:'Archivo',sans-serif;font-stretch:125%;font-weight:800;font-size:clamp(24px,2.8vw,38px);line-height:1.05;text-wrap:balance">{{ dErrTitle }}</h3>
+          <div style="display:flex;flex-wrap:wrap;gap:12px">
+            <sc-if value="{{ dErrRaw }}" hint-placeholder-val="{{ false }}"><a href="#download" style="display:inline-flex;align-items:center;min-height:48px;padding:0 22px;background:#f1efe9;color:#141412;text-decoration:none;font-weight:600" style-hover="background:#ffffff;color:#141412">Download the app</a></sc-if>
+            <button type="button" sc-camel-on-click="{{ dReset }}" style="appearance:none;cursor:pointer;min-height:48px;padding:0 22px;background:none;border:1px solid #57544e;color:#f1efe9;font-family:'Source Sans 3',sans-serif;font-weight:600;font-size:17px" style-hover="border-color:#f1efe9">Choose another file</button>
+          </div>
+        </div>
+      </sc-if>
+    </div>
+  </div>
+</section>
+
 <section id="copy" ref="{{ r.copy }}" data-screen-label="The copy that already left" style="max-width:1280px;margin:0 auto;padding:clamp(64px,9vw,128px) clamp(16px,4vw,48px)">
   <div style="display:flex;flex-direction:column;gap:16px;max-width:760px;margin-bottom:clamp(40px,5vw,64px)">
     <h2 style="margin:0;font-family:'Archivo',sans-serif;font-stretch:125%;font-weight:800;font-size:clamp(32px,4.4vw,64px);line-height:1;letter-spacing:-0.02em">The copy that already left.</h2>
@@ -641,6 +717,27 @@ a:hover{color:#0a8f4d}
   </div>
 </section>
 
+<section id="registered" data-screen-label="Registered photos" style="max-width:1280px;margin:0 auto;padding:clamp(64px,9vw,128px) clamp(16px,4vw,48px);box-sizing:border-box">
+  <div style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:flex-end;gap:16px 48px;margin-bottom:clamp(32px,4vw,56px)">
+    <div style="display:flex;flex-direction:column;gap:16px;max-width:720px">
+      <p style="margin:0;font-family:'IBM Plex Mono',monospace;font-size:13px;letter-spacing:0.12em;text-transform:uppercase;color:#6f6c66;display:flex;align-items:center;gap:10px"><span aria-hidden="true" style="width:8px;height:8px;background:#0a8f4d"></span>On the public record</p>
+      <h2 style="margin:0;font-family:'Archivo',sans-serif;font-stretch:125%;font-weight:800;font-size:clamp(32px,4.4vw,64px);line-height:1;letter-spacing:-0.02em;text-wrap:balance">Registered on Genesis.</h2>
+      <p style="margin:0;font-size:clamp(17px,1.4vw,20px);color:#3d3b37;text-wrap:pretty">Each traces back to its camera and its owner. Save one, shrink it, strip it, then <a href="#check">check it above</a>.</p>
+    </div>
+    <a href="https://muse254.github.io/genesis/dashboard/?owner=0xc0b60Ce1d7EfAc453Cd0D5BC1783b9B28972625A" style="font-weight:600">See this owner's dashboard →</a>
+  </div>
+  <div style="columns:2 280px;column-gap:16px">
+      <figure style="margin:0 0 clamp(20px,2.4vw,32px);break-inside:avoid;display:flex;flex-direction:column;gap:10px">
+      <img src="assets/photos/hero-carpenter.jpg" alt="A carpenter cutting timber with an angle grinder" loading="lazy" style="display:block;width:100%;height:auto;background:#eae8e2">
+      <figcaption style="display:flex;flex-wrap:wrap;justify-content:space-between;gap:4px 12px;font-family:'IBM Plex Mono',monospace;font-size:12px;line-height:1.5"><span style="display:flex;align-items:center;gap:8px"><span aria-hidden="true" style="width:7px;height:7px;background:#d6392b;flex:none"></span>Carpenter · Canon R10 ··3b37 · registered 12 Oct 2026</span><a href="https://basescan.org/tx/0xaf3e9ea7e29e42099e92c678ac3905bd671c656321ff835bd51dd9875f271ea0" style="color:#6f6c66">Record ↗</a></figcaption>
+    </figure>
+      <figure style="margin:0 0 clamp(20px,2.4vw,32px);break-inside:avoid;display:flex;flex-direction:column;gap:10px">
+      <img src="assets/photos/fish-market.jpg" alt="A busy fish market on the shore" loading="lazy" style="display:block;width:100%;height:auto;background:#eae8e2">
+      <figcaption style="display:flex;flex-wrap:wrap;justify-content:space-between;gap:4px 12px;font-family:'IBM Plex Mono',monospace;font-size:12px;line-height:1.5"><span style="display:flex;align-items:center;gap:8px"><span aria-hidden="true" style="width:7px;height:7px;background:#18a058;flex:none"></span>Fish market · Canon R10 ··3b37 · registered 12 Oct 2026</span><a href="https://basescan.org/tx/0x7795a73212793ccb115b33b0f15a94a0a26adf5ca6f01bdf3b0e62cde61063c3" style="color:#6f6c66">Record ↗</a></figcaption>
+    </figure>
+    </div>
+  </section>
+
 <section id="attacks" data-screen-label="We attacked our own system" style="background:#141412;color:#f1efe9">
   <div style="max-width:1280px;margin:0 auto;padding:clamp(64px,9vw,128px) clamp(16px,4vw,48px);display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:clamp(32px,4vw,56px);align-items:start">
     <h2 style="margin:0;font-family:'Archivo',sans-serif;font-stretch:125%;font-weight:800;font-size:clamp(32px,4vw,56px);line-height:1;letter-spacing:-0.02em;text-wrap:balance">We attacked our <span style="color:#ff6fb0">own</span> system.</h2>
@@ -650,7 +747,7 @@ a:hover{color:#0a8f4d}
     </div>
     <div style="display:flex;flex-direction:column;gap:12px">
       <p style="margin:0;font-family:'IBM Plex Mono',monospace;font-size:13px;letter-spacing:0.12em;text-transform:uppercase;color:#3ccf7f;display:flex;align-items:center;gap:8px"><span aria-hidden="true" style="width:8px;height:8px;background:#18a058"></span>The claim</p>
-      <p style="margin:0;text-wrap:pretty;color:#d6d2c9">Only the camera's owner can register to it, and every registration is dated. A planted fingerprint can match a camera; it can't forge the owner's record.</p>
+      <p style="margin:0;text-wrap:pretty;color:#d6d2c9">Only the camera's owner can register to it, and every registration is dated. A planted fingerprint can match a camera. It can't forge the owner's record.</p>
       <a href="https://github.com/muse254/genesis/blob/main/docs/adversarial.md" style="margin-top:8px;font-weight:600;align-self:flex-start;color:#f1efe9" style-hover="color:#ff6fb0">Read the attacks →</a>
     </div>
   </div>
@@ -673,6 +770,43 @@ a:hover{color:#0a8f4d}
   </div>
 </div></section>
 
+<section id="download" data-screen-label="Downloads" style="background:#141412;color:#f1efe9;border-bottom:1px solid #3d3b37">
+  <div style="max-width:1280px;margin:0 auto;padding:clamp(64px,9vw,128px) clamp(16px,4vw,48px);box-sizing:border-box;display:flex;flex-direction:column;gap:clamp(28px,4vw,48px)">
+    <div style="display:flex;flex-direction:column;gap:16px;max-width:760px">
+      <p style="margin:0;font-family:'IBM Plex Mono',monospace;font-size:13px;letter-spacing:0.12em;text-transform:uppercase;color:#a9a59c">Download · {{ relVersion }}</p>
+      <h2 style="margin:0;font-family:'Archivo',sans-serif;font-stretch:125%;font-weight:800;font-size:clamp(32px,4.4vw,64px);line-height:1;letter-spacing:-0.02em;text-wrap:balance">Register your camera on your own machine.</h2>
+      <p style="margin:0;font-size:clamp(17px,1.4vw,20px);color:#d6d2c9;text-wrap:pretty">The desktop app reads your RAW files, builds the camera's fingerprint and registers your photos. Your files never leave the computer.</p>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr));gap:16px">
+      <a href="{{ macUrl }}" style="display:flex;flex-direction:column;gap:22px;padding:24px;border:1px solid #3d3b37;border-top:6px solid #d6392b;text-decoration:none;color:#f1efe9;min-height:220px;box-sizing:border-box" style-hover="border-color:#f1efe9;background:rgba(241,239,233,0.04);color:#ffffff">
+        <img src="assets/apple.svg" alt="" width="40" height="40" style="display:block">
+        <span style="display:flex;flex-direction:column;gap:6px;margin-top:auto">
+          <span style="font-family:'Archivo',sans-serif;font-stretch:125%;font-weight:800;font-size:26px;line-height:1">macOS</span>
+          <span style="font-family:'IBM Plex Mono',monospace;font-size:13px;color:#a9a59c">Apple silicon · .dmg</span>
+        </span>
+        <span style="font-weight:600">Download for macOS ↓</span>
+      </a>
+      <a href="{{ winUrl }}" style="display:flex;flex-direction:column;gap:22px;padding:24px;border:1px solid #3d3b37;border-top:6px solid #18a058;text-decoration:none;color:#f1efe9;min-height:220px;box-sizing:border-box" style-hover="border-color:#f1efe9;background:rgba(241,239,233,0.04);color:#ffffff">
+        <span aria-hidden="true" style="display:grid;grid-template-columns:repeat(2,18px);grid-template-rows:repeat(2,18px);gap:4px"><span style="background:#f1efe9"></span><span style="background:#f1efe9"></span><span style="background:#f1efe9"></span><span style="background:#f1efe9"></span></span>
+        <span style="display:flex;flex-direction:column;gap:6px;margin-top:auto">
+          <span style="font-family:'Archivo',sans-serif;font-stretch:125%;font-weight:800;font-size:26px;line-height:1">Windows</span>
+          <span style="font-family:'IBM Plex Mono',monospace;font-size:13px;color:#a9a59c">64-bit · .exe installer</span>
+        </span>
+        <span style="font-weight:600">Download for Windows ↓</span>
+      </a>
+      <a href="{{ linUrl }}" style="display:flex;flex-direction:column;gap:22px;padding:24px;border:1px solid #3d3b37;border-top:6px solid #2f5fd0;text-decoration:none;color:#f1efe9;min-height:220px;box-sizing:border-box" style-hover="border-color:#f1efe9;background:rgba(241,239,233,0.04);color:#ffffff">
+        <img src="assets/linux.svg" alt="" width="40" height="40" style="display:block">
+        <span style="display:flex;flex-direction:column;gap:6px;margin-top:auto">
+          <span style="font-family:'Archivo',sans-serif;font-stretch:125%;font-weight:800;font-size:26px;line-height:1">Linux</span>
+          <span style="font-family:'IBM Plex Mono',monospace;font-size:13px;color:#a9a59c">x86_64 · .AppImage</span>
+        </span>
+        <span style="font-weight:600">Download for Linux ↓</span>
+      </a>
+    </div>
+    <p style="margin:0;font-family:'IBM Plex Mono',monospace;font-size:13px;color:#a9a59c">{{ relNote }} · <a href="https://github.com/muse254/genesis/releases" style="color:#f1efe9">All releases ↗</a> · <a href="https://muse254.github.io/genesis/status.html" style="color:#f1efe9">Status</a></p>
+  </div>
+</section>
+
 <footer id="source" data-screen-label="Open source + footer" style="background:#141412;color:#f1efe9">
   <div style="max-width:1280px;margin:0 auto;padding:clamp(64px,8vw,112px) clamp(16px,4vw,48px) 32px;display:flex;flex-direction:column;gap:clamp(48px,6vw,80px)">
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,360px),1fr));gap:32px;align-items:end">
@@ -681,9 +815,7 @@ a:hover{color:#0a8f4d}
         <p style="margin:0;color:#c9c5bc">MIT-licensed. The fingerprinting, the verify page and our attacks on it are all public.</p>
         <div style="display:flex;flex-wrap:wrap;gap:12px">
           <a href="https://github.com/muse254/genesis" style="display:inline-flex;align-items:center;min-height:48px;padding:0 22px;background:#f1efe9;color:#141412;text-decoration:none;font-weight:600" style-hover="background:#ffffff;color:#141412">View on GitHub</a>
-          <a data-os="macos" aria-label="Download Genesis for macOS" href="https://github.com/muse254/genesis/releases/latest" style="display:inline-flex;align-items:center;gap:10px;min-height:48px;padding:0 18px;border:1px solid #57544e;color:#f1efe9;text-decoration:none;font-weight:600;font-size:17px" style-hover="border-color:#f1efe9;color:#ffffff"><svg aria-hidden="true" viewBox="0 0 24 24" width="18" height="18" fill="currentColor" style="flex:none"><path d="M12.152 6.896c-.948 0-2.415-1.078-3.96-1.04-2.04.027-3.91 1.183-4.961 3.014-2.117 3.675-.546 9.103 1.519 12.09 1.013 1.454 2.208 3.09 3.792 3.039 1.52-.065 2.09-.987 3.935-.987 1.831 0 2.35.987 3.96.948 1.637-.026 2.676-1.48 3.676-2.948 1.156-1.688 1.636-3.325 1.662-3.415-.039-.013-3.182-1.221-3.22-4.857-.026-3.04 2.48-4.494 2.597-4.559-1.429-2.09-3.623-2.324-4.39-2.376-2-.156-3.675 1.09-4.61 1.09zM15.53 3.83c.843-1.012 1.4-2.427 1.245-3.83-1.207.052-2.662.805-3.532 1.818-.78.896-1.454 2.338-1.273 3.714 1.338.104 2.715-.688 3.559-1.701"/></svg>macOS</a>
-        <a data-os="windows" aria-label="Download Genesis for Windows" href="https://github.com/muse254/genesis/releases/latest" style="display:inline-flex;align-items:center;gap:10px;min-height:48px;padding:0 18px;border:1px solid #57544e;color:#f1efe9;text-decoration:none;font-weight:600;font-size:17px" style-hover="border-color:#f1efe9;color:#ffffff"><svg aria-hidden="true" viewBox="0 0 24 24" width="18" height="18" fill="currentColor" style="flex:none"><path d="M0,0H11.377V11.372H0ZM12.623,0H24V11.372H12.623ZM0,12.623H11.377V24H0Zm12.623,0H24V24H12.623"/></svg>Windows</a>
-        <a data-os="linux" aria-label="Download Genesis for Linux" href="https://github.com/muse254/genesis/releases/latest" style="display:inline-flex;align-items:center;gap:10px;min-height:48px;padding:0 18px;border:1px solid #57544e;color:#f1efe9;text-decoration:none;font-weight:600;font-size:17px" style-hover="border-color:#f1efe9;color:#ffffff"><svg aria-hidden="true" viewBox="0 0 24 24" width="18" height="18" fill="currentColor" style="flex:none"><path d="M12.504 0c-.155 0-.315.008-.48.021-4.226.333-3.105 4.807-3.17 6.298-.076 1.092-.3 1.953-1.05 3.02-.885 1.051-2.127 2.75-2.716 4.521-.278.832-.41 1.684-.287 2.489a.424.424 0 00-.11.135c-.26.268-.45.6-.663.839-.199.199-.485.267-.797.4-.313.136-.658.269-.864.68-.09.189-.136.394-.132.602 0 .199.027.4.055.536.058.399.116.728.04.97-.249.68-.28 1.145-.106 1.484.174.334.535.47.94.601.81.2 1.91.135 2.774.6.926.466 1.866.67 2.616.47.526-.116.97-.464 1.208-.946.587-.003 1.23-.269 2.26-.334.699-.058 1.574.267 2.577.2.025.134.063.198.114.333l.003.003c.391.778 1.113 1.132 1.884 1.071.771-.06 1.592-.536 2.257-1.306.631-.765 1.683-1.084 2.378-1.503.348-.199.629-.469.649-.853.023-.4-.2-.811-.714-1.376v-.097l-.003-.003c-.17-.2-.25-.535-.338-.926-.085-.401-.182-.786-.492-1.046h-.003c-.059-.054-.123-.067-.188-.135a.357.357 0 00-.19-.064c.431-1.278.264-2.55-.173-3.694-.533-1.41-1.465-2.638-2.175-3.483-.796-1.005-1.576-1.957-1.56-3.368.026-2.152.236-6.133-3.544-6.139zm.529 3.405h.013c.213 0 .396.062.584.198.19.135.33.332.438.533.105.259.158.459.166.724 0-.02.006-.04.006-.06v.105a.086.086 0 01-.004-.021l-.004-.024a1.807 1.807 0 01-.15.706.953.953 0 01-.213.335.71.71 0 00-.088-.042c-.104-.045-.198-.064-.284-.133a1.312 1.312 0 00-.22-.066c.05-.06.146-.133.183-.198.053-.128.082-.264.088-.402v-.02a1.21 1.21 0 00-.061-.4c-.045-.134-.101-.2-.183-.333-.084-.066-.167-.132-.267-.132h-.016c-.093 0-.176.03-.262.132a.8.8 0 00-.205.334 1.18 1.18 0 00-.09.4v.019c.002.089.008.179.02.267-.193-.067-.438-.135-.607-.202a1.635 1.635 0 01-.018-.2v-.02a1.772 1.772 0 01.15-.768c.082-.22.232-.406.43-.533a.985.985 0 01.594-.2zm-2.962.059h.036c.142 0 .27.048.399.135.146.129.264.288.344.465.09.199.14.4.153.667v.004c.007.134.006.2-.002.266v.08c-.03.007-.056.018-.083.024-.152.055-.274.135-.393.2.012-.09.013-.18.003-.267v-.015c-.012-.133-.04-.2-.082-.333a.613.613 0 00-.166-.267.248.248 0 00-.183-.064h-.021c-.071.006-.13.04-.186.132a.552.552 0 00-.12.27.944.944 0 00-.023.33v.015c.012.135.037.2.08.334.046.134.098.2.166.268.01.009.02.018.034.024-.07.057-.117.07-.176.136a.304.304 0 01-.131.068 2.62 2.62 0 01-.275-.402 1.772 1.772 0 01-.155-.667 1.759 1.759 0 01.08-.668 1.43 1.43 0 01.283-.535c.128-.133.26-.2.418-.2zm1.37 1.706c.332 0 .733.065 1.216.399.293.2.523.269 1.052.468h.003c.255.136.405.266.478.399v-.131a.571.571 0 01.016.47c-.123.31-.516.643-1.063.842v.002c-.268.135-.501.333-.775.465-.276.135-.588.292-1.012.267a1.139 1.139 0 01-.448-.067 3.566 3.566 0 01-.322-.198c-.195-.135-.363-.332-.612-.465v-.005h-.005c-.4-.246-.616-.512-.686-.71-.07-.268-.005-.47.193-.6.224-.135.38-.271.483-.336.104-.074.143-.102.176-.131h.002v-.003c.169-.202.436-.47.839-.601.139-.036.294-.065.466-.065zm2.8 2.142c.358 1.417 1.196 3.475 1.735 4.473.286.534.855 1.659 1.102 3.024.156-.005.33.018.513.064.646-1.671-.546-3.467-1.089-3.966-.22-.2-.232-.335-.123-.335.59.534 1.365 1.572 1.646 2.757.13.535.16 1.104.021 1.67.067.028.135.06.205.067 1.032.534 1.413.938 1.23 1.537v-.043c-.06-.003-.12 0-.18 0h-.016c.151-.467-.182-.825-1.065-1.224-.915-.4-1.646-.336-1.77.465-.008.043-.013.066-.018.135-.068.023-.139.053-.209.064-.43.268-.662.669-.793 1.187-.13.533-.17 1.156-.205 1.869v.003c-.02.334-.17.838-.319 1.35-1.5 1.072-3.58 1.538-5.348.334a2.645 2.645 0 00-.402-.533 1.45 1.45 0 00-.275-.333c.182 0 .338-.03.465-.067a.615.615 0 00.314-.334c.108-.267 0-.697-.345-1.163-.345-.467-.931-.995-1.788-1.521-.63-.4-.986-.87-1.15-1.396-.165-.534-.143-1.085-.015-1.645.245-1.07.873-2.11 1.274-2.763.107-.065.037.135-.408.974-.396.751-1.14 2.497-.122 3.854a8.123 8.123 0 01.647-2.876c.564-1.278 1.743-3.504 1.836-5.268.048.036.217.135.289.202.218.133.38.333.59.465.21.201.477.335.876.335.039.003.075.006.11.006.412 0 .73-.134.997-.268.29-.134.52-.334.74-.4h.005c.467-.135.835-.402 1.044-.7zm2.185 8.958c.037.6.343 1.245.882 1.377.588.134 1.434-.333 1.791-.765l.211-.01c.315-.007.577.01.847.268l.003.003c.208.199.305.53.391.876.085.4.154.78.409 1.066.486.527.645.906.636 1.14l.003-.007v.018l-.003-.012c-.015.262-.185.396-.498.595-.63.401-1.746.712-2.457 1.57-.618.737-1.37 1.14-2.036 1.191-.664.053-1.237-.2-1.574-.898l-.005-.003c-.21-.4-.12-1.025.056-1.69.176-.668.428-1.344.463-1.897.037-.714.076-1.335.195-1.814.12-.465.308-.797.641-.984l.045-.022zm-10.814.049h.01c.053 0 .105.005.157.014.376.055.706.333 1.023.752l.91 1.664.003.003c.243.533.754 1.064 1.189 1.637.434.598.77 1.131.729 1.57v.006c-.057.744-.48 1.148-1.125 1.294-.645.135-1.52.002-2.395-.464-.968-.536-2.118-.469-2.857-.602-.369-.066-.61-.2-.723-.4-.11-.2-.113-.602.123-1.23v-.004l.002-.003c.117-.334.03-.752-.027-1.118-.055-.401-.083-.71.043-.94.16-.334.396-.4.69-.533.294-.135.64-.202.915-.47h.002v-.002c.256-.268.445-.601.668-.838.19-.201.38-.336.663-.336zm7.159-9.074c-.435.201-.945.535-1.488.535-.542 0-.97-.267-1.28-.466-.154-.134-.28-.268-.373-.335-.164-.134-.144-.333-.074-.333.109.016.129.134.199.2.096.066.215.2.36.333.292.2.68.467 1.167.467.485 0 1.053-.267 1.398-.466.195-.135.445-.334.648-.467.156-.136.149-.267.279-.267.128.016.034.134-.147.332a8.097 8.097 0 01-.69.468zm-1.082-1.583V5.64c-.006-.02.013-.042.029-.05.074-.043.18-.027.26.004.063 0 .16.067.15.135-.006.049-.085.066-.135.066-.055 0-.092-.043-.141-.068-.052-.018-.146-.008-.163-.065zm-.551 0c-.02.058-.113.049-.166.066-.047.025-.086.068-.14.068-.05 0-.13-.02-.136-.068-.01-.066.088-.133.15-.133.08-.031.184-.047.259-.005.019.009.036.03.03.05v.02h.003z"/></svg>Linux</a>
+          <a href="#download" style="display:inline-flex;align-items:center;min-height:48px;padding:0 22px;border:1px solid #57544e;color:#f1efe9;text-decoration:none;font-weight:600" style-hover="border-color:#f1efe9;color:#ffffff">Download the app</a>
         </div>
       </div>
     </div>
@@ -698,7 +830,7 @@ a:hover{color:#0a8f4d}
       </a>
       <div style="display:flex;flex-wrap:wrap;gap:12px 32px;font-size:16px">
         <a href="https://muse254.github.io/genesis/verify/" style="color:#c9c5bc">Verify page</a>
-        <a href="https://github.com/muse254/genesis/releases/latest" style="color:#c9c5bc">Downloads</a>
+        <a href="#download" style="color:#c9c5bc">Downloads</a>
         <a href="https://github.com/muse254/genesis" style="color:#c9c5bc">GitHub</a>
         <a href="https://muse254.github.io/genesis/status.html" style="color:#c9c5bc">Status</a>
       </div>
@@ -737,14 +869,33 @@ a:hover{color:#0a8f4d}
 
 </div>
 </x-dc>
-<script type="text/x-dc" data-dc-script="" data-props="{&quot;headline&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;camera-signs&quot;,&quot;birthmark&quot;,&quot;record-stays&quot;],&quot;default&quot;:&quot;camera-signs&quot;,&quot;tsType&quot;:&quot;'camera-signs'|'birthmark'|'record-stays'&quot;,&quot;section&quot;:&quot;Hero&quot;},&quot;pixelField&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Hero&quot;},&quot;grain&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Texture&quot;},&quot;showNotes&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Review&quot;}}">
+<script type="text/x-dc" data-dc-script="" data-props="{&quot;headline&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;camera-signs&quot;,&quot;birthmark&quot;,&quot;record-stays&quot;],&quot;default&quot;:&quot;camera-signs&quot;,&quot;tsType&quot;:&quot;'camera-signs'|'birthmark'|'record-stays'&quot;,&quot;section&quot;:&quot;Hero&quot;},&quot;pixelField&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Hero&quot;},&quot;grain&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Texture&quot;},&quot;dropResult&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;none&quot;,&quot;registered&quot;],&quot;default&quot;:&quot;none&quot;,&quot;tsType&quot;:&quot;'none'|'registered'&quot;,&quot;section&quot;:&quot;Check a photo&quot;},&quot;showNotes&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Review&quot;}}">
 class Component extends DCLogic {
-  r = Object.fromEntries(['sig','photo','mosaic','noise','jpeg','readout','card','stamp','line','copyspec','mini','grainHero','grainSig','heroStamp','copy','caps','field'].map(k => [k, React.createRef()]));
+  r = Object.fromEntries(['sig','photo','mosaic','noise','jpeg','readout','card','stamp','line','copyspec','mini','grainHero','grainSig','heroStamp','copy','caps','field','dz','dinput','dimg','dstamp'].map(k => [k, React.createRef()]));
 
+  state = { dp: 'empty', dstep: 0, dfile: null, ddrag: false, derr: null, rel: null };
+  REL = 'https://github.com/muse254/genesis/releases/latest';
   renderVals() {
     const h = this.props.headline ?? 'camera-signs';
+    const S = this.state, df = S.dfile || {}, C3 = ['#d6392b', '#18a058', '#2f5fd0'];
+    const rel = S.rel, pick = re => { const a = rel && rel.assets && rel.assets.find(x => re.test(x.name)); return a ? a.browser_download_url : this.REL; };
+    const dRes = this.props.dropResult ?? 'none';
+    const ER = { raw: ['RAW file', 'RAW files are checked in the desktop app.'], type: ['Can\u2019t check this file', 'This page reads JPEG, PNG and TIFF.'] }[S.derr] || ['', ''];
     return {
       r: this.r,
+      dEmpty: S.dp === 'empty', dChecking: S.dp === 'checking', dResult: S.dp === 'result', dError: S.dp === 'error',
+      dHasPhoto: S.dp === 'checking' || S.dp === 'result', dPreview: (S.dp === 'checking' || S.dp === 'result') && !!df.url, dNoPreview: (S.dp === 'checking' || S.dp === 'result') && !df.url,
+      dReg: S.dp === 'result' && dRes === 'registered', dNone: S.dp === 'result' && dRes !== 'registered',
+      dName: df.name || '', dMeta: df.meta || '', dErrLabel: ER[0], dErrTitle: ER[1], dErrRaw: S.derr === 'raw',
+      dSteps: ['Decoding', 'Hashing', 'Checking the record'].map((label, i) => { const n = i + 1, a = S.dstep === n, d = S.dstep > n; return { n: '0' + n, label, mark: d ? '✓' : a ? '···' : '', border: a || d ? C3[i] : '#3d3b37', bg: a ? C3[i] : 'transparent', fg: a ? '#ffffff' : d ? '#f1efe9' : '#8b877f' }; }),
+      dzTitle: 'Verify a copy', dzBorder: S.ddrag ? '#f1efe9' : '#57544e', dzBg: S.ddrag ? 'rgba(241,239,233,0.06)' : 'transparent',
+      onDPick: e => { const f = e.target.files && e.target.files[0]; e.target.value = ''; if (f) this.dHandle(f); },
+      onDOver: e => { e.preventDefault(); if (!this.state.ddrag && this.state.dp !== 'checking') this.setState({ ddrag: true }); },
+      onDLeave: e => { if (!e.currentTarget.contains(e.relatedTarget)) this.setState({ ddrag: false }); },
+      onDDrop: e => { e.preventDefault(); this.setState({ ddrag: false }); const f = e.dataTransfer.files && e.dataTransfer.files[0]; if (f) this.dHandle(f); },
+      dReset: () => { this.drun = (this.drun || 0) + 1; this.setState({ dp: 'empty', dstep: 0, dfile: null, derr: null }); },
+      macUrl: pick(/\.dmg$/i), winUrl: pick(/\.(exe|msi)$/i), linUrl: pick(/\.(AppImage|deb)$/i),
+      relVersion: rel ? rel.tag_name : 'latest release', relNote: rel ? 'Released ' + new Date(rel.published_at).toUTCString().slice(5, 16) : 'Latest release from GitHub',
       hA: h === 'camera-signs', hB: h === 'birthmark', hC: h === 'record-stays',
       showNotes: this.props.showNotes ?? false,
       rawFiles: Array.from({ length: 40 }, (_, i) => { const x = i % 10, y = (i / 10) | 0; return { c: y % 2 === 0 ? (x % 2 === 0 ? '#d6392b' : '#18a058') : (x % 2 === 0 ? '#18a058' : '#2f5fd0') }; }),
@@ -763,6 +914,7 @@ class Component extends DCLogic {
     this.setupCopy();
     this.heroIn();
     this.startField();
+    fetch('https://api.github.com/repos/muse254/genesis/releases/latest').then(r => r.ok ? r.json() : null).then(j => j && this.setState({ rel: j })).catch(() => {});
   }
 
   startField() {
@@ -803,7 +955,30 @@ class Component extends DCLogic {
     };
     this.fieldRaf = requestAnimationFrame(loop);
   }
-  componentDidUpdate() { this.applyGrain(); this.tick(); }
+  componentDidUpdate(pp, ps) {
+    this.applyGrain(); this.tick();
+    const im = this.r.dimg.current, u = this.state.dfile && this.state.dfile.url;
+    if (im && u && im.getAttribute('src') !== u) { im.setAttribute('src', u); im.style.transition = 'none'; im.style.filter = 'blur(14px)'; void im.offsetWidth; im.style.transition = 'filter 700ms ease'; requestAnimationFrame(() => { im.style.filter = 'none'; }); }
+    if (this.state.dp === 'result' && ps.dp !== 'result') { const st = this.r.dstamp.current; if (st) { st.style.transition = 'none'; st.style.opacity = '0'; st.style.transform = 'rotate(-12deg) scale(1.5)'; void st.offsetWidth; setTimeout(() => { st.style.transition = 'transform 500ms cubic-bezier(.2,1.3,.4,1), opacity 180ms'; st.style.opacity = '1'; st.style.transform = 'rotate(-4deg) scale(1)'; }, 200); } }
+  }
+  async dHandle(file) {
+    location.href = 'https://muse254.github.io/genesis/verify/'; return;
+    const id = this.drun = (this.drun || 0) + 1, wait = ms => new Promise(r => setTimeout(r, ms));
+    const name = file.name || 'photo', ext = (name.split('.').pop() || '').toLowerCase();
+    if (['cr2','cr3','nef','nrw','arw','srf','sr2','dng','raf','orf','rw2','pef','srw','x3f','3fr','iiq','rwl'].includes(ext)) return this.setState({ dp: 'error', derr: 'raw' });
+    if (!(/^image\/(jpeg|png|tiff)$/.test(file.type) || ['jpg','jpeg','png','tif','tiff'].includes(ext))) return this.setState({ dp: 'error', derr: 'type' });
+    const tiff = /tiff?$/.test(ext) || file.type === 'image/tiff', url = tiff ? null : URL.createObjectURL(file);
+    const kb = file.size / 1024, size = kb > 1024 ? (kb / 1024).toFixed(1) + ' MB' : Math.round(kb) + ' KB';
+    this.setState({ dp: 'checking', dstep: 1, derr: null, dfile: { url, name, meta: size } });
+    let bmp = null; try { if (!tiff) bmp = await createImageBitmap(file); } catch (e) {}
+    await wait(650); if (id !== this.drun) return;
+    if (!tiff && !bmp) return this.setState({ dp: 'error', derr: 'type' });
+    this.setState(x => ({ dstep: 2, dfile: { ...x.dfile, meta: (bmp ? bmp.width + ' × ' + bmp.height + ' · ' : '') + size } }));
+    try { const buf = await file.arrayBuffer(); await crypto.subtle.digest('SHA-256', buf); } catch (e) {}
+    await wait(800); if (id !== this.drun) return;
+    this.setState({ dstep: 3 }); await wait(1000); if (id !== this.drun) return;
+    this.setState({ dp: 'result', dstep: 4 });
+  }
   componentWillUnmount() {
     removeEventListener('scroll', this.onScroll); removeEventListener('resize', this.onScroll);
     if (this.io) this.io.disconnect();
@@ -959,31 +1134,4 @@ class Component extends DCLogic {
 </script>
 
 
-<script>
-// Each OS button points at the latest release page until the API answers,
-// then at that platform's installer. Assigned on click, by delegation, because
-// the page runtime re-renders the buttons after this script runs.
-(function () {
-  var pick = {
-    macos: function (n) { return /\.dmg$/.test(n); },
-    windows: function (n) { return /-setup\.exe$/.test(n) || /\.msi$/.test(n); },
-    linux: function (n) { return /\.appimage$/.test(n); }
-  };
-  var urls = {};
-  fetch("https://api.github.com/repos/muse254/genesis/releases/latest")
-    .then(function (r) { return r.ok ? r.json() : null; })
-    .then(function (rel) {
-      if (!rel) return;
-      Object.keys(pick).forEach(function (os) {
-        var a = (rel.assets || []).find(function (x) { return pick[os](x.name.toLowerCase()); });
-        if (a) urls[os] = a.browser_download_url;
-      });
-    })
-    .catch(function () {});
-  document.addEventListener("click", function (e) {
-    var a = e.target.closest && e.target.closest("a[data-os]");
-    if (a && urls[a.dataset.os]) a.href = urls[a.dataset.os];
-  }, true);
-})();
-</script>
 </body></html>
