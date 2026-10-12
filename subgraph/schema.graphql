@@ -57,6 +57,33 @@ type CommitLog @entity(immutable: true) {
   timestamp: BigInt!
 }
 
+"""
+A statement anyone made about a body or image (`Registry.attest`): a witness,
+a KYC provider, a dedupe finding. The registry decides nothing from these; a
+reader chooses whose statements to trust, by `attester`.
+"""
+type Attestation @entity(immutable: true) {
+  id: Bytes!
+  epoch: BigInt!
+  subject: Bytes!
+  attester: Bytes!
+  kind: Bytes!
+  dataHash: Bytes!
+  blockNumber: BigInt!
+  timestamp: BigInt!
+}
+
+"A dispute anyone raised (`Registry.challenge`). Dated and permanent; decides nothing by itself."
+type Challenge @entity(immutable: true) {
+  id: Bytes!
+  epoch: BigInt!
+  subject: Bytes!
+  challenger: Bytes!
+  evidenceHash: Bytes!
+  blockNumber: BigInt!
+  timestamp: BigInt!
+}
+
 type Session @entity {
   id: Bytes!
   merkleRoot: Bytes!

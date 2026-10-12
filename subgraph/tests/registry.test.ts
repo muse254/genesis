@@ -19,16 +19,22 @@ import {
 } from "matchstick-as/assembly/index";
 
 import {
+  handleAttested,
   handleBodyRegistered,
   handleBodyRevoked,
+  handleBodyTransferred,
+  handleChallenged,
   handleCommit,
   handleImageRegistered,
   handleRegistryReset,
   handleSessionCommitted,
 } from "../src/registry";
 import {
+  Attested,
   BodyRegistered,
   BodyRevoked,
+  BodyTransferred,
+  Challenged,
   RegistryReset,
   Commit,
   ImageRegistered,
@@ -195,6 +201,58 @@ describe("Registry mappings", () => {
     // Unwriting the record would make every earlier claim unfalsifiable.
     assert.entityCount("Image", 1);
     assert.fieldEquals("Image", IMAGE.toHexString(), "pceScore", "1895");
+  });
+
+  test("a transfer changes the owner and leaves the images", () => {
+    mockBody();
+    mockImage(IMAGE, ZERO, 0);
+    handleBodyRegistered(bodyRegistered());
+    handleImageRegistered(imageRegistered(IMAGE));
+
+    let to = Address.fromString("0x70997970C51812dc3A010C7d01b50e0d17dc79C8");
+    let moved = changetype<BodyTransferred>(newMockEvent());
+    moved.address = REGISTRY;
+    moved.parameters = [
+      new ethereum.EventParam("bodyId", ethereum.Value.fromFixedBytes(BODY)),
+      new ethereum.EventParam("from", ethereum.Value.fromAddress(moved.transaction.from)),
+      new ethereum.EventParam("to", ethereum.Value.fromAddress(to)),
+    ];
+    handleBodyTransferred(moved);
+
+    assert.fieldEquals("Body", BODY.toHexString(), "owner", to.toHexString());
+    assert.entityCount("Image", 1);
+  });
+
+  test("an attestation and a challenge are indexed and change no record", () => {
+    mockBody();
+    handleBodyRegistered(bodyRegistered());
+    let who = Address.fromString("0x70997970C51812dc3A010C7d01b50e0d17dc79C8");
+    let kind = Bytes.fromHexString("0x2222222222222222222222222222222222222222222222222222222222222222");
+    let data = Bytes.fromHexString("0x3333333333333333333333333333333333333333333333333333333333333333");
+
+    let a = changetype<Attested>(newMockEvent());
+    a.address = REGISTRY;
+    a.parameters = [
+      new ethereum.EventParam("subject", ethereum.Value.fromFixedBytes(BODY)),
+      new ethereum.EventParam("attester", ethereum.Value.fromAddress(who)),
+      new ethereum.EventParam("kind", ethereum.Value.fromFixedBytes(kind)),
+      new ethereum.EventParam("dataHash", ethereum.Value.fromFixedBytes(data)),
+    ];
+    handleAttested(a);
+
+    let c = changetype<Challenged>(newMockEvent());
+    c.address = REGISTRY;
+    c.parameters = [
+      new ethereum.EventParam("subject", ethereum.Value.fromFixedBytes(BODY)),
+      new ethereum.EventParam("challenger", ethereum.Value.fromAddress(who)),
+      new ethereum.EventParam("evidenceHash", ethereum.Value.fromFixedBytes(data)),
+    ];
+    handleChallenged(c);
+
+    assert.entityCount("Attestation", 1);
+    assert.entityCount("Challenge", 1);
+    assert.fieldEquals("Body", BODY.toHexString(), "revoked", "false");
+    assert.fieldEquals("Body", BODY.toHexString(), "owner", "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266");
   });
 
   test("an edit links to the original, an original links to nothing", () => {

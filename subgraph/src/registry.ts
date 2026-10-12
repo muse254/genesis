@@ -14,15 +14,18 @@
 import { BigInt, Bytes, store } from "@graphprotocol/graph-ts";
 
 import {
+  Attested,
   BodyRegistered,
   BodyRevoked,
+  BodyTransferred,
+  Challenged,
   Commit,
   ImageRegistered,
   Registry,
   RegistryReset,
   SessionCommitted,
 } from "../generated/Registry/Registry";
-import { Body, CommitLog, Image, RegistryState, Session } from "../generated/schema";
+import { Attestation, Body, Challenge, CommitLog, Image, RegistryState, Session } from "../generated/schema";
 
 /**
  * The registry can be wiped on a testnet, and an index that outlived the
@@ -114,6 +117,39 @@ export function handleBodyRevoked(event: BodyRevoked): void {
   // unwriting them would make every earlier record unfalsifiable.
   body.revoked = true;
   body.save();
+}
+
+export function handleBodyTransferred(event: BodyTransferred): void {
+  let body = Body.load(event.params.bodyId);
+  if (body == null) return;
+
+  // The new owner may register from here on. Images already indexed keep
+  // their body; the owner of the day is the one in the block that wrote them.
+  body.owner = event.params.to;
+  body.save();
+}
+
+export function handleAttested(event: Attested): void {
+  let a = new Attestation(event.transaction.hash.concatI32(event.logIndex.toI32()));
+  a.epoch = state().epoch;
+  a.subject = event.params.subject;
+  a.attester = event.params.attester;
+  a.kind = event.params.kind;
+  a.dataHash = event.params.dataHash;
+  a.blockNumber = event.block.number;
+  a.timestamp = event.block.timestamp;
+  a.save();
+}
+
+export function handleChallenged(event: Challenged): void {
+  let c = new Challenge(event.transaction.hash.concatI32(event.logIndex.toI32()));
+  c.epoch = state().epoch;
+  c.subject = event.params.subject;
+  c.challenger = event.params.challenger;
+  c.evidenceHash = event.params.evidenceHash;
+  c.blockNumber = event.block.number;
+  c.timestamp = event.block.timestamp;
+  c.save();
 }
 
 export function handleImageRegistered(event: ImageRegistered): void {

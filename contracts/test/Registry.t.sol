@@ -19,6 +19,9 @@ contract RegistryTest is Test {
     event BodyRegistered(bytes32 indexed bodyId, address indexed owner, bytes32 bodyCommitment);
     event BodyRevoked(bytes32 indexed bodyId);
     event ImageRegistered(bytes32 indexed imageHash, bytes32 indexed bodyId, uint32 pceScore);
+    event BodyTransferred(bytes32 indexed bodyId, address indexed from, address indexed to);
+    event Attested(bytes32 indexed subject, address indexed attester, bytes32 indexed kind, bytes32 dataHash);
+    event Challenged(bytes32 indexed subject, address indexed challenger, bytes32 evidenceHash);
 
     function setUp() public {
         // chainid 31337 is anvil, which the constructor accepts for test mode.
@@ -228,6 +231,122 @@ contract RegistryTest is Test {
         }
         return out;
     }
+
+    // --- the date is the chain's, not the caller's ----------------------------
+
+    function _registeredAt(bytes32 imageHash) internal view returns (uint64 at) {
+        (,,,,,,, at) = registry.images(imageHash);
+    }
+
+    function test_registeredAt_ignores_a_backdated_value() public {
+        _register();
+        vm.warp(1_800_000_000);
+        Registry.ImageRecord memory record = _image(keccak256("backdated"), bytes32(0));
+        record.registeredAt = 1_000_000; // an owner trying to claim a 1970 capture
+        vm.prank(photographer);
+        registry.registerImage(record);
+        assertEq(_registeredAt(record.imageHash), 1_800_000_000);
+    }
+
+    function test_registeredAt_ignores_a_future_value() public {
+        _register();
+        Registry.ImageRecord memory record = _image(keccak256("future"), bytes32(0));
+        record.registeredAt = type(uint64).max;
+        vm.prank(photographer);
+        registry.registerImage(record);
+        assertEq(_registeredAt(record.imageHash), uint64(block.timestamp));
+    }
+
+    // --- transfer -----------------------------------------------------------
+
+    function test_transferBody_moves_the_right_to_register() public {
+        _register();
+        vm.prank(photographer);
+        registry.registerImage(_image(keccak256("before"), bytes32(0)));
+
+        vm.expectEmit(true, true, true, false);
+        emit BodyTransferred(bodyId, photographer, stranger);
+        vm.prank(photographer);
+        registry.transferBody(bodyId, stranger);
+
+        (, address owner,,) = registry.bodies(bodyId);
+        assertEq(owner, stranger);
+        // History is kept.
+        assertTrue(_registeredAt(keccak256("before")) != 0);
+
+        vm.prank(photographer);
+        vm.expectRevert("not the body owner");
+        registry.registerImage(_image(keccak256("old owner"), bytes32(0)));
+
+        vm.prank(stranger);
+        registry.registerImage(_image(keccak256("new owner"), bytes32(0)));
+    }
+
+    function test_transferBody_only_by_the_owner() public {
+        _register();
+        vm.prank(stranger);
+        vm.expectRevert("not the body owner");
+        registry.transferBody(bodyId, stranger);
+    }
+
+    function test_transferBody_refuses_zero_unknown_and_revoked() public {
+        _register();
+        vm.prank(photographer);
+        vm.expectRevert("zero owner");
+        registry.transferBody(bodyId, address(0));
+
+        vm.prank(photographer);
+        vm.expectRevert("unknown body");
+        registry.transferBody(keccak256("nobody"), stranger);
+
+        vm.prank(photographer);
+        registry.revokeBody(bodyId);
+        vm.prank(photographer);
+        vm.expectRevert("body revoked");
+        registry.transferBody(bodyId, stranger);
+    }
+
+    // --- attest and challenge -----------------------------------------------
+
+    function test_attest_emits_for_anyone() public {
+        bytes32 kind = keccak256("witnessed-enrolment-v1");
+        bytes32 data = keccak256("witness statement");
+        vm.expectEmit(true, true, true, true);
+        emit Attested(bodyId, stranger, kind, data);
+        vm.prank(stranger);
+        registry.attest(bodyId, kind, data);
+    }
+
+    function test_attest_refuses_an_empty_subject() public {
+        vm.expectRevert("empty subject");
+        registry.attest(bytes32(0), keccak256("k"), keccak256("d"));
+    }
+
+    function test_challenge_emits_for_anyone() public {
+        bytes32 evidence = keccak256("evidence");
+        vm.expectEmit(true, true, false, true);
+        emit Challenged(bodyId, stranger, evidence);
+        vm.prank(stranger);
+        registry.challenge(bodyId, evidence);
+    }
+
+    function test_challenge_refuses_an_empty_subject() public {
+        vm.expectRevert("empty subject");
+        registry.challenge(bytes32(0), keccak256("e"));
+    }
+
+    /// Neither log can change a record: they are events only.
+    function test_attest_and_challenge_leave_records_alone() public {
+        _register();
+        vm.prank(stranger);
+        registry.attest(bodyId, keccak256("k"), keccak256("d"));
+        vm.prank(stranger);
+        registry.challenge(bodyId, keccak256("e"));
+        (bytes32 commitment, address owner,, bool revoked) = registry.bodies(bodyId);
+        assertEq(commitment, COMMITMENT);
+        assertEq(owner, photographer);
+        assertFalse(revoked);
+    }
 }
 
 /// @notice The testnet-only reset, and the promises it must not break.
@@ -330,6 +449,16 @@ contract RegistryResetTest is Test {
         assertEq(registry.admin(), address(0));
         vm.expectRevert("not a test registry");
         registry.resetAll();
+    }
+
+    /// Clients tell registries apart by these. RECORD_VERSION must stay
+    /// equal to ingest/record.py, or body ids stop matching.
+    function test_versions_are_readable_on_chain() public {
+        Registry registry = new Registry(false);
+        assertEq(registry.VERSION(), "1.0.0");
+        assertEq(registry.RECORD_VERSION(), bytes("genesis-record-v1"));
+        bytes32 fp = keccak256("fp");
+        assertEq(registry.deriveBodyId(fp), keccak256(abi.encodePacked("genesis-record-v1", "body", fp)));
     }
 
     /// The guard that matters. If this ever passes on a mainnet chainid, the

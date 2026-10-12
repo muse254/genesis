@@ -10,11 +10,24 @@ import {MerkleProof} from "openzeppelin-contracts/contracts/utils/cryptography/M
 /// @dev Conform to Numbers Protocol's ERC-7053 interface rather than
 ///      reimplementing the event shape and getting it subtly wrong.
 contract Registry {
+    /// @notice This contract's version, semver.
+    /// @dev A registry is never upgraded in place: its dates are the claim,
+    ///      and a proxy whose owner can swap the code can rewrite them. An
+    ///      upgrade is a new deployment with a new VERSION, and the old one
+    ///      stays live and readable forever. Records do not migrate; a
+    ///      verifier reads every registry it trusts and gives priority to the
+    ///      earliest registration across all of them.
+    string public constant VERSION = "1.0.0";
+
     /// @notice Domain tag for body ids. Must equal RECORD_VERSION in
     ///         ingest/record.py -- the id is derived the same way on both
     ///         sides so that neither can register something the other
     ///         cannot reproduce.
-    bytes private constant RECORD_VERSION = "genesis-record-v1";
+    /// @dev Separate from VERSION, and bumped only when the id derivation
+    ///      changes. A later registry that keeps it derives the same body
+    ///      id for the same camera, so a body is recognisable across
+    ///      versions.
+    bytes public constant RECORD_VERSION = "genesis-record-v1";
 
     /// @notice One enrolled camera body.
     /// @dev fingerprintCommitment is a hash of K. K itself never goes on
@@ -116,6 +129,11 @@ contract Registry {
     event BodyRevoked(bytes32 indexed bodyId);
     event ImageRegistered(bytes32 indexed imageHash, bytes32 indexed bodyId, uint32 pceScore);
     event SessionCommitted(bytes32 indexed sessionId, bytes32 merkleRoot, uint32 frameCount);
+    event BodyTransferred(bytes32 indexed bodyId, address indexed from, address indexed to);
+    /// @notice Anyone's statement about a body or image. See `attest`.
+    event Attested(bytes32 indexed subject, address indexed attester, bytes32 indexed kind, bytes32 dataHash);
+    /// @notice Anyone's dispute of a body or image. See `challenge`.
+    event Challenged(bytes32 indexed subject, address indexed challenger, bytes32 evidenceHash);
     /// @notice Every record written before `newEpoch` is now unreachable.
     event RegistryReset(uint64 indexed previousEpoch, uint64 indexed newEpoch, address indexed by);
 
@@ -229,13 +247,60 @@ contract Registry {
         emit BodyRevoked(bodyId);
     }
 
+    /// @notice Hand a body to a new owner, keeping every record already
+    ///         written. A camera sold second hand keeps its history.
+    /// @dev Only the current owner may call it, and only while the body is
+    ///      not revoked. Images registered earlier stay attributed to the
+    ///      body and to the owner of the time (`ImageRegistered` and the
+    ///      block that holds it show who). The new owner may register from
+    ///      here on; the old one may not.
+    function transferBody(bytes32 bodyId, address newOwner) external {
+        BodyRecord storage body = _bodies[epoch][bodyId];
+        require(body.fingerprintCommitment != bytes32(0), "unknown body");
+        require(body.owner == msg.sender, "not the body owner");
+        require(!body.revoked, "body revoked");
+        require(newOwner != address(0), "zero owner");
+
+        body.owner = newOwner;
+        emit BodyTransferred(bodyId, msg.sender, newOwner);
+    }
+
+    // --- attestations and challenges --------------------------------------
+    //
+    // Event-only, so they cost little and store nothing. They decide nothing
+    // on chain: a witness, a KYC provider or an arbitrator writes here, and a
+    // verifier chooses whose statements to trust. They exist so that
+    // witnessed enrolment, dedupe findings and disputes have a dated,
+    // permanent place to land without a second registry.
+
+    /// @param subject A body id, an image hash or any other 32-byte subject.
+    /// @param kind    A tag the attester defines, e.g. keccak256("witnessed-enrolment-v1").
+    /// @param dataHash Hash of the statement or evidence held off chain.
+    function attest(bytes32 subject, bytes32 kind, bytes32 dataHash) external {
+        require(subject != bytes32(0), "empty subject");
+        emit Attested(subject, msg.sender, kind, dataHash);
+    }
+
+    /// @param subject A body id or an image hash.
+    /// @param evidenceHash Hash of the evidence held off chain.
+    function challenge(bytes32 subject, bytes32 evidenceHash) external {
+        require(subject != bytes32(0), "empty subject");
+        emit Challenged(subject, msg.sender, evidenceHash);
+    }
+
     // --- image registry ---------------------------------------------------
 
     /// @notice Register one photograph against its body.
     /// @dev Only the body's owner may attribute an image to it. Without
     ///      that check anyone could point a record at someone else's
     ///      camera, which is the claim the whole system exists to make.
-    function registerImage(ImageRecord calldata record) external {
+    ///
+    ///      `registeredAt` is set here from `block.timestamp`. Whatever the
+    ///      caller passes is ignored: the date is the claim, and a date the
+    ///      owner could write would let them backdate a registration.
+    function registerImage(ImageRecord calldata input) external {
+        ImageRecord memory record = input;
+        record.registeredAt = uint64(block.timestamp);
         BodyRecord storage body = _bodies[epoch][record.bodyId];
         require(body.fingerprintCommitment != bytes32(0), "unknown body");
         require(!body.revoked, "body revoked");

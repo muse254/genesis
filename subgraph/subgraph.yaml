@@ -28,6 +28,8 @@ dataSources:
         - Image
         - Session
         - RegistryState
+        - Attestation
+        - Challenge
       abis:
         - name: Registry
           file: ./abis/Registry.json
@@ -44,3 +46,9 @@ dataSources:
           handler: handleCommit
         - event: RegistryReset(indexed uint64,indexed uint64,indexed address)
           handler: handleRegistryReset
+        - event: BodyTransferred(indexed bytes32,indexed address,indexed address)
+          handler: handleBodyTransferred
+        - event: Attested(indexed bytes32,indexed address,indexed bytes32,bytes32)
+          handler: handleAttested
+        - event: Challenged(indexed bytes32,indexed address,bytes32)
+          handler: handleChallenged
