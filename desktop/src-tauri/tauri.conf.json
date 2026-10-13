@@ -1,13 +1,14 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "Genesis",
-  "version": "0.1.8",
+  "version": "0.1.9",
   "identifier": "io.github.muse254.genesis",
   "build": {
     "frontendDist": "../../console-ui/dist",
     "devUrl": "http://127.0.0.1:5173",
     "beforeDevCommand": "npm --prefix ../console-ui run dev",
-    "beforeBuildCommand": "npm --prefix ../console-ui run build"
+    "beforeBuildCommand": "npm --prefix ../console-ui run build",
+    "beforeBundleCommand": "bash scripts/fix-libpython.sh"
   },
   "app": {
     "windows": [],

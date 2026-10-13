@@ -1101,7 +1101,7 @@ dependencies = [
 
 [[package]]
 name = "genesis"
-version = "0.1.8"
+version = "0.1.9"
 dependencies = [
  "genesis-prnu",
  "log",
