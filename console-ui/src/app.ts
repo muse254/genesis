@@ -170,6 +170,12 @@ function failure(title: string, detail: string): HTMLElement {
   );
 }
 
+/** Seconds as m:ss. */
+function clock(seconds: number): string {
+  const s = Math.round(seconds);
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+}
+
 function explorerLink(explorerUrl: string, links?: ReferenceLink[]): string {
   const extra = (links ?? [])
     .filter((l) => l.label.toLowerCase().includes("transaction"))
@@ -369,17 +375,61 @@ async function renderPhotos(host: HTMLElement) {
     const files = Array.from(fileInput.files ?? []);
     if (files.length === 0 || !select.value) return;
     const out = registerPanel.querySelector(".register-out") as HTMLElement;
-    out.innerHTML = `<p class="verify-checking">Registering ${files.length} photograph${files.length === 1 ? "" : "s"}…</p>`;
+    // One record per photograph, not a session: the verify page reads image
+    // records only, so a session-committed photo would always read "No record".
+    out.innerHTML = `
+      <p class="verify-checking" data-title></p>
+      <progress max="1" value="0" style="width:100%;margin:8px 0"></progress>
+      <p class="verify-checking" data-step></p>
+      <p class="verify-checking" data-time></p>`;
+    const title = out.querySelector("[data-title]") as HTMLElement;
+    const bar = out.querySelector("progress") as HTMLProgressElement;
+    const stepLine = out.querySelector("[data-step]") as HTMLElement;
+    const timeLine = out.querySelector("[data-time]") as HTMLElement;
+    const started = Date.now();
+    let done = 0;
+    const tick = () => {
+      const elapsed = (Date.now() - started) / 1000;
+      // Estimate from the photos already finished; nothing to go on before the first.
+      const left = done ? (elapsed / done) * (files.length - done) : null;
+      timeLine.textContent = `${clock(elapsed)} elapsed · ${left === null ? "estimating time left…" : `about ${clock(left)} left`}`;
+    };
+    const timer = setInterval(tick, 1000);
+    const accepted: { name: string; explorerUrl: string; links?: ReferenceLink[] }[] = [];
+    const refused: { name: string; reason: string }[] = [];
     try {
-      const result = await api.registerSession(files, select.value);
+      for (const [index, file] of files.entries()) {
+        title.innerHTML = `Registering photo <b>${index + 1}</b> of <b>${files.length}</b> · ${escape(file.name)}`;
+        bar.value = index / files.length;
+        stepLine.textContent = "uploading…";
+        tick();
+        try {
+          const result = await api.registerImageStreaming(file, select.value, (step) => {
+            stepLine.textContent = step.label;
+            const search = /(\d+) of (\d+)/.exec(step.label);  // the scorer's "7 of 21"
+            if (search) bar.value = (index + Number(search[1]) / Number(search[2])) / files.length;
+          });
+          accepted.push({ name: file.name, explorerUrl: result.explorerUrl, links: result.links });
+        } catch (error) {
+          const reason = (error as Error).message;
+          // No key, no chain: every photo after this would fail the same way.
+          if (/DEPLOYER_|cannot sign|cannot read the registry|cast not found/.test(reason)) throw error;
+          refused.push({ name: file.name, reason });
+        }
+        done = index + 1;
+      }
+      clearInterval(timer);
       out.innerHTML = `
-        <p class="verify-checking"><b>${result.accepted.length}</b> registered,
-           <b>${result.refused.length}</b> refused. ${explorerLink(result.explorerUrl, result.links)}</p>
-        ${result.refused.length ? `<ul class="refused">${result.refused
+        <p class="verify-checking"><b>${accepted.length}</b> registered,
+           <b>${refused.length}</b> refused, in ${clock((Date.now() - started) / 1000)}.</p>
+        ${accepted.length ? `<ul class="refused">${accepted
+          .map((a) => `<li>${escape(a.name)} — ${explorerLink(a.explorerUrl, a.links)}</li>`).join("")}</ul>` : ""}
+        ${refused.length ? `<ul class="refused">${refused
           .map((r) => `<li>${escape(r.name)} — ${escape(r.reason)}</li>`).join("")}</ul>` : ""}`;
       invalidate();
       renderPhotos(host);
     } catch (error) {
+      clearInterval(timer);
       out.innerHTML = "";
       out.append(failure("REGISTRATION FAILED", (error as Error).message));
     }
