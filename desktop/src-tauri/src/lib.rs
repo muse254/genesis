@@ -160,6 +160,10 @@ fn start_backend(app: &tauri::AppHandle, port: u16) -> Result<(), Box<dyn std::e
         environ.set_item("GENESIS_REFERENCES", references.to_string_lossy().into_owned())?;
         environ.set_item("GENESIS_CATALOGUE", catalogue.to_string_lossy().into_owned())?;
         environ.set_item("GENESIS_CONSOLE_ORIGINS", WEBVIEW_ORIGINS)?;
+        // Without these, console/chain.py falls back to Sepolia with no registry,
+        // so every camera reads "not registered". setdefault: a dev's env still wins.
+        environ.call_method1("setdefault", ("GENESIS_CHAIN", "base"))?;
+        environ.call_method1("setdefault", ("REGISTRY_ADDRESS", "0xBa5Ea549c9e1414C14038dB050e0caCB4f9E48cB"))?;
 
         let sys = py.import("sys")?;
         let sys_path = sys.getattr("path")?;
