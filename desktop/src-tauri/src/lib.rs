@@ -164,6 +164,7 @@ fn start_backend(app: &tauri::AppHandle, port: u16) -> Result<(), Box<dyn std::e
         // so every camera reads "not registered". setdefault: a dev's env still wins.
         environ.call_method1("setdefault", ("GENESIS_CHAIN", "base"))?;
         environ.call_method1("setdefault", ("REGISTRY_ADDRESS", "0xBa5Ea549c9e1414C14038dB050e0caCB4f9E48cB"))?;
+        environ.call_method1("setdefault", ("GENESIS_SUBGRAPH_URL", "https://api.studio.thegraph.com/query/1758974/genesis/v1.0.0-base"))?;
 
         let sys = py.import("sys")?;
         let sys_path = sys.getattr("path")?;

@@ -83,6 +83,40 @@ def record_image(**fields) -> None:
         )
 
 
+def sync(bodies: dict[str, str], images: list[dict], indexed_block: int) -> None:
+    """Make this machine's rows for `bodies` match the chain's.
+
+    `bodies` maps body id to name; `images` is the subgraph's answer. The chain
+    wins on every field it holds; file names and captions stay local. A row the
+    chain lacks goes, unless its block is past what the index has reached (a
+    registration seconds old the subgraph has not seen yet).
+    """
+    on_chain = {i["imageHash"].lower() for i in images}
+    with closing(_connect()) as connection, connection:
+        for image in images:
+            body_id = image["body"]["id"].lower()
+            connection.execute(
+                """INSERT INTO images (image_hash, perceptual_hash, body_id, body_name,
+                                       pce, registered_at)
+                   VALUES (?, ?, ?, ?, ?, ?)
+                   ON CONFLICT(image_hash) DO UPDATE SET
+                     perceptual_hash=excluded.perceptual_hash, body_id=excluded.body_id,
+                     body_name=excluded.body_name, pce=excluded.pce,
+                     registered_at=excluded.registered_at""",
+                (image["imageHash"].lower(), image["perceptualHash"].lower(), body_id,
+                 bodies.get(body_id), float(image["pceScore"]), int(image["registeredAt"])),
+            )
+        for body_id in bodies:
+            for row in connection.execute(
+                "SELECT image_hash, block_number FROM images WHERE lower(body_id) = ?",
+                (body_id,),
+            ).fetchall():
+                stale = row["block_number"] is None or row["block_number"] <= indexed_block
+                if row["image_hash"].lower() not in on_chain and stale:
+                    connection.execute("DELETE FROM images WHERE image_hash = ?",
+                                       (row["image_hash"],))
+
+
 def describe(image_hash: str, description: str) -> bool:
     """Attach or replace a caption. Returns False if the hash is unknown."""
     import time

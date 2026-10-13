@@ -68,3 +68,36 @@ def nearest(perceptual_hash: str, timeout: float = 15.0) -> dict | None:
             best = {"imageHash": image["imageHash"], "distance": distance}
 
     return best if best and best["distance"] <= MAX_HAMMING else None
+
+
+IMAGES_OF = """
+query($bodies: [Bytes!]) {
+  images(first: 1000, where: { body_in: $bodies }) {
+    imageHash perceptualHash pceScore registeredAt body { id }
+  }
+  _meta { block { number } }
+}
+"""
+
+
+def images_of(body_ids: list[str], timeout: float = 15.0) -> tuple[int, list[dict]]:
+    """Every image registered to these bodies, and the block the index has reached.
+
+    shortcut: first 1000 only, page with `id_gt` once a camera passes that.
+    """
+    if not SUBGRAPH_URL:
+        raise SubgraphError("GENESIS_SUBGRAPH_URL is not set")
+    try:
+        response = httpx.post(
+            SUBGRAPH_URL,
+            json={"query": IMAGES_OF, "variables": {"bodies": [b.lower() for b in body_ids]}},
+            timeout=timeout,
+        )
+        response.raise_for_status()
+        payload = response.json()
+    except httpx.HTTPError as error:
+        raise SubgraphError(f"subgraph unreachable: {error}") from error
+    if "errors" in payload:
+        raise SubgraphError(f"subgraph: {payload['errors']}")
+    data = payload["data"]
+    return data["_meta"]["block"]["number"], data["images"]

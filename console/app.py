@@ -285,6 +285,7 @@ async def import_body(file: UploadFile = File(...)) -> dict:
         registered = chain.body("0x" + body_id) is not None
     except chain.ChainError:
         registered = None  # offline: the camera is restored, its status unknown
+    _SYNC["at"] = 0.0  # its photographs come back with it on the next listing
     return {"bodyId": "0x" + body_id, "name": name, "registered": registered}
 
 
@@ -466,7 +467,30 @@ async def catalogue_listing(limit: int = 500) -> dict:
     is a forgery kit, and a caption is unbounded personal data that would be
     permanent if published. `console/catalogue.py` has the reasoning.
     """
+    _sync_from_chain()
     return {"statistics": catalogue.statistics(), "images": catalogue.listing(limit)}
+
+
+#: When the catalogue last matched the chain. Every screen load fetches the
+#: catalogue; a minute between subgraph reads is plenty.
+_SYNC = {"at": 0.0}
+
+
+def _sync_from_chain() -> None:
+    """The chain is the record; this machine's list follows it."""
+    import time as _time
+
+    if _time.time() - _SYNC["at"] < 60:
+        return
+    bodies = {"0x" + bid.lower(): b["name"] for bid, b in _bodies().items()}
+    if not bodies:
+        return
+    try:
+        block, images = subgraph.images_of(list(bodies))
+    except subgraph.SubgraphError:
+        return  # offline: show what this machine already knows
+    catalogue.sync(bodies, images, block)
+    _SYNC["at"] = _time.time()
 
 
 @app.post("/catalogue/describe")

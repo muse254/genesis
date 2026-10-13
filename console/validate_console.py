@@ -1070,3 +1070,34 @@ def test_the_console_no_longer_computes_a_verdict(client):
     for route in ("/verify", "/verify/stream"):
         assert client.post(route, files={"file": ("x.jpg", b"x")}).status_code in (404, 405)
 
+
+
+def test_catalogue_sync_follows_the_chain():
+    """The chain is the record: its rows arrive, its values win, local captions
+    stay, rows it lacks go -- except one newer than the index has reached."""
+    from console import catalogue as cat
+
+    body = "0xb0"
+    cat.record_image(image_hash="0xaa", body_id=body, body_name="r10", pce=1.0,
+                     registered_at=1, block_number=90, file_name="kept.jpg", description="")
+    cat.describe("0xaa", "my caption")
+    cat.record_image(image_hash="0xdd", body_id=body, body_name="r10", pce=5.0,
+                     registered_at=1, block_number=50, description="")    # testnet leftover
+    cat.record_image(image_hash="0xee", body_id=body, body_name="r10", pce=5.0,
+                     registered_at=1, block_number=120, description="")   # not indexed yet
+    cat.record_image(image_hash="0xff", body_id="0xother", body_name="x", pce=5.0,
+                     registered_at=1, block_number=50, description="")    # another camera
+
+    chain_images = [
+        {"imageHash": "0xAA", "perceptualHash": "0x01", "pceScore": "1148",
+         "registeredAt": "1000", "body": {"id": body}},
+        {"imageHash": "0xbb", "perceptualHash": "0x02", "pceScore": "900",
+         "registeredAt": "2000", "body": {"id": body}},
+    ]
+    cat.sync({body: "r10"}, chain_images, indexed_block=100)
+
+    rows = {r["image_hash"]: r for r in cat.listing()}
+    assert set(rows) == {"0xaa", "0xbb", "0xee", "0xff"}
+    assert rows["0xaa"]["pce"] == 1148.0 and rows["0xaa"]["registered_at"] == 1000
+    assert rows["0xaa"]["description"] == "my caption" and rows["0xaa"]["file_name"] == "kept.jpg"
+    assert rows["0xbb"]["body_name"] == "r10"
