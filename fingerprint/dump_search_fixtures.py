@@ -1,19 +1,12 @@
 """Dump golden fixtures for the Rust port of the verify-time scoring path.
 
-DEV-ONLY, like ``fingerprint/dump_parity_fixtures.py``, and synthetic only.
-Regenerate from the repo root with:
+DEV-ONLY, synthetic only. From the repo root:
 
     .venv/bin/python -m fingerprint.dump_search_fixtures
 
-Covers what ``scoring.app._score_against`` does beyond ``score()``
-(``docs/shared-verify-plan.md``, phase A): the portrait retry, border
-stripping, ``_area_resize``, ``crop_and_scale_search`` and the consistency
-signals. Writes to ``rust/genesis-prnu/tests/fixtures/search/``.
-
-Each end-to-end case runs the real ``_score_against`` on a synthetic
-delivered image against a synthetic K, and also records every PCE the
-search tried (by wrapping ``prnu.pce``), so the port can be checked attempt
-by attempt, not only on the winner.
+Covers what ``scoring.app._score_against`` does beyond ``score()`` and records
+every PCE the search tried, so the port is checked attempt by attempt.
+Writes to ``rust/genesis-prnu/tests/fixtures/search/``.
 """
 
 from __future__ import annotations
@@ -41,8 +34,7 @@ def delivered_rgb(body: dict, seed: int) -> np.ndarray:
     rgb = np.zeros((ph * 2, pw * 2, 3), dtype=np.float32)
     for c, (i, j) in {0: (0, 0), 1: (0, 1), 2: (1, 1), 3: (1, 0)}.items():
         rgb[i::2, j::2, CHANNELS[c]] = held_out[c]
-    # Fill the unsampled channels too, so greyscale and border logic see a
-    # plausible image rather than two-thirds zeros.
+    # Fill unsampled channels so greyscale and border logic see a plausible image.
     for ch in range(3):
         plane = rgb[:, :, ch]
         plane[plane == 0] = float(np.mean(plane[plane > 0]))
@@ -128,9 +120,7 @@ def main() -> None:
     manifest["raw"] = {"planes": "raw_planes.npz", "developed": "aligned.png", "pce": prnu.score(planes, body)}
 
     # --- the diagnosis's EXIF branch: in-camera JPEG vs a desktop development ---
-    # console/app.py's _diagnose was retired when verification moved to core/
-    # (docs/shared-verify-plan.md, phase E). These are its last answers,
-    # recorded from it before it went, which core/src/verify.ts must keep.
+    # Answers core/src/verify.ts must keep.
     in_camera = (
         "This looks like a JPEG written by the camera itself. Measured on this body, in-camera JPEGs carry no readable fingerprint — the camera's noise reduction removes it, because to the camera a sensor fingerprint is noise (docs/gates.md). Try the RAW, or a development of it."
     )

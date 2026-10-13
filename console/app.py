@@ -1,16 +1,9 @@
-"""The demo console API. Localhost only; it will hold a signing key.
+"""The demo console API. Localhost only; it holds a signing key (`docs/security.md`).
 
     uvicorn console.app:app --host 127.0.0.1 --port 8100
 
-Spec `docs/console-server.md`, posture `docs/security.md`. The signing
-endpoints live in their own module (`console/registry.py`), so the boundary
-is visible in the file listing.
-
-This server does not verify. Verification runs in the app's webview on
-`core/`, the code the public verify page runs too, so the console and the
-page cannot disagree about what the pixels say (`docs/shared-verify-plan.md`).
-What it serves for that is what a webview cannot do itself: the enrolled K
-files, RAW decoding, and read-only proxies to the chain and the index.
+Signing lives in `console/registry.py`. This server does not verify: the webview
+runs `core/`, same as the public page; this only serves what a webview can't do.
 """
 
 from __future__ import annotations
@@ -45,17 +38,12 @@ app.add_middleware(
     # /raw/develop sends the image size in headers, which a browser hides
     # from cross-origin script unless they are exposed.
     expose_headers=["X-Width", "X-Height"],
-    # WKWebView (the desktop app's webview) preflights every request from its
-    # tauri:// page to this loopback server as Private Network Access and
-    # fails closed without this -- Starlette answers 400 "Disallowed CORS
-    # private-network" otherwise, which surfaces in the app as a bare "Load
-    # failed" with nothing in this server's own log to point at why.
+    # The desktop app's WKWebView sends Private Network Access preflights to
+    # loopback; without this they 400 and the app shows a bare "Load failed".
     allow_private_network=True,
 )
 
 
-#: The signing endpoints live in their own module so the one boundary in the
-#: system is visible in the file listing (`docs/security.md`).
 app.include_router(registry.router)
 
 
@@ -64,49 +52,23 @@ async def health() -> dict:
     return {"status": "ok", "bodies": len(_bodies())}
 
 
-#: Thresholds for the pre-flight gate. The backend owns these, not the
-#: design: a number in a mockup is a guess, and a check that reads NO-GO for a
-#: condition that is actually fine will get overridden on camera, which
-#: teaches a presenter to ignore the gate.
-#:
-#: Gas: the demo sends four transactions -- registerBody, registerImage,
-#: commitSession, commit -- which on Sepolia or Base costs far under 0.01 ETH. The
-#: handoff asked for 0.05, which the deployer's 0.0484 would fail for no real
-#: reason. On Base mainnet a registerImage measured ~204k gas, about
-#: 0.000001 ETH at 0.005 gwei, so 0.001 ETH is hundreds of registrations;
-#: 0.01 read NO-GO against a funded 0.0046 ETH mainnet deployer.
-#:
-#: Bodies: one. Two would be better and needs a second physical camera
-#: (`docs/e2e-checklist.md` §1), so gating the demo on it would gate it on
-#: hardware nobody has.
+#: Pre-flight gate thresholds. A false NO-GO teaches people to ignore the gate.
+#: Gas: registerImage on Base measured ~204k gas (~0.000001 ETH at 0.005 gwei),
+#: so 0.001 ETH covers hundreds. Bodies: one; a second needs another camera.
 MIN_BALANCE_WEI = 10**15          # 0.001 ETH
 MIN_BODIES = 1
 MAX_BLOCK_AGE = 60                # seconds; Sepolia blocks are ~12s, Base ~2s
 
 
-#: `/state` is polled, and every call makes roughly eight sequential
-#: `eth_call`s against a public RPC -- which is the slowest thing the console
-#: touches and gets slower the more it is asked. Measured: 4.5s, 21.5s and
-#: 8.5s on three consecutive calls. Every screen awaits this before doing
-#: anything, so that latency was being paid before a registration could even
-#: start, and the frontend read it as the registration being slow.
-#:
-#: Three seconds, because a Sepolia block is twelve and this is a go/no-go
-#: gate: stale enough to be cheap, fresh enough that nothing it reports can
-#: have changed underneath it unnoticed.
+#: `/state` is polled and costs ~8 sequential `eth_call`s (measured 4.5-21.5s),
+#: so cache it briefly; 3s is under a block, and writers call `invalidate_state`.
 _STATE_TTL = 3.0
 _STATE_CACHE: dict = {"at": 0.0, "payload": None}
 
 
 @app.get("/state")
 async def state() -> dict:
-    """The go/no-go gate, as rows a table renders without deciding anything.
-
-    Everything here can fail on camera, and a presenter needs to see *which*
-    part is down rather than that something is -- so this never raises, and
-    every check carries what was measured, what was expected, and whether it
-    passes. The frontend renders; it does not evaluate.
-    """
+    """The go/no-go gate as rows (measured, expected, go). Never raises, so you see *which* part is down."""
     import time as _time
 
     fresh = _time.time() - _STATE_CACHE["at"] < _STATE_TTL
@@ -156,9 +118,7 @@ async def state() -> dict:
     record("enrolled bodies", len(bodies), f"at least {MIN_BODIES}",
            len(bodies) >= MIN_BODIES, "run /enrol, or check GENESIS_REFERENCES")
 
-    # Enrolled and registered are different states and the console used to
-    # show only the first, which is how a wiped registry led to `registerImage`
-    # reverting `unknown body` with no screen offering the step that fixes it.
+    # Enrolled is not registered (e.g. after a wipe); surface both.
     body_status = []
     for body_id, body in bodies.items():
         try:
@@ -183,9 +143,7 @@ async def state() -> dict:
            "set GENESIS_SUBGRAPH_URL; without it a degraded copy cannot find "
            "its original and step 4 falls back to fingerprint-only")
 
-    # Asked of the contract, not of configuration: the console must not offer
-    # a reset button against a registry that has no reset, nor hide one that
-    # does. A production registry answers false and the button never appears.
+    # From the contract, not config, so reset is offered only where it exists.
     try:
         resettable = chain.test_mode()
         epoch = chain.registry_epoch()
@@ -200,8 +158,7 @@ async def state() -> dict:
         "threshold": prnu.PCE_THRESHOLD,
         "chain": status,
         "registry": {"resettable": resettable, "epoch": epoch},
-        # What core/ needs to read the chain through /rpc and the index
-        # through /subgraph. No URLs: those stay on this side of the proxy.
+        # For core/ via /rpc and /subgraph. No URLs: they may carry keys.
         "verify": {
             "chain": chain.CHAIN_KEY,
             "registry": chain.REGISTRY or None,
@@ -214,9 +171,7 @@ async def state() -> dict:
 
 
 def invalidate_state() -> None:
-    """Drop the cached gate. Called by anything that changes what it reports,
-    so a registration or a wipe shows up at once rather than up to three
-    seconds later."""
+    """Drop the cached gate; called by anything that changes what it reports."""
     _STATE_CACHE["at"], _STATE_CACHE["payload"] = 0.0, None
 
 
@@ -228,20 +183,15 @@ def _save(upload: UploadFile) -> Path:
     return Path(handle.name)
 
 
-# --- what core/ needs from this machine (docs/shared-verify-plan.md) ------
+# --- what core/ needs from this machine ------------------------------------
 #
-# Verification runs in the app's own webview now: core/, the same code the
-# web page runs, so the two cannot disagree about a photo. This server
-# supplies only what the webview cannot get itself -- the enrolled K files,
-# RAW decoding (LibRaw has no WASM build), and the chain and the index behind
-# a proxy that keeps any key in their URLs out of the webview. It no longer
-# computes a verdict.
+# K files, RAW decoding (LibRaw has no WASM build), and read-only chain/index
+# proxies that keep URL keys out of the webview. No verdicts here.
 
 
 @app.get("/bodies")
 async def bodies() -> list[dict]:
-    """The enrolled bodies core/ scores against, and the crop a RAW decode must
-    use for each (its `meta["crop"]`) so the planes line up with K."""
+    """Enrolled bodies, with the crop a RAW decode must use so planes line up with K."""
     return [
         {"id": body_id, "name": body["name"], "crop": body["meta"].get("crop")}
         for body_id, body in _bodies().items()
@@ -250,13 +200,9 @@ async def bodies() -> list[dict]:
 
 @app.post("/bodies/import")
 async def import_body(file: UploadFile = File(...)) -> dict:
-    """Bring back a camera enrolled before, from its fingerprint file.
+    """Restore a previously enrolled camera from its fingerprint file.
 
-    Enrolling again would not do it: a fresh enrolment estimates a different
-    K, so a different commitment and body id than the one on the record. The
-    original file is the camera's identity. It is copied into this machine's
-    references only, like an enrolment, and the record is read to say whether
-    that camera is already registered.
+    Re-enrolling would estimate a different K and so a different body id.
     """
     handle = tempfile.NamedTemporaryFile(suffix=".npz", delete=False)
     try:
@@ -291,18 +237,15 @@ async def import_body(file: UploadFile = File(...)) -> dict:
 
 @app.get("/bodies/{body_id}/fingerprint")
 async def fingerprint(body_id: str) -> FileResponse:
-    """One body's K file, for core/ to score against in the app's webview.
+    """One body's K file for core/ in the app's webview.
 
-    K never leaves the machine it was enrolled on (`docs/security.md`, "Where
-    K lives"), and this keeps it there: the server binds to loopback, and CORS
-    lets only the app's own origins read the response. The webview is on this
-    machine; the web page on GitHub Pages never gets here.
+    K never leaves this machine (`docs/security.md`, "Where K lives"): loopback
+    bind plus CORS limited to the app's own origins keep it so.
     """
     body = _bodies().get(body_id.removeprefix("0x"))
     if body is None:
         raise HTTPException(404, f"no enrolled body {body_id}")
-    # Read at call time, from the module _bodies() globs: the file served is
-    # always from the directory the body list came from.
+    # Read at call time so it matches the directory _bodies() globbed.
     path = scoring_app.REFERENCES / f"{body['name']}.npz"
     return FileResponse(path, media_type="application/octet-stream")
 
@@ -317,12 +260,7 @@ def _raw_upload(upload: UploadFile) -> Path:
 
 @app.post("/raw/develop")
 async def raw_develop(file: UploadFile = File(...)) -> Response:
-    """A RAW's development as RGB8, row-major, with its size in headers.
-
-    What `ingest/hashing.py` hashes for a RAW, and what the scale search reads
-    when the RAW's planes do not line up with K. core/ hashes and scores these
-    exact bytes, so the RAW path agrees with Python's by construction.
-    """
+    """A RAW developed to RGB8, row-major, size in headers: the exact bytes Python hashes and searches."""
     import numpy as np
 
     path = _raw_upload(file)
@@ -354,9 +292,7 @@ async def raw_planes(file: UploadFile = File(...), crop: str = Form("none")) -> 
     return Response(buffer.getvalue(), media_type="application/octet-stream")
 
 
-#: The JSON-RPC methods core/ reads the registry with. Anything else is
-#: refused: this proxy exists to keep the RPC URL's key out of the webview,
-#: not to lend the webview a node.
+#: Only these are proxied: the proxy hides the RPC key, it does not lend out a node.
 READ_METHODS = {"eth_call", "eth_chainId", "eth_blockNumber"}
 
 
@@ -394,18 +330,10 @@ async def degrade(
     quality: int = Form(...),
     strip_metadata: bool = Form(True),
 ) -> StreamingResponse:
-    """Demo step 4: strip, resize, re-encode -- live, not pre-baked.
+    """Demo step 4: strip, resize, re-encode, live.
 
-    `quality` has no default on purpose. `docs/gates.md` measured 1800px at
-    q95 scoring 408 and the same pixels at q80 scoring 37: the claim dies
-    between them. A default here would hide the one number the demo depends
-    on, and would let a presenter show the good rung without knowing they
-    chose it.
-
-    Metadata is dropped by re-encoding from the pixel buffer rather than by
-    editing tags, so nothing survives in a container this code did not write.
-    That is the point of the step -- the fingerprint is in the pixels, and it
-    has to be the only thing that carries over.
+    `quality` has no default on purpose: 1800px q95 scores 408, q80 scores 37
+    (`docs/gates.md`). Re-encoding from pixels drops all metadata.
     """
     import io
 
@@ -450,29 +378,18 @@ async def degrade(
         path.unlink(missing_ok=True)
 
 
-#: Where folder browsing may look. The console is localhost-only and already
-#: holds a signing key, but a filesystem listing is still a disclosure
-#: surface, so it is rooted rather than open. Override for an archive that
-#: lives elsewhere -- an external drive, which is where a photographer's forty
-#: thousand frames usually are.
+#: Folder browsing is rooted here: a listing is still a disclosure surface. Override for external drives.
 BROWSE_ROOT = Path(os.environ.get("GENESIS_BROWSE_ROOT", str(Path.home()))).resolve()
 
 
 @app.get("/catalogue")
 async def catalogue_listing(limit: int = 500) -> dict:
-    """What this machine has registered, and how it scored.
-
-    Local only. It holds file paths and free-text descriptions, neither of
-    which may go near a network: a path is a map to a RAW file and a RAW file
-    is a forgery kit, and a caption is unbounded personal data that would be
-    permanent if published. `console/catalogue.py` has the reasoning.
-    """
+    """What this machine has registered. Local only: paths and captions never go near a network."""
     _sync_from_chain()
     return {"statistics": catalogue.statistics(), "images": catalogue.listing(limit)}
 
 
-#: When the catalogue last matched the chain. Every screen load fetches the
-#: catalogue; a minute between subgraph reads is plenty.
+#: When the catalogue last synced; at most one subgraph read a minute.
 _SYNC = {"at": 0.0}
 
 
@@ -495,12 +412,7 @@ def _sync_from_chain() -> None:
 
 @app.post("/catalogue/describe")
 async def catalogue_describe(image_hash: str = Form(...), description: str = Form(...)) -> dict:
-    """Attach a caption to something already registered.
-
-    Deliberately a separate call from registration. A photographer labels an
-    archive long after importing it, and making the description part of
-    registration would mean either writing it blind or not registering.
-    """
+    """Attach a caption to something already registered (photographers label long after import)."""
     if not catalogue.describe(image_hash, description):
         raise HTTPException(404, f"nothing registered under {image_hash}")
     return {"imageHash": image_hash, "description": description}
@@ -508,17 +420,9 @@ async def catalogue_describe(image_hash: str = Form(...), description: str = For
 
 @app.get("/browse")
 async def browse(path: str | None = None) -> dict:
-    """List folders under `BROWSE_ROOT`, with how many RAW frames each holds.
+    """List folders under `BROWSE_ROOT` with RAW frame counts (enrolment wants 40-50, `docs/gates.md`).
 
-    A browser cannot give a server a filesystem path -- `webkitdirectory`
-    hands over file *contents*, which for forty 24-megapixel CR3s means
-    uploading well over a gigabyte to a service running on the same disk. So
-    the server browses its own filesystem and enrolment keeps taking a path.
-
-    The frame count is the point of the listing. Choosing an enrolment folder
-    means choosing one with 40-50 RAW frames in it (`docs/gates.md`), and a
-    folder picker that does not say which folders qualify has made the
-    operator guess.
+    Server-side, since a browser can only upload contents, not hand over a path.
     """
     here = Path(path).resolve() if path else BROWSE_ROOT
     if not (here == BROWSE_ROOT or BROWSE_ROOT in here.parents):
@@ -550,19 +454,9 @@ async def browse(path: str | None = None) -> dict:
 
 @app.post("/preview")
 async def preview(file: UploadFile = File(...), longest_edge: int = Form(720)) -> StreamingResponse:
-    """A browser-renderable thumbnail of any image the pipeline accepts.
+    """A browser-renderable JPEG thumbnail (browsers can't decode RAW).
 
-    A browser cannot decode a CR3, so an `<img>` pointing at one renders
-    nothing at all -- silently, with no error to notice. Every screen that
-    shows the photograph it is working on therefore needs the RAW developed
-    somewhere, and the only thing on this machine that can develop it is the
-    scorer's own decoder.
-
-    Display only. Nothing here feeds a hash, a score or a record:
-    verification (core/, from the file or `/raw/*`) and `/register-image`
-    read the uploaded file, never this. A preview that
-    could influence a verdict would be a second decode path to disagree with
-    the first.
+    Display only: never feeds a hash, score or record, or it would be a second decode path.
     """
     import io
 
@@ -591,20 +485,9 @@ async def preview(file: UploadFile = File(...), longest_edge: int = Form(720)) -
 
 
 def _serials_disagree(frames: list[Path]) -> dict[str, list[str]]:
-    """Group frames by camera serial, and return them only if there is disagreement.
+    """Frames grouped by serial, only if more than one serial appears (`docs/gates.md`).
 
-    `docs/gates.md` makes `exiftool -SerialNumber` the first check on any file
-    before it is scored, and the reason is measured: two files offered as
-    other-body samples turned out to carry our own serial. The procedure said
-    so and this endpoint did not do it, which mattered because the obvious
-    folder to point it at -- the archive holding the enrolment frames -- also
-    holds the two negatives kept for testing. Enrolling from there would have
-    averaged a second R10 and a 5D Mark III into K and produced a fingerprint
-    belonging to no camera at all, silently, with a plausible commitment.
-
-    Frames whose serial cannot be read are not counted against the check: a
-    missing tag is not evidence of a second body, and refusing on it would
-    reject formats that simply do not carry one.
+    Mixing bodies silently yields a K belonging to no camera. Unreadable serials don't count.
     """
     import subprocess
     from collections import defaultdict
@@ -633,29 +516,18 @@ async def enrol(
     folder: str = Form(default=""),
     files: list[UploadFile] = File(default=[]),
 ) -> dict:
-    """Demo step 1. Returns a job id; progress streams from `/enrol/{id}/events`.
+    """Demo step 1: enrol from uploaded `files` or a server-side `folder`. Returns a job id.
 
-    Two ways in, and they exist for different callers. `files` is the console:
-    the operating system's own file dialog, which is where a photographer
-    already knows how to find their frames. `folder` is a server-side path,
-    kept because scripts and the offline run use it and because forty RAW
-    frames is half a gigabyte that nobody should upload twice.
-
-    The reference path is never returned. Only the commitment leaves this
-    process -- a published fingerprint is a published forgery kit, and so is
-    a path that tells a browser where to ask for one (`docs/security.md`).
+    Never return the reference path; only the commitment leaves (`docs/security.md`).
     """
-    #: Uploaded frames land here and are removed when the job ends. Not a
-    #: context manager: `work` runs on a thread that outlives this function,
-    #: so the directory has to survive until the job says it is done.
+    #: Not a context manager: `work` runs on a thread that outlives this function.
     staged: tempfile.TemporaryDirectory | None = None
 
     if files:
         staged = tempfile.TemporaryDirectory(prefix="genesis-enrol-")
         source = Path(staged.name)
         for upload in files:
-            # Names arrive from a browser. `Path(...).name` strips any
-            # directory part, so a crafted filename cannot write outside here.
+            # `.name` strips directories so a crafted filename can't escape.
             safe = Path(upload.filename or "frame").name
             (source / safe).write_bytes(upload.file.read())
     elif folder:
@@ -698,8 +570,7 @@ async def enrol(
         try:
             _enrol(job)
         finally:
-            # Half a gigabyte of someone's RAW frames. It goes whether the
-            # enrolment succeeded or not.
+            # Delete staged RAWs whether or not enrolment succeeded.
             if staged:
                 staged.cleanup()
 

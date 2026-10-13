@@ -1,14 +1,8 @@
 import { fileURLToPath } from "node:url";
 import { defineConfig } from "vite";
 
-// Relative base: this app is deployed under a subpath on GitHub Pages
-// (site/ is the root, this build lands at /verify/ inside it -- see
-// .github/workflows/pages.yml). Relative asset URLs work at any depth
-// without hardcoding the repo name here.
-//
-// Verification itself lives in core/ (docs/shared-verify-plan.md), shared
-// with the desktop app. There is no npm workspace, so it is reached by
-// alias, and the dev server is allowed to serve it from outside this app.
+// Relative base: deployed under /verify/ on GitHub Pages (.github/workflows/pages.yml).
+// No npm workspace, so core/ is reached by alias and fs.allow.
 export default defineConfig({
   base: "./",
   resolve: {

@@ -1,19 +1,5 @@
 /**
- * SUPERSEDED as the app's entry point by `app.ts` (17 Sept, the Colosseum
- * rebuild): a five-item sidebar replaces this eight-screen presenter flow.
- * `index.html` now points at `app.ts`. Kept, unreferenced, because it still
- * carries the verdict-grammar reference (`screens.ts`) and the ETHOnline
- * recording chrome, and because it was never asked to be deleted.
- */
-
-/**
- * The console shell: chrome, screen switching, presenter shortcuts.
- *
- * The stage fills the viewport. The handoff draws 1280x720 because that is
- * the recording resolution, not because the console should be that size --
- * locked to it, anything that is not 16:9 letterboxes and the page's height
- * goes unused. Size the window to 16:9 when recording and it is the board
- * again, exactly.
+ * Unreferenced: the old presenter console shell, superseded by `app.ts`.
  */
 
 import "./tokens.css";
@@ -21,18 +7,7 @@ import "./console.css";
 import { api } from "./api";
 import { SCREENS } from "./screens";
 
-/**
- * Served from `public/`, not hotlinked.
- *
- * The handoff lists the marks as public raw.githubusercontent URLs, and that
- * is fine for a design board. In the console it is a network dependency on
- * the one thing that must not fail: raw.githubusercontent returned 503 while
- * this was being wired, which would have put a broken-image icon in the
- * header of a recording. Chrome does not get to depend on the internet.
- *
- * 1540x416 native, so 20px tall is 74px wide. Both are set to stop the header
- * reflowing as the image decodes.
- */
+/** Served locally so the chrome never depends on the network. Size set to avoid reflow. */
 const MARK = "/genesis-lockup-horizontal-ink.png";
 const MARK_W = 74;
 const MARK_H = 20;
@@ -76,11 +51,7 @@ nav.addEventListener("click", (event) => {
   if (id) show(id);
 });
 
-/**
- * Footer dots. Green means the dependency answered, red means it did not --
- * and a red dot is the only place a failure is allowed to be silent, because
- * nothing on screen is withdrawn when one goes down.
- */
+/** Footer dots: green if the dependency answered, red if not. */
 async function heartbeat() {
   const set = (name: string, up: boolean) =>
     app.querySelector(`[data-dot="${name}"]`)!.classList.toggle("down", !up);
@@ -91,10 +62,7 @@ async function heartbeat() {
     set("scorer", state.bodies.length > 0);
     set("rpc", has("chain id") && has("block"));
     set("index", has("perceptual index"));
-    // Read the chain id rather than asserting it. The header said SEPOLIA
-    // whatever it was connected to, which on a demo about provenance is the
-    // wrong thing to be casual about -- an anvil run would have been captioned
-    // as a public testnet.
+    // Read the chain id rather than asserting it.
     const chainId = state.chain?.chainId;
     const network = !chainId
       ? "NO CHAIN"
@@ -111,20 +79,14 @@ async function heartbeat() {
   }
 }
 
-// Presenter shortcuts. P re-runs pre-flight; number keys jump to a screen,
-// because reaching for a mouse mid-take is a cut.
+// Presenter shortcuts: P pre-flight, C clear, digits jump to a screen.
 addEventListener("keydown", (event) => {
   if ((event.target as HTMLElement)?.tagName === "INPUT") return;
   if (event.key.toLowerCase() === "p") show("preflight");
-  // C re-renders the current screen, which is how it clears: a presenter runs
-  // each screen several times in a take, and a stale result beside a fresh
-  // photograph is how a demo shows the wrong number to an audience.
   if (event.key.toLowerCase() === "c") show(current);
   const index = Number(event.key);
   if (!Number.isNaN(index) && SCREENS[index]) show(SCREENS[index].id);
 });
-
-// No stage scaling: #stage fills the viewport and the layout flexes.
 
 show(current);
 heartbeat();

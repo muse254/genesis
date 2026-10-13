@@ -16,22 +16,15 @@
   border: 1.5px dashed var(--hairline);
   color: var(--tertiary); font-size: 13px; cursor: pointer; background: var(--paper);
 }
-/* 3:2 only while empty -- it is the shape of a drop target, not a claim about
-   what will land in it. A filled slot takes the photograph's own shape. */
+/* 3:2 only while empty; a filled slot takes the photograph's shape. */
 .slot:not(.filled) { aspect-ratio: 3 / 2; }
-/* A filled slot hugs its photograph. Left at full width, `contain` letterboxes
-   a portrait frame inside a landscape box -- which is the crop problem again,
-   drawn in whitespace instead of pixels. */
 .slot.filled {
   border-style: solid; padding: 0;
   aspect-ratio: auto; height: auto;
   width: fit-content; max-width: 100%;
 }
 
-/* `contain`, not `cover`: a portrait frame cropped into a landscape box is a
-   different photograph from the one the operator chose, and this screen is
-   about showing them what they chose. No filter either -- the photograph is
-   evidence, and desaturating evidence is editing it. */
+/* No crop, no filter: the photograph is evidence. */
 .slot img {
   display: block;
   max-width: 100%; max-height: 46vh;
@@ -39,11 +32,6 @@
   margin: 0 auto;
   object-fit: contain;
 }
-/* The degraded copy is shown as it actually is. It used to carry a blur, and
-   that quietly argued against the demo it appears in: step 4's whole point is
-   that the damage is invisible to the eye and the fingerprint survives it
-   anyway. Drawing damage that is not in the file makes the weaker case. */
-
 /* --- verdict cards ------------------------------------------------------- */
 .verdict { border: 2px solid var(--ink); margin: 18px 0; }
 .vhead { font: 800 26px/1 var(--ui); letter-spacing: -.01em; padding: 14px 18px; }
@@ -79,9 +67,7 @@
                       white-space: nowrap; font: 600 10px/1 var(--mono); font-style: normal; }
 .rail .marker { position: absolute; top: 28px; transform: translateX(-50%); }
 .rail .marker i { display: block; width: 12px; height: 12px; background: var(--ink); }
-/* Dropped below the decade labels rather than sharing their line: a marker
-   near a tick -- 15,358 beside 10,000 -- overlapped it and both became
-   unreadable. Paper behind it so it wins where they still cross. */
+/* Below the decade labels so it cannot overlap a tick label. */
 .rail .marker em { position: absolute; top: 30px; left: 50%; transform: translateX(-50%);
                    white-space: nowrap; font: 600 11px/1 var(--mono); font-style: normal;
                    background: var(--paper); padding: 0 3px; }
@@ -140,13 +126,9 @@
 .survival { display: grid; grid-template-columns: 1fr 260px; gap: 24px; }
 .pair { display: grid; grid-template-columns: 1fr .66fr; gap: 16px; align-items: start; }
 .pair .slot { width: 100%; max-height: 34vh; }
-/* The image's own cap has to come down with the slot's, or it overrides it
-   and the pair stops lining up. */
+/* Must match the slot's cap or the pair stops lining up. */
 .pair .slot img { max-height: 34vh; }
-/* The step numbers were clipping: 18px of padding is not enough room for a
-   monospace numeral plus its period, so the marker sat half outside the
-   content box and rendered as a sliced digit. Markers go inside the box and
-   the list gets real indent. */
+/* Markers inside the box; outside, they clipped. */
 .ledger {
   font: 12.5px/1.9 var(--mono);
   color: var(--secondary);
@@ -156,7 +138,6 @@
 }
 .ledger li { padding-left: 2px; }
 .ledger li::marker { color: var(--tertiary); }
-/* The step being worked on is the one to read, so it is the one in ink. */
 .ledger li.pulse { color: var(--ink); }
 
 /* --- states -------------------------------------------------------------- */
@@ -238,9 +219,7 @@ input.desc.failed { border-color: var(--error); }
 .verdict .diagnosis { margin: 0; padding: 12px 18px; border-top: 1px solid var(--hairline);
                       background: var(--panel); font-size: 12.5px; line-height: 1.55; }
 
-/* --- Test-registry reset -------------------------------------------------
-   Deliberately not styled as a primary action. It destroys work, it only
-   exists on a testnet, and it should read as a tool rather than a step. */
+/* --- Test-registry reset: a tool, deliberately not a primary action ---- */
 .reset {
   margin-top: 2rem;
   padding: 1rem 1.25rem;
@@ -271,8 +250,7 @@ input.desc.failed { border-color: var(--error); }
 }
 .reset-go:hover:not(:disabled) { background: rgba(194, 118, 43, 0.12); }
 .reset-go:disabled { opacity: 0.5; cursor: default; }
-/* Armed is the only state that looks like a warning, because it is the only
-   state one more click destroys something from. */
+/* Armed: one more click destroys data. */
 .reset-go.armed {
   background: #c2762b;
   color: #111;
@@ -287,9 +265,7 @@ input.desc.failed { border-color: var(--error); }
 .reset-out .ok { color: #6ea86e; }
 .reset-out .bad { color: #c05b5b; }
 
-/* --- Step 2a: register the body ------------------------------------------
-   Only drawn when the registry has no record of the enrolled body, which is
-   the state a wipe leaves behind. */
+/* --- Register the body (only when the registry has no record) --------- */
 .body-step {
   border: 1px solid var(--rule, #333);
   border-left: 3px solid #6ea86e;
@@ -329,10 +305,7 @@ input.desc.failed { border-color: var(--error); }
 .refs a { opacity: 0.8; }
 .refs a:hover { opacity: 1; }
 
-/* --- 01 Enrol: the operating system's file dialog ------------------------
-   Replaced a server-side directory tree. The tree could only reach volumes
-   the API process could see, and made the operator navigate a filesystem
-   through a list of folder names. */
+/* --- Enrol: the OS file dialog ------------------------------------------ */
 .picker { max-width: 34rem; }
 .slot.pick {
   display: flex;
@@ -370,10 +343,7 @@ input.desc.failed { border-color: var(--error); }
 }
 .enrol-form button:hover { background: rgba(128, 128, 128, 0.12); }
 
-/* --- Enrol: the upload, before the estimator has anything to report -------
-   Forty RAW frames is half a gigabyte and the server is silent until the last
-   byte lands. Determinate because the length is known, and a spinner over a
-   wait this long tells the operator nothing about whether to intervene. */
+/* --- Enrol upload: determinate, since the server is silent until done --- */
 .uploading .up-note { font-size: 0.8rem; opacity: 0.75; margin: 0.2rem 0 0.7rem; }
 .up-bar {
   height: 3px;
@@ -390,22 +360,16 @@ input.desc.failed { border-color: var(--error); }
 }
 .uploading .note { font-size: 0.78rem; opacity: 0.6; margin: 0; }
 
-/* A qualifier beside a link, for when the link alone would overstate what it
-   points at -- a fleet parent is not the body's own name, and the index is
-   not an authority. */
+/* A qualifier beside a link that would otherwise overstate what it points at. */
 .hint { color: var(--tertiary); font-size: 11.5px; }
 
-/* A step that has not started yet. Dimmed rather than hidden, so the operator
-   can see what is coming and that it is not what is running now. */
+/* Not started yet: dimmed, not hidden. */
 .ledger .waiting { color: var(--tertiary); }
 .ledger .hint { display: block; margin-top: 2px; }
 .ledger + .elapsed { color: var(--tertiary); font-size: 11.5px; margin: 8px 0 0; }
 
-/* --- Registration telemetry ----------------------------------------------
-   A timestamped log of the real phases. The wait is dominated by the PRNU
-   scale search, not by the chain, and the operator has to be able to see
-   that -- a screen that named the transaction while running the search
-   taught people to distrust a chain that was not the problem. */
+/* --- Registration telemetry: real phases, so a slow PRNU search is not
+   blamed on the chain. */
 .steps { list-style: none; margin: 0; padding: 0; }
 .steps .step {
   display: grid;
@@ -419,7 +383,6 @@ input.desc.failed { border-color: var(--error); }
 .steps .step:first-child { border-top: 0; }
 .steps .stamp { color: var(--tertiary); font-size: 11px; }
 .steps .took { color: var(--secondary); font-size: 11px; text-align: right; }
-/* Only the running step is emphasised; everything above it is history. */
 .steps .step .what { color: var(--secondary); }
 .steps .step.live .what { color: var(--ink); font-weight: 600; }
 .steps .step.live .stamp { color: var(--secondary); }

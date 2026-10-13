@@ -1,21 +1,13 @@
-/**
- * Where the pixel work runs. The pages use a Web Worker so scoring never
- * blocks the UI; tests and Node scripts run the same `analyse` in-process.
- * Both satisfy one interface, so `verify.ts` does not know which it has.
- */
+/** Where the pixel work runs: a Web Worker in the pages, in-process in tests and Node. */
 
 import { analyse, loadBody, type AnalyseRequest, type Analysis, type OnStep } from "./analyse";
 import { warm, type Loaders } from "./hashes";
 import type { WorkerMessage, WorkerReply } from "./worker";
 
 export interface Engine {
-  /**
-   * Start loading the WASM now. Optional to call; a page calls it on load so
-   * the first photo doesn't pay for compiling ~1.8 MB of WASM (measured: the
-   * first 24 MP JPEG took 6.5 s cold, 1.3 s warm).
-   */
+  /** Compile the ~1.8 MB of WASM early (first 24 MP JPEG: 6.5 s cold, 1.3 s warm). */
   warm(): Promise<void>;
-  /** Parse a body's K once. Resolves with the crop a RAW decode must use for it. */
+  /** Parse a body's K once; resolves with the crop a RAW decode must use. */
   loadBody(id: string, name: string, k: Uint8Array): Promise<{ crop: number | null }>;
   analyse(request: AnalyseRequest, onStep?: OnStep): Promise<Analysis>;
 }
@@ -23,7 +15,6 @@ export interface Engine {
 /** `Omit<T, "id">` for each member of a union, not the union as a whole. */
 type WithoutId<T> = T extends unknown ? Omit<T, "id"> : never;
 
-/** The pages' engine: a module worker, started on first use. */
 export function workerEngine(): Engine {
   let worker: Worker | undefined;
   let next = 0;
@@ -60,7 +51,6 @@ export function workerEngine(): Engine {
   };
 }
 
-/** The same work on the calling thread, for tests and Node. */
 export function inProcessEngine(loaders: Loaders = {}): Engine {
   return {
     warm: () => warm(loaders),

@@ -1,6 +1,6 @@
 //! The advisory signals verification reports beside a verdict -- a port of
 //! `fingerprint/consistency.py`'s `effective_strength`, `resampling_peak`
-//! and `high_frequency_content`. See `docs/shared-verify-plan.md`, phase A.
+//! and `high_frequency_content`.
 //!
 //! **Advisory, never a verdict.** Each was measured to overlap between
 //! genuine frames and forgeries that clear PCE (best AUC 0.800; see the

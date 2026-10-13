@@ -1,13 +1,7 @@
 /**
- * The six screens. One file, because they share the drop-slot and result
- * grammar and splitting them would mean re-deriving it five times.
- *
- * Every screen has the same four states: idle, working, a verdict, or an
- * error. Working states are determinate wherever the server gives us
- * something to count -- `/enrol` streams per frame, so that one is honest.
- * Verification reports each step from core/, the scale search counted one
- * correlation at a time; `/degrade` returns once, so it shows elapsed
- * against a typical figure and no fake sub-steps (`docs/console-server.md`).
+ * The presenter console screens; one file because they share the drop-slot
+ * and result grammar. Progress is determinate wherever the server reports
+ * real steps, and never faked where it does not.
  */
 
 import {
@@ -23,14 +17,7 @@ import { verifyStreaming } from "./verifier";
 
 type Render = (host: HTMLElement) => void;
 
-/**
- * Clear everything this screen is holding.
- *
- * A presenter runs each screen several times in a take, and a result left
- * from the previous attempt beside a fresh photograph is how a demo shows the
- * wrong number to an audience. Clearing is one action, not a page reload,
- * because a reload also loses the pre-flight state.
- */
+/** Clear this screen's result without a reload (which would lose pre-flight state). */
 function clearButton(host: HTMLElement, render: Render): HTMLElement {
   const button = el(`<button class="clear" title="Clear (C)">Clear</button>`);
   button.addEventListener("click", () => render(host));
@@ -57,19 +44,8 @@ function dropSlot(hint: string, onFile: (file: File) => void): HTMLElement {
 const NATIVE = /\.(jpe?g|png|webp|gif|avif|bmp)$/i;
 
 /**
- * Show the photograph being worked on.
- *
- * **Never awaited before the work it illustrates.** Developing a 24-megapixel
- * CR3 server-side takes about ninety seconds, and it is display-only: the
- * scorer reads the original file, not this. Awaiting it meant a registration
- * could not begin until a picture the operator does not need yet had been
- * rendered, and the screen sat on "developing…" while nothing was happening
- * to their photograph. Started and left to land on its own.
- *
- * RAW is the whole difficulty: a browser cannot decode a CR3, so an `<img>`
- * pointing at one renders nothing and reports nothing -- the slot just stays
- * empty, which is how the register screen came to show no image at all. The
- * server develops it instead, and only for display.
+ * Show the photograph being worked on. Never await it before the real work:
+ * a server-side RAW preview can take ~90 s and is display-only.
  */
 async function showImage(slot: HTMLElement, file: File, degraded = false) {
   slot.classList.add("filled");
@@ -85,22 +61,13 @@ async function showImage(slot: HTMLElement, file: File, degraded = false) {
     const url = await api.preview(file);
     slot.innerHTML = `<img src="${url}" class="${cls}" alt="" />`;
   } catch {
-    // A preview is cosmetic. Say the file is loaded rather than leaving a
-    // slot that looks like nothing happened.
+    // Preview failed; still show the file is loaded.
     slot.innerHTML = `<span class="developing mono">${escape(file.name)}<br/>
       <small>no preview — RAW decode unavailable</small></span>`;
   }
 }
 
-/**
- * Score a file and render the verdict, showing real progress while it runs.
- *
- * Determinate, not a spinner. The server reports each stage and, inside the
- * scale search, each of its twenty-one correlations -- which is where the
- * wall clock goes. An unfamiliar image pays for all of them even when the
- * answer is `no-record`, so the slowest case is the one that most needs to
- * look like it is working.
- */
+/** Score a file and render the verdict, with determinate progress per correlation. */
 async function scored(
   host: HTMLElement,
   file: File,
@@ -156,23 +123,14 @@ function failure(heading: string, detail: string, standing: string): HTMLElement
 }
 
 /**
- * The reset control, drawn only on a registry that says it can be wiped.
- *
- * `bodyId` derives from SHA-256(K), so the same camera always reaches the same
- * id and `registerBody` refuses a duplicate forever. Rehearsing the demo twice
- * used to mean redeploying; this is the button that replaces that.
- *
- * Two-step on purpose. It is the only control in the console that destroys
- * work, and the second step shows the registry address because the mistake
- * worth preventing is wiping the wrong one -- not wiping at all.
+ * The reset control, only on a registry that can be wiped. Two-step, and the
+ * second step shows the address: the mistake to prevent is wiping the wrong one.
  */
 function drawReset(host: HTMLElement, state: State): void {
   const zone = host.querySelector(".reset-zone") as HTMLElement | null;
   if (!zone) return;
 
   if (!state.registry?.resettable) {
-    // A production registry has no reset, so it gets no button and no
-    // explanation of one. Silence is the correct UI for a missing capability.
     zone.innerHTML = "";
     return;
   }
@@ -213,8 +171,7 @@ function drawReset(host: HTMLElement, state: State): void {
       button.textContent = `Confirm — wipe ${address.slice(0, 10)}…`;
       button.classList.add("armed");
       out.textContent = "Click again to send the transaction. Anything else cancels.";
-      // Disarming on a click elsewhere means a stray press cannot destroy a
-      // registry two seconds before recording.
+      // Disarm on a click elsewhere, so a stray press cannot wipe it.
       setTimeout(() => {
         document.addEventListener(
           "click",
@@ -254,9 +211,7 @@ function drawReset(host: HTMLElement, state: State): void {
             : ""
         }
         <br>The index follows within a block or two. Nothing is registered now.`;
-      // Updated in place rather than by redrawing the panel: a redraw would
-      // replace this element and take the transaction hash with it, which is
-      // the one thing the operator may need after a destructive action.
+      // In place, not a redraw, so the transaction hash stays on screen.
       const label = zone.querySelector(".reset-head .mono");
       if (label) label.textContent = `epoch ${result.epochAfter}`;
     } catch (error) {
@@ -268,15 +223,7 @@ function drawReset(host: HTMLElement, state: State): void {
   });
 }
 
-/**
- * The places a claim can be checked by someone who does not trust this
- * console. `docs/claims.md` says a registration is verifiable by anyone
- * against the registry without taking our word for it, and a claim nobody is
- * shown how to check is a claim taken on trust.
- *
- * Server-assembled: the console knows the addresses, and a second copy in the
- * frontend is a second thing to keep in step with a redeployment.
- */
+/** Where anyone can check a claim without trusting this console. Server-assembled. */
 function referenceLinks(links?: ReferenceLink[]): string {
   if (!links?.length) return "";
   const items = links
@@ -291,13 +238,8 @@ function referenceLinks(links?: ReferenceLink[]): string {
 }
 
 /**
- * Register the enrolled body, when the registry has no record of it.
- *
- * Drawn only when it is needed: once the body is on chain this is noise, and
- * the screen is about photographs. `registerBody` is a race -- `bodyId`
- * derives from SHA-256(K), so anyone holding a leaked reference can claim the
- * slot and lock the photographer out permanently -- which is why it comes
- * before anything else rather than being offered as an afterthought.
+ * Register the enrolled body when the registry has no record of it. Comes
+ * first: `registerBody` is a race a leaked reference could win.
  */
 async function drawBodyStep(host: HTMLElement, ledger: HTMLElement): Promise<void> {
   const state = await api.state().catch(() => null);
@@ -401,19 +343,7 @@ export const preflight: Render = (host) => {
     });
 };
 
-/**
- * 01 · Enrol. A folder picker, then a determinate per-frame progress grid.
- *
- * The picker browses the *server's* filesystem rather than the browser's. A
- * browser cannot hand a server a path -- `webkitdirectory` gives file
- * contents -- so a folder chooser in the page would mean uploading forty
- * 24-megapixel RAWs, well over a gigabyte, to a service reading the same
- * disk. The console runs on the photographer's machine; it can just look.
- *
- * The frame count beside each folder is the point. Gate A wants 40-50 frames
- * and a picker that does not say which folders have them makes the operator
- * guess at the one number that decides whether K is any good.
- */
+/** 01 · Enrol. A file picker, then a determinate per-frame progress grid. */
 export const enrol: Render = (host) => {
   host.innerHTML = `
     <h1 class="title">Enrol a camera body</h1>
@@ -441,22 +371,7 @@ export const enrol: Render = (host) => {
   const grid = host.querySelector(".grid")!;
   const side = host.querySelector(".enrol-side")!;
 
-  /**
-   * The operating system's own dialog rather than a directory tree drawn in
-   * the browser.
-   *
-   * The tree was a server-side file browser, which meant the console could
-   * only enrol from volumes the API process could see, and the operator had
-   * to navigate a machine's filesystem through a list of folder names. A
-   * photographer already knows where their frames are and their own file
-   * dialog already knows how to get there -- with previews, search, and every
-   * shortcut they have set up.
-   *
-   * The cost is honest: the frames are uploaded rather than read in place,
-   * and forty RAW frames is roughly half a gigabyte. It is localhost, so this
-   * is memory bandwidth and not network, and `/enrol` still takes a folder
-   * path for scripts and the offline run.
-   */
+  /** The OS file dialog. Frames are uploaded, but only over localhost. */
   const input = picker.querySelector("input[type=file]") as HTMLInputElement;
   const form = picker.querySelector(".enrol-form") as HTMLFormElement;
   const picked = picker.querySelector(".picked") as HTMLElement;
@@ -478,9 +393,7 @@ export const enrol: Render = (host) => {
         ).toFixed(2)} GB${skipped ? ` · ${skipped} non-RAW ignored` : ""}`
       : "";
 
-    // Gate A asks for 40-50. Fewer still enrols -- the estimator's variance
-    // falls as 1/d, it does not have a cliff -- so this is a caution and not
-    // a refusal.
+    // Gate A asks for 40-50; fewer still works (no cliff), so only a caution.
     const short = chosen.length > 0 && chosen.length < 40;
     warn.hidden = !(short || (chosen.length === 0 && all.length > 0));
     warn.textContent = chosen.length === 0 && all.length > 0
@@ -501,10 +414,7 @@ export const enrol: Render = (host) => {
   const run = (from: File[] | string, name: string) => {
     let total = 0;
 
-    // Said before anything else, and synchronously. Uploading forty RAW
-    // frames takes long enough that a screen which waits for the first
-    // server event reads as a hang -- the operator has clicked and been
-    // shown nothing, which is the moment they click again.
+    // Synchronously, before the long upload, so it does not read as a hang.
     const bytes = typeof from === "string" ? 0 : from.reduce((sum, f) => sum + f.size, 0);
     const frameCount = typeof from === "string" ? 0 : from.length;
     grid.innerHTML = "";
@@ -531,8 +441,7 @@ export const enrol: Render = (host) => {
         (e) => {
         if (e.event === "start") {
           total = Number(e.frames);
-          // The upload is done and the estimator has the frames; the per-frame
-          // grid takes over from the byte counter.
+          // Upload done; the per-frame grid takes over.
           grid.innerHTML = Array.from({ length: total }, () => `<i class="cell"></i>`).join("");
           side.innerHTML = `<div class="display">0 / ${total}</div>
             <p class="label">frames</p><p class="mono">starting…</p>`;
@@ -564,9 +473,6 @@ export const enrol: Render = (host) => {
         }
         },
         (loaded, totalBytes) => {
-          // Determinate, because the length is known and a spinner over a
-          // half-gigabyte upload tells the operator nothing about whether to
-          // wait or intervene.
           const share = totalBytes ? loaded / totalBytes : 0;
           if (bar) bar.style.width = `${Math.round(share * 100)}%`;
           if (note) {
@@ -585,15 +491,7 @@ export const enrol: Render = (host) => {
 
 };
 
-/**
- * 02 · Register. This screen **writes**, and it is the only one that does.
- *
- * An earlier version of this screen called `/verify` like every other screen,
- * which scored the photograph and registered nothing -- so a genuine frame
- * came back `fingerprint-only`, correctly, and looked like a failure. The
- * distinction is the whole product: verifying asks what the chain already
- * says, registering is what puts it there.
- */
+/** 02 · Register. The only screen that writes to the chain. */
 export const register: Render = (host) => {
   host.innerHTML = `
     <h1 class="title">Register a photograph</h1>
@@ -608,14 +506,10 @@ export const register: Render = (host) => {
   const ledger = host.querySelector(".ledger-area")!;
   host.querySelector(".title")!.append(clearButton(host, register));
 
-  // Step 2a, and the step this console never had. Without it a wiped registry
-  // left no way to put the body back, and `registerImage` reverted
-  // `unknown body` with nothing on screen offering the fix.
+  // Without this, `registerImage` reverts `unknown body` after a wipe.
   void drawBodyStep(host, ledger as HTMLElement);
 
-  // Multi-select is the bulk path: one file registers an ImageRecord, many
-  // commit one session root. The contract has both because they answer
-  // different questions -- see `/register-session`.
+  // One file registers an ImageRecord; many commit one session root.
   const many = el(`
     <label class="bulk">
       <input type="file" multiple accept="image/*,.cr3,.dng,.CR3,.DNG" hidden />
@@ -679,12 +573,7 @@ export const register: Render = (host) => {
         return;
       }
 
-      // A timestamped log of the real phases, rather than two static lines
-      // that named the fast step while the slow one ran. Registering spends
-      // most of its wall clock in the PRNU scale search -- twenty-one
-      // correlations on an unfamiliar frame -- and the transaction at the end
-      // is seconds. An operator watching a wait needs to know which part they
-      // are in and that it is still moving.
+      // Timestamped real phases: most of the wait is the PRNU search, not the chain.
       ledger.innerHTML = `<ol class="steps"></ol><p class="elapsed mono"></p>`;
       const steps = ledger.querySelector(".steps") as HTMLElement;
       const clock = ledger.querySelector(".elapsed") as HTMLElement;
@@ -693,8 +582,7 @@ export const register: Render = (host) => {
         clock.textContent = `${((Date.now() - began) / 1000).toFixed(1)}s elapsed · this is PRNU scoring, not the chain`;
       }, 100);
 
-      // The search reports "7 of 21" on every correlation; those replace each
-      // other rather than stacking, or the log becomes a wall.
+      // "7 of 21" progress lines replace each other rather than stacking.
       let searchRow: HTMLElement | null = null;
 
       try {
@@ -732,8 +620,7 @@ export const register: Render = (host) => {
            ${referenceLinks(receipt.links)}`,
         );
 
-        // Read it back the way a verifier would, rather than trusting the
-        // receipt. If the chain does not agree, the demo should show that.
+        // Read it back as a verifier would rather than trusting the receipt.
         await scored(host, file);
       } catch (error) {
         clearInterval(ticking);
@@ -824,12 +711,8 @@ export const verdict: Render = (host) => {
 };
 
 /**
- * 06 · Archive. What this machine has registered, and what it scored.
- *
- * The chain holds a pixel hash and nothing else, which is right and no use to
- * a photographer: given `0x2224a686…` there is no way to know that was
- * `IMG_0230.CR3`. This screen is the other half of that, and it is local by
- * construction — file paths and captions never go near the network.
+ * 06 · Archive. Maps on-chain hashes back to local files. Local only: paths
+ * and captions never go near the network.
  */
 export const archive: Render = (host) => {
   host.innerHTML = `
@@ -874,9 +757,7 @@ export const archive: Render = (host) => {
                 <td class="mono num">${row.pce === null ? "—" : Number(row.pce).toLocaleString(undefined, { maximumFractionDigits: 1 })}</td>
                 <td>${
                   row.tx_hash
-                    ? // Registered, so the transaction that put it there is the
-                      // precise place to check -- better than the contract tab,
-                      // which would need the hash pasted back in.
+                    ? // The registering tx is the most precise place to check.
                       `<a class="mono" href="${escape(`${ETHERSCAN}/tx/${row.tx_hash}`)}"
                           target="_blank" rel="noreferrer"
                           title="the transaction that registered this image"
@@ -891,9 +772,7 @@ export const archive: Render = (host) => {
             .join("")}</tbody>
         </table>`;
 
-      // Captions save on blur rather than behind a button: a photographer
-      // labelling an archive types in one field after another, and a save
-      // button per row is a click per photograph.
+      // Save on blur: no save click per row.
       host.querySelectorAll("input.desc").forEach((input) =>
         input.addEventListener("blur", async () => {
           const field = input as HTMLInputElement;

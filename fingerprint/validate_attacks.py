@@ -1,17 +1,7 @@
-"""Adversarial validation harness -- the forgeries, kept from rotting.
+"""Adversarial tests: anyone holding K can forge a match. Fails loudly if that stops being true.
 
-`validate_synthetic.py` asserts that the estimator recognises the right
-body. This file asserts the other half of the same fact: that anyone holding
-K can manufacture something it recognises. Both are properties of the same
-estimator and the repo should fail loudly if either stops being true --
-if the forgery ever stops working, either the estimator changed or these
-tests did, and both are worth a red light.
-
-Synthetic throughout, for the same reason `data/references/` and
-`fingerprint/raw-test-files/` are gitignored: a test that needed a real
-fingerprint could not run anywhere but the owner's laptop, and one that
-shipped one would be publishing the forgery kit. The measured numbers
-against the real R10 are in `docs/adversarial.md`.
+Synthetic, since shipping a real K would publish the forgery kit. Real R10
+numbers are in `docs/adversarial.md`.
 """
 
 from __future__ import annotations
@@ -21,12 +11,9 @@ import numpy as np
 from fingerprint import attacks, prnu
 from fingerprint import validate_synthetic as sim
 
-#: Injection strength used where a test only needs "a forgery that works".
-#: Comfortably above the minimum on the synthetic sensor, comfortably below
-#: anything visible.
+#: Injection strength for "a forgery that works": above the synthetic minimum, below visible.
 ALPHA = 1.5
-#: The 2x2 CFA layout of the R10, and of most Bayer bodies. Hard-coded here
-#: rather than read from an enrolment, because these tests never open one.
+#: The 2x2 CFA layout of the R10 and most Bayer bodies.
 PATTERN = [[0, 1], [3, 2]]
 
 
@@ -52,13 +39,9 @@ def test_a_leaked_fingerprint_manufactures_a_match():
 
 
 def test_the_forgery_scores_higher_than_a_real_photograph():
-    """The asymmetry that makes the forgery detectable, asserted as a fact.
+    """K is a denoised average, so at natural strength a forgery outscores a real frame.
 
-    K is an average over many frames with the noise already divided out; a
-    genuine single exposure carries the same K buried in one frame's worth of
-    shot noise. So at the strength a real sensor imprints, the forgery wins.
-    Measured on the R10 this runs to two orders of magnitude
-    (`docs/adversarial.md`); here it only has to be true.
+    ~100x on the real R10 (`docs/adversarial.md`); here it only has to be true.
     """
     body, k = _leaked_fingerprint(seed=1)
     genuine = prnu.score({0: sim.simulate_exposure(body, seed=900)}, {0: k})
@@ -72,12 +55,7 @@ def test_the_forgery_scores_higher_than_a_real_photograph():
 
 
 def test_quantisation_puts_a_floor_under_the_attack():
-    """Below half a quantisation step the plant rounds away entirely.
-
-    The floor that decides the minimum alpha in `docs/adversarial.md` is this
-    one, not the threshold: on a dim carrier it is what stops the attacker
-    going arbitrarily quiet, and it rises as the carrier darkens.
-    """
+    """Below half a quantisation step the plant rounds away: the real floor on alpha."""
     _, k = _leaked_fingerprint(seed=1)
     carrier = 0.05 * np.ones((256, 256), dtype=np.float32)
 
@@ -112,8 +90,7 @@ def test_a_carrier_that_was_never_a_photograph_still_matches():
     forged = attacks.inject_delivered(carrier, planes, PATTERN, ALPHA)
     assert forged.dtype == np.uint8
 
-    # Split the forged raster back onto the photosite lattice exactly as
-    # prnu.load_delivered_planes would, and score it.
+    # Split as prnu.load_delivered_planes would, and score it.
     pattern = np.asarray(PATTERN)
     channels = {0: 0, 1: 1, 2: 2, 3: 1}
     recovered = {}
@@ -154,12 +131,7 @@ def test_psnr_and_ssim_are_exact_on_an_unchanged_image():
 
 
 def test_a_downsampled_leak_is_still_a_leak():
-    """How much of K the attacker actually needs.
-
-    A K that leaked through something that halved its resolution still
-    forges. That matters for the disclosure rule: "do not publish K" is not
-    the same instruction as "do not publish anything derived from K".
-    """
+    """A half-resolution K still forges: anything derived from K is K."""
     _, k = _leaked_fingerprint(seed=1)
     carrier = sim.simulate_exposure(sim.simulate_sensor(seed=2), seed=900)
 
@@ -179,16 +151,9 @@ def test_degrade_weakens_without_reshaping():
 
 
 def test_a_forgery_shares_nothing_with_the_body_beyond_the_published_k():
-    """The defence, in the one form that survived measurement.
+    """With ``J*K`` projected out, genuine frames still share body signal; forgeries don't.
 
-    A forgery carries exactly ``alpha * J * K`` and nothing else of the body,
-    so projecting that direction out of its residual empties it. A genuine
-    frame carries the body's real response, of which the published K is only
-    a filtered part, so something is always left over -- and that leftover is
-    shared with every other genuine frame from the same body.
-
-    `docs/adversarial.md` measures the separation on the real R10: 0.0002 for
-    a forgery against 0.017 to 0.080 for genuine frames.
+    Real R10 (`docs/adversarial.md`): 0.0002 forged vs 0.017-0.080 genuine.
     """
     body, k = _leaked_fingerprint(seed=1)
     kd = {0: k}
@@ -208,13 +173,7 @@ def test_a_forgery_shares_nothing_with_the_body_beyond_the_published_k():
 
 
 def test_a_one_bit_leak_is_still_a_leak():
-    """Only the sign of K, and the forgery still clears the threshold.
-
-    Measured on the real R10: a sign-only K scores 4,886 where the full K
-    scores 8,886 (`docs/adversarial.md`). It matters because "K leaked" and
-    "one bit per photosite of K leaked" are the same disclosure, and any
-    handling rule that treats a lossy or coarse copy as harmless is wrong.
-    """
+    """A sign-only K still forges (real R10: 4,886 vs 8,886, `docs/adversarial.md`)."""
     _, k = _leaked_fingerprint(seed=1)
     carrier = sim.simulate_exposure(sim.simulate_sensor(seed=2), seed=900)
 
@@ -226,13 +185,7 @@ def test_a_one_bit_leak_is_still_a_leak():
 
 
 def test_the_triangle_prediction_reports_its_own_calibration():
-    """`calibrate_triangle` must hand back the Pearson coefficient.
-
-    On this repo's own corpus the [G11] prediction does not track the
-    observation at all (Pearson -0.38), and a caller that could not see that
-    would read meaningless d values as evidence. The number is part of the
-    return type so it cannot be skipped.
-    """
+    """`calibrate_triangle` returns Pearson so callers see when d is meaningless (-0.38 here)."""
     body, k = _leaked_fingerprint(seed=1)
     kd = {0: k}
     planes = [sim.simulate_exposure(body, seed=800 + n) for n in range(5)]

@@ -2,10 +2,8 @@
 #
 # Point the release binary at the libpython bundled inside the app.
 #
-# PyO3 links against the build machine's libpython by its absolute path
-# (on CI, /Users/runner/.local/share/uv/...), so a shipped app aborts in
-# dyld on every Mac but the one that built it. Runs as Tauri's
-# beforeBundleCommand: after the binary is linked, before it is bundled.
+# PyO3 links the build machine's libpython by absolute path, so the shipped
+# app would abort in dyld elsewhere. Runs as Tauri's beforeBundleCommand.
 set -euo pipefail
 
 [ "$(uname -s)" = Darwin ] || exit 0

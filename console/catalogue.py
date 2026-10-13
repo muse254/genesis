@@ -1,21 +1,8 @@
-"""A local index of what this machine has registered. It never leaves.
+"""Local index mapping registered hashes to files and captions. It never leaves this machine.
 
-The chain holds a pixel hash and nothing else, which is correct and useless
-for a photographer: given `0x2224a686…` there is no way to know it was
-`IMG_0230.CR3` in last April's shoot. That mapping has to live somewhere, and
-the only safe somewhere is here.
-
-**Why not on chain, and why not in a resolver record.** A description is
-unbounded personal data -- a caption naming a client, a location, a person --
-and anything published is permanent and unretractable. It also adds nothing a
-verifier could check: the chain already proves the registration, and a caption
-proves nothing about the pixels. So the network gets the hash, and the disk
-gets the meaning (`docs/security.md`).
-
-The file path is the sharper case. It says where a RAW lives on this machine,
-and a RAW is a forgery kit (`docs/adversarial.md`), so a path is a map to one.
-It is recorded because a photographer needs it and it is never returned to
-anything but localhost.
+Captions are personal data and add nothing verifiable, so never on chain
+(`docs/security.md`). File paths locate RAWs, which are forgery kits
+(`docs/adversarial.md`): never return them to anything but localhost.
 """
 
 from __future__ import annotations
@@ -58,12 +45,7 @@ def _connect() -> sqlite3.Connection:
 
 
 def record_image(**fields) -> None:
-    """Insert or update one registration. Idempotent on `image_hash`.
-
-    Re-registering the same pixels is impossible on chain, so a second write
-    here means the operator registered the same photograph from a different
-    path -- worth keeping the newer path rather than the older.
-    """
+    """Insert or update one registration. Idempotent on `image_hash`; a repeat keeps the newer path."""
     columns = [
         "image_hash", "perceptual_hash", "body_id", "body_name", "pce",
         "registered_at", "tx_hash", "block_number", "session_id",
@@ -84,12 +66,10 @@ def record_image(**fields) -> None:
 
 
 def sync(bodies: dict[str, str], images: list[dict], indexed_block: int) -> None:
-    """Make this machine's rows for `bodies` match the chain's.
+    """Make this machine's rows for `bodies` (id -> name) match the subgraph's `images`.
 
-    `bodies` maps body id to name; `images` is the subgraph's answer. The chain
-    wins on every field it holds; file names and captions stay local. A row the
-    chain lacks goes, unless its block is past what the index has reached (a
-    registration seconds old the subgraph has not seen yet).
+    Chain wins on its fields; names and captions stay local. Rows the chain lacks
+    are deleted unless newer than `indexed_block` (not indexed yet).
     """
     on_chain = {i["imageHash"].lower() for i in images}
     with closing(_connect()) as connection, connection:
@@ -138,8 +118,7 @@ def listing(limit: int = 500) -> list[dict]:
 
 
 def statistics() -> dict:
-    """What the operator actually wants to know: how much is indexed, and how
-    well it scored. Not an analytics surface -- it never leaves the machine."""
+    """How much is indexed and how well it scored. Local only."""
     with closing(_connect()) as connection:
         row = connection.execute(
             """SELECT COUNT(*) AS images,
@@ -162,18 +141,7 @@ def statistics() -> dict:
 
 
 def clear() -> int:
-    """Empty the archive, and say how many rows went.
-
-    The archive is what this machine registered, keyed by image hash. After a
-    `resetAll` none of those hashes resolve on chain any more, so every row is
-    a claim the registry will not confirm -- and screen 06 would go on listing
-    them as registered work. Same shape as the enrolled references: the wipe
-    clears the chain, and anything local that described the chain has to go
-    with it or start lying.
-
-    Rows are deleted rather than the file removed, so the schema and the
-    indexes survive and the next registration does not have to recreate them.
-    """
+    """Empty the archive (after a chain `resetAll`, every row would be a false claim); return rows removed."""
     with closing(_connect()) as connection:
         removed = connection.execute("SELECT COUNT(*) FROM images").fetchone()[0]
         connection.execute("DELETE FROM images")

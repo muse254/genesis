@@ -4,18 +4,11 @@ pragma solidity ^0.8.24;
 import {Script, console} from "forge-std/Script.sol";
 import {Registry} from "../src/Registry.sol";
 
-/// @notice Rehearse on Base Sepolia, then deploy once to Base mainnet and PIN
-///         THE ADDRESS. The mainnet registry is permanent: its registration
-///         dates are the claim, so it is never redeployed to fix a typo.
-///         Runbook: `docs/mainnet-deploy.md`.
-/// @dev `REGISTRY_TEST_MODE=true` deploys a registry that `resetAll` can wipe,
-///      so the demo can be rehearsed without a fresh deployment each time. It
-///      defaults to **false** and the constructor refuses it off a testnet, so
-///      a mainnet deploy is the safe one to get wrong.
-///
-///      The script refuses it on a mainnet too, before anything is broadcast,
-///      so the failure names the environment variable to unset rather than
-///      surfacing as a constructor revert in the simulation.
+/// @notice Rehearse on Base Sepolia, then deploy once to Base mainnet and pin
+///         the address. The mainnet registry is permanent: never redeploy it.
+/// @dev `REGISTRY_TEST_MODE=true` deploys a wipeable registry (default false).
+///      Refused here on mainnet before broadcast, so the error names the
+///      variable instead of surfacing as a constructor revert.
 contract Deploy is Script {
     uint256 internal constant ETHEREUM_MAINNET = 1;
     uint256 internal constant BASE_MAINNET = 8453;

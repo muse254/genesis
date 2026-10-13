@@ -1,13 +1,6 @@
-//! Parity tests against the Python reference (`fingerprint/prnu.py`),
-//! using fixtures dumped by `fingerprint/dump_parity_fixtures.py` into
-//! `tests/fixtures/` (see that directory's `README.md`).
-//!
-//! Phase 1: the `db8` wavelet transform round-trips independently of
-//! Python, and matches `pywt.wavedec2`'s coefficients on the same input.
-//! Phase 2: `noise_residual` matches the Python reference's output.
-//!
-//! Phase 3+ (`cross_correlation`/`pce`/`score`) fixtures exist in this
-//! directory too (for a later session) but are not checked here.
+//! Parity tests against the Python reference (`fingerprint/prnu.py`), on
+//! fixtures `fingerprint/dump_parity_fixtures.py` writes to `tests/fixtures/`:
+//! wavelet, `noise_residual`, correlation/PCE/`score`, and end to end.
 
 use std::collections::HashMap;
 use std::fs;
@@ -49,9 +42,7 @@ struct E2eCase {
     score: f64,
 }
 
-/// `Manifest` above only has `cases`/`two_plane_case` fields wired up via
-/// `serde`'s strictness-by-default (extra JSON fields are ignored, not
-/// errors), so `e2e_case` is parsed out separately here.
+/// `e2e_case` is parsed separately; `Manifest` ignores fields it lacks.
 fn load_e2e_case() -> E2eCase {
     let text = fs::read_to_string(fixtures_dir().join("manifest.json"))
         .expect("manifest.json should exist");
@@ -90,9 +81,8 @@ fn load_plane(file: &str) -> Array2<f64> {
     a.mapv(|v| v as f64)
 }
 
-/// Relative-or-absolute tolerance: `|a - b| <= atol + rtol * |b|`. Loose
-/// enough to allow for f32 (Python) vs f64 (this crate) accumulation
-/// differences, tight enough to catch a wrong transform.
+/// `|a - b| <= atol + rtol * |b|`: allows f32 (Python) vs f64 (Rust)
+/// accumulation, tight enough to catch a wrong transform.
 fn assert_allclose(name: &str, a: &Array2<f64>, b: &Array2<f64>, rtol: f64, atol: f64) {
     assert_eq!(a.shape(), b.shape(), "{name}: shape mismatch");
     let mut max_err = 0.0f64;
@@ -168,16 +158,12 @@ fn noise_residual_matches_python_reference() {
         let expected = load_plane(&case.noise_residual_file);
 
         let got = noise_residual(&plane_f32).mapv(|v| v as f64);
-        // noise_residual involves many chained shrinkage operations on f32
-        // in Python vs f64 here, so allow a looser (but still tight)
-        // tolerance than the raw wavelet coefficients.
+        // Many chained shrinkages in f32 (Python) vs f64: looser tolerance.
         assert_allclose(&format!("{case_name}/noise_residual"), &got, &expected, 5e-3, 1e-4);
     }
 }
 
-/// Phase 3: `cross_correlation`, `_pce_of`, `score` -- checked against the
-/// `two_plane_case` fixtures dumped by `fingerprint/dump_parity_fixtures.py`
-/// (see `tests/fixtures/README.md`).
+/// `cross_correlation`, `_pce_of`, `score` against the `two_plane_case` fixtures.
 #[test]
 fn cross_correlation_matches_python_reference() {
     let manifest = load_manifest();
@@ -233,12 +219,8 @@ fn score_matches_python_reference() {
     assert!(rel < 0.02, "score = {got}, python = {}, rel err {rel}", case.score);
 }
 
-/// Phase 4 end-to-end: reads a real `.npz` K file with [`load_fingerprint`],
-/// decodes a real PNG with [`load_delivered_planes`] using the CFA pattern
-/// out of the K file's own `meta` (exactly what the WASM `score()` entry
-/// point does), and checks the resulting `score()` against the one real
-/// Python `score()` call dumped into `manifest.json`'s `e2e_case`. This is
-/// the fixture that proves the whole pipeline, not just each piece alone.
+/// End to end: real K `.npz` + PNG, CFA pattern from K's `meta` (as the WASM
+/// `score()` does), checked against the real Python `score()` in `e2e_case`.
 #[test]
 fn e2e_score_matches_python_reference() {
     let case = load_e2e_case();

@@ -1,10 +1,4 @@
-/**
- * Tests for what the agent is actually told.
- *
- * The queries are stubbed; what matters here is the wording. An agent that
- * reads "verified" will say "verified", and this system verifies nothing —
- * it says which sensor the light fell on.
- */
+/** The wording an agent is told: an agent that reads "verified" will repeat it. */
 
 import assert from "node:assert/strict";
 import { test } from "node:test";
@@ -62,9 +56,8 @@ test("a match reports a registration, not where the light fell", async () => {
   const client = stub({ image: IMAGE });
   const answer = describeImage(await client.imageByHash(IMAGE.id), IMAGE.id);
 
-  // `registerImage` checks only that the body's owner sent the transaction,
-  // and a fingerprint can be planted from one RAW file off the body. So the
-  // agent must say who registered it, never that the sensor saw the scene.
+  // `registerImage` checks only the sender, and a fingerprint can be planted:
+  // say who registered it, never that the sensor saw the scene.
   assert.match(answer, /Registered by the owner of body/);
   assert.ok(!/exposed on/i.test(answer), "must not claim where the light fell");
   assert.ok(

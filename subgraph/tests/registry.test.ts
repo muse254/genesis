@@ -1,11 +1,4 @@
-/**
- * Mapping tests.
- *
- * These run the handlers against a mocked store and mocked contract calls,
- * so they check the logic the type checker cannot: that a revocation leaves
- * images standing, that an edit links to its parent, and that an ERC-7053
- * commit is joined back to its image by the genesis: URI.
- */
+/** Mapping tests against a mocked store and contract calls. */
 
 import { Address, BigInt, Bytes, ethereum } from "@graphprotocol/graph-ts";
 import {
@@ -316,8 +309,7 @@ describe("Registry mappings", () => {
 
     handleRegistryReset(registryReset(1));
 
-    // An index that outlived the chain would answer for records that no
-    // longer exist, which is worse than having no index at all.
+    // A stale index is worse than none.
     assert.entityCount("Body", 0);
     assert.entityCount("Image", 0);
     assert.entityCount("Session", 0);
@@ -334,10 +326,7 @@ describe("Registry mappings", () => {
 
     handleRegistryReset(registryReset(1));
 
-    // A reset cannot unhappen an event. On chain the `Commit` log is permanent
-    // too -- it is the queryable mapping that is epoch-scoped and cleared --
-    // and the entity is immutable, so deleting it is not merely wrong but
-    // impossible: `store.remove` would be a silent no-op.
+    // Events can't unhappen, and the entity is immutable (`store.remove` is a no-op).
     assert.entityCount("CommitLog", 1);
     assert.entityCount("Image", 0);
   });
@@ -347,8 +336,7 @@ describe("Registry mappings", () => {
     handleBodyRegistered(bodyRegistered());
     handleRegistryReset(registryReset(1));
 
-    // Never unset: a reader deciding what a registration date is worth needs
-    // to know the registry can withdraw one.
+    // Never unset: readers must know the dates can be withdrawn.
     assert.fieldEquals("RegistryState", "genesis", "resettable", "true");
 
     handleBodyRegistered(bodyRegistered());
@@ -361,8 +349,7 @@ describe("Registry mappings", () => {
     handleRegistryReset(registryReset(1));
     assert.entityCount("Body", 0);
 
-    // bodyId derives from SHA-256(K), so a rehearsal always re-registers the
-    // same id. That has to land rather than collide with a ghost.
+    // bodyId is SHA-256(K), so re-registering the same id after a reset must land.
     handleBodyRegistered(bodyRegistered());
     assert.entityCount("Body", 1);
     assert.fieldEquals("Body", BODY.toHexString(), "revoked", "false");

@@ -9,13 +9,10 @@ dataSources:
     name: Registry
     network: base
     source:
-      # The Base mainnet registry 1.0.0 (README, "Deployments"). The Base
-      # Sepolia rehearsal registry 0x0C0F3Ec8...0EB2 was indexed from
-      # block 46937327 by v0.1.0-base-sepolia, which stays queryable.
+      # Base mainnet registry (README, "Deployments").
       address: "0xBa5Ea549c9e1414C14038dB050e0caCB4f9E48cB"
       abi: Registry
-      # The deploy block. Zero here means indexing from genesis:
-      # hours of work to find nothing.
+      # The deploy block; zero would index from genesis for hours.
       startBlock: 52505470
     mapping:
       kind: ethereum/events

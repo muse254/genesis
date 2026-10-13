@@ -1,13 +1,6 @@
 /**
- * The photographer-facing app: sidebar + content, on top of the same design
- * tokens and verdict/enrol/form components the presenter console defined
- * (`tokens.css`, `console.css`). This file adds only the shell layout and
- * the dashboard-specific pieces (cards, camera tiles, photo rows) --
- * everything that touches a claim (the verdict card, the enrol grid, the
- * commitment box) is untouched CSS from the existing system, on purpose:
- * the grammar does not get to drift because the navigation changed.
- *
- * Border-radius 0, no shadows, no gradients -- same rule as the console.
+ * App shell and dashboard pieces. Claim-bearing components (verdict, enrol
+ * grid, commitment box) stay in console.css so their grammar does not drift.
  */
 
 #app-shell {

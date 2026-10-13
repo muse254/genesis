@@ -1,17 +1,10 @@
 #!/usr/bin/env bash
 #
-# SUPERSEDED (18 Sept) by desktop/scripts/bundle-python.sh: the imaging core
-# is embedded in the Rust process now (PyO3), not a sidecar this script
-# freezes. Kept, unreferenced, for the reason desktop/sidecar/genesis_console.py
-# gives -- see desktop/PACKAGING.md.
+# Superseded by bundle-python.sh (the imaging core is embedded via PyO3 now);
+# kept unreferenced, see desktop/PACKAGING.md.
 #
-# Freeze the console backend into the sidecar the Tauri app bundles.
-#
-#   desktop/scripts/build-sidecar.sh
-#
-# Tauri looks for `binaries/genesis-console-<target triple>`, so the name
-# carries the host triple. Run it on each platform you build for; CI does
-# this per runner (.github/workflows/desktop.yml).
+# Freezes the console backend into binaries/genesis-console-<host triple>,
+# the name Tauri looks for. Run on each platform you build for.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"

@@ -1,13 +1,6 @@
 /**
- * Look up an address, no login.
- *
- * Everything here — a body's owner, its commitments, its images — is
- * already public on the subgraph (schema: subgraph/schema.graphql). Gating
- * it behind a wallet signature would only add friction, not privacy, since
- * anyone can already run this same query directly against
- * VITE_SUBGRAPH_URL. "Use my wallet" below is a convenience that fills the
- * input with the connected account; it never asks for a signature and its
- * absence changes nothing about what the form can look up.
+ * Look up an address, no login: everything shown is already public on the
+ * subgraph. "Use my wallet" only fills the input; it never asks for a signature.
  */
 
 interface EthereumProvider {

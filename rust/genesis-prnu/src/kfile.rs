@@ -1,14 +1,7 @@
 //! Read-only `.npz` K-file reader, matching `fingerprint/prnu.py::save_fingerprint`'s
-//! layout. See `docs/wasm-scoring-plan.md` Phase 4.
-//!
-//! Enrolment (`save_fingerprint`) stays Python-only -- this only *reads*
-//! what it wrote: one `plane_<c>.npy` (float32) per CFA colour, a
-//! `meta.npy` (a 0-d numpy array wrapping a JSON string), and a
-//! `commitment.npy` (raw SHA-256 bytes as uint8). `ndarray-npy`'s `NpzReader`
-//! (feature `npz`/`compressed_npz`, already a dependency) handles the zip
-//! container and the numeric arrays directly; `meta.npy` needs a small
-//! hand-rolled parser below because numpy's 0-d fixed-width-unicode dtype
-//! (`<U<n>`, UCS-4 code units) isn't a type `ndarray-npy` reads.
+//! layout: `plane_<c>.npy` (float32) per CFA colour, `meta.npy` (0-d numpy
+//! unicode scalar holding JSON) and `commitment.npy` (SHA-256 bytes as uint8).
+//! `meta.npy` is hand-parsed because `ndarray-npy` cannot read `<U<n>` dtypes.
 
 use std::collections::BTreeMap;
 use std::io::{Cursor, Read};
@@ -46,9 +39,8 @@ impl std::fmt::Display for KFileError {
 }
 impl std::error::Error for KFileError {}
 
-/// Load a fingerprint `.npz` from raw bytes (as read from disk or handed in
-/// from JS as a `Uint8Array` in the WASM build -- this function never
-/// touches the filesystem or the network itself).
+/// Load a fingerprint `.npz` from raw bytes; never touches the filesystem or
+/// network itself.
 pub fn load_fingerprint(bytes: &[u8]) -> Result<Fingerprint, KFileError> {
     let cursor = Cursor::new(bytes);
     let mut npz = NpzReader::new(cursor).map_err(|e| KFileError::Zip(format!("{e:?}")))?;
@@ -121,10 +113,8 @@ pub fn load_planes(bytes: &[u8]) -> Result<BTreeMap<i32, Array2<f32>>, KFileErro
     Ok(planes)
 }
 
-/// The CFA pattern (`meta["cfa_pattern"]`, a 2x2 list of CFA colour
-/// indices) out of a loaded fingerprint's metadata, matching how
-/// `fingerprint/fingerprint.py`/`console/app.py` store it at enrolment
-/// (`meta = {"cfa_pattern": prnu.cfa_pattern(...), ...}`).
+/// The 2x2 CFA pattern from a fingerprint's `meta["cfa_pattern"]`, as stored
+/// at enrolment.
 pub fn cfa_pattern(meta: &serde_json::Value) -> Result<[[i32; 2]; 2], KFileError> {
     let p = meta
         .get("cfa_pattern")
@@ -153,8 +143,7 @@ pub fn cfa_pattern(meta: &serde_json::Value) -> Result<[[i32; 2]; 2], KFileError
     Ok(out)
 }
 
-/// Re-open the zip container ourselves to pull one member's raw file bytes
-/// (post-decompression), independent of `ndarray-npy`'s typed readers.
+/// Pull one zip member's decompressed bytes, bypassing `ndarray-npy`.
 fn read_raw_member(zip_bytes: &[u8], name: &str) -> Result<Vec<u8>, String> {
     let cursor = Cursor::new(zip_bytes);
     let mut archive = zip::ZipArchive::new(cursor).map_err(|e| e.to_string())?;
@@ -174,11 +163,9 @@ fn read_raw_member(zip_bytes: &[u8], name: &str) -> Result<Vec<u8>, String> {
     Ok(buf)
 }
 
-/// Parse a `.npy` file wrapping a 0-d fixed-width-unicode scalar
-/// (`np.array(some_str)`'s on-disk format): magic + version + header
-/// (an ASCII Python-literal dict naming `descr`/`shape`/`fortran_order`),
-/// then the raw data as UCS-4 code units (4 bytes each), little- or
-/// big-endian per `descr`, null-padded to the fixed width.
+/// Parse a `.npy` 0-d fixed-width-unicode scalar (`np.array(some_str)`): magic,
+/// version, ASCII header dict, then UCS-4 code units (endianness per `descr`),
+/// null-padded to the fixed width.
 fn parse_npy_unicode_scalar(bytes: &[u8]) -> Result<String, String> {
     if bytes.len() < 10 || &bytes[0..6] != b"\x93NUMPY" {
         return Err("not an .npy file (bad magic)".into());

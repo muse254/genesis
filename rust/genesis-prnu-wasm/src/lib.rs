@@ -1,21 +1,9 @@
-//! `wasm-bindgen` wrapper around `genesis-prnu`'s scoring core.
-//!
-//! Exposes [`score`], for the score page: takes an image's raw bytes and
-//! a K `.npz` file's raw bytes, does everything in-process (decode, CFA
-//! sample, noise residual, cross-correlation, PCE), and returns a plain
-//! `f64` PCE. See `docs/wasm-scoring-plan.md` Phase 5.
-//!
-//! And, for the verify page, [`image_hashes`] and [`decode_rgb`]: the two
-//! content hashes `ingest/hashing.py` computes, so a photo being verified
-//! never has to leave the browser either.
+//! `wasm-bindgen` wrapper around `genesis-prnu`: [`score`] for the score
+//! page, [`image_hashes`] and [`decode_rgb`] for the verify page.
 //!
 //! **Hard invariant: K bytes never leave this call.** Nothing in this crate
-//! performs network I/O -- there is no `fetch`, no `XMLHttpRequest`
-//! binding, nothing that could transmit `k_npz_bytes` anywhere. The CFA
-//! pattern needed to decode the delivered image comes from the K file's
-//! own `meta`, so the JS caller never needs to pass a separate pattern
-//! argument, and K bytes are used only for the one in-memory `score()` call
-//! before being dropped. See `docs/security.md`, "Where K lives".
+//! does network I/O, and the CFA pattern comes from K's own `meta`. See
+//! `docs/security.md`, "Where K lives".
 
 use wasm_bindgen::prelude::*;
 
@@ -23,10 +11,7 @@ use wasm_bindgen::prelude::*;
 /// `.npz` file (bytes), returning the PCE (compare against
 /// `fingerprint/prnu.py`'s `PCE_THRESHOLD = 100.0`).
 ///
-/// Both arguments are plain byte buffers already in this process's memory
-/// (e.g. from a JS `File`/`Blob` via `arrayBuffer()`) -- this function does
-/// no I/O of its own, so nothing it does can transmit `k_npz_bytes`
-/// anywhere.
+/// No I/O of its own, so nothing here can transmit `k_npz_bytes`.
 #[wasm_bindgen]
 pub fn score(image_bytes: &[u8], k_npz_bytes: &[u8]) -> Result<f64, JsValue> {
     let fp = genesis_prnu::kfile::load_fingerprint(k_npz_bytes)
@@ -50,10 +35,9 @@ pub fn pce_threshold() -> f64 {
 /// height * 3` bytes, row-major), as `ingest/hashing.py` computes them:
 /// `imageHash` is `0x` + 64 hex digits, `perceptualHash` is `0x` + 16.
 ///
-/// The caller supplies the pixels because decoding is where exactness is
-/// won or lost -- see `genesis_prnu::hashing`. The verify page decodes JPEG
-/// with libjpeg-turbo (`core/jpeg/`) and everything else with
-/// [`decode_rgb`].
+/// The caller decodes because exactness is won or lost there (see
+/// `genesis_prnu::hashing`): JPEG via libjpeg-turbo (`core/jpeg/`), the
+/// rest via [`decode_rgb`].
 #[wasm_bindgen(js_name = imageHashes)]
 pub fn image_hashes(rgb: &[u8], width: usize, height: usize) -> Result<ImageHashes, JsValue> {
     if rgb.len() != width * height * 3 {
@@ -131,11 +115,10 @@ impl DecodedRgb {
     }
 }
 
-// ---- Verification against an enrolled body (docs/shared-verify-plan.md) ----
+// ---- Verification against an enrolled body ----
 //
-// The desktop app holds its enrolled K files and passes them in; the web
-// page has none and never calls these. Same invariant as `score` above:
-// nothing here does I/O, so K bytes cannot leave this call.
+// Only the desktop app (which holds K files) calls these. Same invariant as
+// `score`: no I/O, so K bytes cannot leave this call.
 
 /// An enrolled body's fingerprint, parsed once and reused across images.
 #[wasm_bindgen]

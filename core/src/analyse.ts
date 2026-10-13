@@ -1,12 +1,7 @@
 /**
- * The pixel half of verification: decode, hash, score against every
- * enrolled body, and the advisory signals for the best one. Runs inside the
- * Web Worker (`worker.ts`) so a seven-second score never freezes the page,
- * and in-process in tests.
- *
- * The port of what `console/app.py::_verify` did before its chain reads,
- * with `scoring/app.py::_score_against` per body. The chain and the verdict
- * are `verify.ts`'s job, on the main thread.
+ * The pixel half of verification: decode, hash, score every enrolled body,
+ * and advisory signals for the best. Ports `console/app.py::_verify` (pre-chain)
+ * and `scoring/app.py::_score_against`.
  */
 
 import { Body, pceThreshold, scoreAgainst, scoreAgainstRaw, signals } from "./wasm/genesis_prnu_wasm.js";
@@ -83,11 +78,7 @@ export async function loadBody(id: string, name: string, k: Uint8Array, loaders:
   return { crop: body.crop ?? null };
 }
 
-/**
- * `console/app.py`'s progress weighting, so the desktop's bar moves as it
- * did: the scale search is most of the wall clock, and equal shares would sit
- * at 40% for a minute and then jump.
- */
+/** `console/app.py`'s progress weighting: the scale search is most of the wall clock. */
 export function fractionOf(label: string): number {
   if (label.includes("residual")) return 0.15;
   if (label.includes("sensor space") || label.includes("lattice")) return 0.8;
@@ -148,8 +139,7 @@ function signalsFor(image: Decoded, body: Body, best: Candidate, raw?: RawInput)
     pooledTriangle: null,
     effectiveStrength: s.effectiveStrength,
     resamplingPeak: s.resamplingPeak,
-    // Not advisory in the same sense: it says whether there was anything to
-    // measure. A soft frame carries no fingerprint however genuine it is.
+    // A soft frame carries no fingerprint however genuine it is.
     detail: s.detail === null ? null : Math.round(s.detail * 10) / 10,
     tooSoftToMeasure: s.detail === null ? null : s.detail < DETAIL_FLOOR,
   };

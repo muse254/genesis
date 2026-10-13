@@ -1,9 +1,5 @@
-# ACL permission for this app's own `score_delivered_image` command
-# (`src/lib.rs`), which scores a delivered (non-RAW) probe image against a
-# K file natively via `genesis-prnu`, without going through the embedded
-# Python interpreter. Tauri's ACL requires every command -- app-owned or
-# plugin-owned -- to have a permission definition before a capability can
-# grant it; there is no automatic default for app commands.
+# Tauri's ACL has no default for app commands: `score_delivered_image`
+# (src/lib.rs) needs this definition before a capability can grant it.
 
 [[permission]]
 identifier = "allow-score-delivered-image"

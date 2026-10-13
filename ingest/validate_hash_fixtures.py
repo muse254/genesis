@@ -1,12 +1,7 @@
-"""The browser's hash fixtures still describe this Python.
+"""The Rust/WASM hash fixtures still describe this Python.
 
-``rust/genesis-prnu/tests/fixtures/hashing/manifest.json`` is what the Rust
-and WASM ports are tested against (``cargo test``, ``core/``'s
-``npm test``). If ``hashing.py`` changes, or Pillow is upgraded and brings a
-different libjpeg-turbo, the ports keep passing against the stale manifest
-while the verify page quietly stops matching what Python registers. These
-tests fail first, so the manifest gets regenerated
-(``python -m ingest.dump_hash_fixtures``) and the ports rechecked.
+Otherwise a change to ``hashing.py`` or Pillow's libjpeg-turbo leaves the ports
+passing a stale manifest. Fix: ``python -m ingest.dump_hash_fixtures``.
 """
 
 from __future__ import annotations
@@ -41,8 +36,7 @@ def test_manifest_hashes_are_current(case):
 
 
 def test_truncated_fixture_is_refused_by_python_too():
-    # The browser refuses it to match this; if Pillow ever starts accepting
-    # truncated files, the browser's refusal needs revisiting.
+    # The browser refuses it to match Python; revisit if Pillow starts accepting it.
     with pytest.raises(OSError):
         hashing.pixel_sha256(FIXTURES / "jpeg_truncated.jpg")
 

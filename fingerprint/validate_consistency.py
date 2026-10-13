@@ -1,11 +1,7 @@
 """Tests for the Tier 1 consistency checks.
 
-Synthetic throughout, so they run without a fingerprint or a corpus on disk.
-What they pin is the *shape* of each check -- that a frame carrying a body's
-structure scores above one that only carries the fingerprint, and that the
-resampling statistic responds to resampling. The measured separations on real
-frames are in the docstrings and in `docs/adversarial.md`; they are not
-assertable here because the corpus is deliberately not in the repository.
+Synthetic, so they pin the *shape* of each check only; real-frame numbers are
+in `docs/adversarial.md` because the corpus is not in the repo.
 """
 
 import numpy as np
@@ -44,8 +40,7 @@ def test_strip_fingerprint_removes_the_shared_term():
         a, b = a - a.mean(), b - b.mean()
         return abs(float(a @ b) / np.sqrt(float(a @ a) * float(b @ b)))
 
-    # The shared term is what carries no information about genuine-vs-forged,
-    # so what matters is that stripping collapses it, not that it reaches zero.
+    # Stripping must collapse the shared term, not zero it.
     assert corr(stripped, expected) < 0.01 * corr(raw, expected)
 
 
@@ -144,8 +139,7 @@ def test_only_the_chain_read_grants_a_claim():
 
 
 def test_every_reported_signal_carries_its_auc():
-    """A number that travels without its error bar is how a weak signal gets read
-    as a strong one."""
+    """No signal travels without its error bar."""
     reported = consistency.stages(
         matched=True, registered=True,
         signals={"bodyConsistency": 0.01, "effectiveStrength": 0.5},

@@ -1,11 +1,6 @@
 /**
- * verify_image_file: the hashes an agent gets for a file it holds must be
- * the verify page's, byte for byte, or every lookup misses.
- *
- * The parity cases are core/'s own (test/hashes.test.ts), from
- * `python -m ingest.dump_hash_fixtures`, run through the copy of core
- * bundled into dist/core. They need core's WASM built (mcp/README.md) and
- * are skipped, with a reason, when it is not.
+ * verify_image_file must hash exactly as the verify page does, or every lookup
+ * misses. Uses core's fixtures; skipped when core's WASM is not bundled.
  */
 
 import assert from "node:assert/strict";
@@ -103,8 +98,7 @@ test("a file whose pixels are registered gets the registration, keyed by its pix
 });
 
 test("a near perceptual hash is reported as a lead, not a match", { skip }, async () => {
-  // A registered image of other pixels whose pHash is two bits off this one's,
-  // stored as the subgraph stores it: bytes32, zero-padded.
+  // pHash two bits off, stored as the subgraph does: bytes32, zero-padded.
   const other = matches.find((c) => c.file !== "jpeg_420.jpg")!;
   const near = (BigInt(jpeg().perceptualHash!) ^ 0b101n).toString(16).padStart(64, "0");
   const { client, fetchImpl } = subgraph(record(other, `0x${near}`));

@@ -1,10 +1,5 @@
-// Reads assets off the latest published GitHub release rather than hardcoding
-// filenames or versions here -- desktop.yml names its assets after
-// tauri.conf.json's productName + version, and this page would otherwise go
-// stale every time either changes. Drafts are deliberately invisible to
-// `/releases/latest` (desktop.yml: "Draft on purpose: a person publishes
-// it."), so an empty result here means nobody has published one yet, not
-// that the request failed.
+// Reads assets from the latest published release so names never go stale.
+// Drafts are invisible to `/releases/latest`, so a 404 means none published yet.
 const REPO = "muse254/genesis";
 
 const PLATFORMS = [

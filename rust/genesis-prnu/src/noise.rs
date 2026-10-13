@@ -1,6 +1,5 @@
 //! Mihcak wavelet-domain Wiener denoiser (`noise_residual`), a Rust port of
-//! `fingerprint/prnu.py::noise_residual`/`_variance_estimate`. See
-//! `docs/wasm-scoring-plan.md` Phase 2.
+//! `fingerprint/prnu.py::noise_residual`/`_variance_estimate`.
 
 use ndarray::Array2;
 
@@ -15,16 +14,10 @@ pub const WIENER_WINDOWS: [usize; 4] = [3, 5, 7, 9];
 /// Assumed sensor noise sigma, `[0, 1]` scale, matching `prnu.py`'s `SIGMA`.
 pub const SIGMA: f64 = 2.0 / 255.0;
 
-/// 1-D box filter with `mode="constant"` (zero-padding) boundary handling,
-/// matching `scipy.ndimage.uniform_filter`'s behaviour for a 1-D line:
-/// every output element is the sum over a `size`-wide window divided by
-/// `size` -- out-of-bounds window positions contribute zero to the sum but
-/// still count towards the divisor, they are not excluded from it (that is
-/// what distinguishes `mode="constant"` from e.g. clamping the edge value).
-/// The window for output index `i` is `[i - size/2, i - size/2 + size - 1]`
-/// (integer division), scipy's default `origin=0` convention -- confirmed
-/// empirically against `scipy.ndimage.uniform_filter` for both even and odd
-/// `size`.
+/// 1-D box filter matching `scipy.ndimage.uniform_filter(mode="constant")`:
+/// out-of-bounds positions add zero but still count in the divisor. Window
+/// for output `i` is `[i - size/2, i - size/2 + size - 1]` (scipy's `origin=0`),
+/// checked against scipy for even and odd `size`.
 fn box_filter_1d(x: &[f64], size: usize) -> Vec<f64> {
     let n = x.len();
     let mut prefix = vec![0.0f64; n + 1];
@@ -51,8 +44,7 @@ fn box_filter_1d(x: &[f64], size: usize) -> Vec<f64> {
 }
 
 /// Separable 2-D box filter (`scipy.ndimage.uniform_filter(a, size=size,
-/// mode="constant")`): 1-D box filter along axis 0, then along axis 1 (order
-/// does not matter for a separable box average).
+/// mode="constant")`).
 fn box_filter_2d(a: &Array2<f64>, size: usize) -> Array2<f64> {
     let (h, w) = (a.shape()[0], a.shape()[1]);
 
@@ -103,15 +95,8 @@ fn variance_estimate(coef: &Array2<f64>, sigma2: f64) -> Array2<f64> {
 }
 
 /// Extract the PRNU noise residual `W` from one CFA plane, matching
-/// `fingerprint/prnu.py::noise_residual` exactly (up to floating-point
-/// precision -- this implementation computes in `f64` throughout, the
-/// Python reference in `f32`).
-///
-/// `db8` decomposition to `min(WAVELET_LEVELS, dwt_max_level(min(shape)))`
-/// levels (clamped, never below 1), per-detail-coefficient Wiener shrinkage
-/// `c * sigma^2 / (var + sigma^2)` with `var` the Mihcak minimum-over-windows
-/// local variance estimate, approximation band zeroed, reconstruct, crop
-/// back to the input shape.
+/// `fingerprint/prnu.py::noise_residual` up to precision (`f64` here, `f32`
+/// in Python).
 pub fn noise_residual(plane: &Array2<f32>) -> Array2<f32> {
     let shape = (plane.shape()[0], plane.shape()[1]);
     let plane64 = plane.mapv(|v| v as f64);

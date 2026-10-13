@@ -1,31 +1,15 @@
 /**
- * Verification: the one implementation the web page and the desktop app
- * share (`docs/shared-verify-plan.md`). The port of `console/app.py::_verify`,
- * `_diagnose` and `fingerprint/consistency.py::stages`, merged with what the
- * web page's own `verifyImage` did.
- *
- *   photo -> pixels -> SHA-256 of pixels -> exact hit on chain?
- *                   \                       ├ yes -> registered
- *                    \                      └ no  -> pHash via The Graph -> chain confirms -> derived
- *                     PRNU against each enrolled body  -> fingerprint-only, never a pass
- *
- * Four outcomes, and the gap between the middle two is the product:
+ * Verification shared by the web page and the desktop; ports
+ * `console/app.py::_verify`, `_diagnose` and `fingerprint/consistency.py::stages`.
  *
  * - `registered`        exact pixel hash, confirmed on chain.
- * - `derived`           a perceptual hash found the original and the chain
- *                       confirmed it. Weaker on purpose: a pHash is
- *                       collidable and cheap to forge.
- * - `fingerprint-only`  the pixels carry a body's fingerprint and nothing is
- *                       registered. **Not a pass** -- a fingerprint can be
- *                       planted (`docs/adversarial.md`).
+ * - `derived`           pHash found the original, chain confirmed. Weaker: a pHash is forgeable.
+ * - `fingerprint-only`  PRNU matched, nothing registered. **Not a pass**: a
+ *                       fingerprint can be planted (`docs/adversarial.md`).
  * - `no-record`         neither. Absence means nothing about the image.
  *
- * Only a chain read grants `registered` or `derived`. PRNU and the signals
- * may add doubt and never add confidence. A chain read that fails withholds
- * the verdict (throws); it never downgrades one.
- *
- * The web page passes no bodies, so there is no PRNU and nothing leaves the
- * browser but the hashes. The desktop passes the K files it enrolled.
+ * Only a chain read grants `registered` or `derived`; PRNU and signals may only
+ * add doubt. A failed chain read throws (verdict withheld), never downgrades.
  */
 
 import { cropKey, type Analysis, type Candidate, type OnStep, type RawInput, type Signals } from "./analyse";
@@ -84,12 +68,8 @@ export interface VerifyResult {
   } | null;
   derivedFrom: { imageHash: `0x${string}`; hammingDistance: number; matchedBy: "perceptual hash" } | null;
   /**
-   * Other registrations the chain confirms for a near-identical image
-   * (perceptual hash within `MAX_HAMMING`), other than the one reported.
-   * `earlier` is true when it was registered before the reported one, by
-   * the chain's own clock. A registration is a claim to priority, and
-   * priority goes to whoever registered first: a later copy under another
-   * body must not look like the original.
+   * Other chain-confirmed registrations of a near-identical image. `earlier`
+   * (by chain clock) matters: priority goes to whoever registered first.
    */
   competing: {
     imageHash: `0x${string}`;
@@ -162,11 +142,8 @@ export async function verify(file: File, options: VerifyOptions): Promise<Verify
     } catch (error) {
       throw withheld(error);
     }
-    // The perceptual branch: a degraded copy has a different pixel hash, so
-    // the exact read missed. The index proposes; the chain confirms. It also
-    // runs after an exact hit, to find an earlier registration of the same
-    // picture. Reads are capped so a crowded pHash cannot turn one verify
-    // into an unbounded run of RPC calls.
+    // The index proposes, the chain confirms. Runs after an exact hit too, to
+    // find an earlier registration. Capped so a crowded pHash can't cause unbounded RPC.
     if (options.subgraphUrl) {
       const near = (await nearAll(options.subgraphUrl, analysis.perceptualHash, options.fetch))
         .filter((m) => m.imageHash !== analysis.imageHash)
@@ -182,8 +159,7 @@ export async function verify(file: File, options: VerifyOptions): Promise<Verify
         if (record) found.push({ match, record });
       }
 
-      // The earliest confirmed registration owns the picture. Ties go to the
-      // nearer hash, which the sort in `nearAll` already ordered.
+      // Earliest registration owns the picture; ties go to the nearer hash (`nearAll` order).
       const earliest = found.length ? found.reduce((a, b) => (b.record.registeredAt < a.record.registeredAt ? b : a)) : null;
       if (!registration && earliest) {
         registration = earliest.record;
@@ -264,8 +240,7 @@ export async function verify(file: File, options: VerifyOptions): Promise<Verify
       explorerUrl: chain.explorerUrl,
     };
   } else if (matched) {
-    // Named, because the page has to say *which* body's fingerprint it is --
-    // and say in the same breath that nobody registered it.
+    // The page must say which body's fingerprint it is, and that nobody registered it.
     result.body = { bodyId: best.bodyId, name: best.name };
   } else if (best) {
     result.diagnosis = diagnose(bytes, file.name, analysis.signals);
@@ -278,22 +253,14 @@ function sameId(a: string, b: string): boolean {
   return a.replace(/^0x/, "").toLowerCase() === b.replace(/^0x/, "").toLowerCase();
 }
 
-/**
- * What each advisory signal was measured to be worth
- * (`consistency.MEASURED_AUC`), so a signal never travels without its own
- * error bar. Every range overlaps; none is a test.
- */
+/** `consistency.MEASURED_AUC`: each signal travels with its error bar. None is a test. */
 export const MEASURED_AUC: Record<string, { raw: number | null; delivered: number | null }> = {
   bodyConsistency: { raw: 0.9, delivered: 0.725 },
   effectiveStrength: { raw: 0.8, delivered: 0.767 },
   resamplingPeak: { raw: null, delivered: 0.517 },
 };
 
-/**
- * `consistency.stages`: the pipeline as an ordered, reportable list. Stages
- * 1 and 2 can add doubt and can never grant a claim; only stage 3, a chain
- * read, produces `registered`.
- */
+/** `consistency.stages`. Only stage 3, a chain read, grants a claim. */
 export function stages({
   matched,
   registered,
@@ -338,10 +305,8 @@ export function stages({
 }
 
 /**
- * Software tags a desktop development leaves behind (`console/app.py`
- * `DESKTOP_SOFTWARE`). A camera Make and none of these looks like a JPEG
- * straight out of the camera, which `docs/gates.md` measured as carrying no
- * readable fingerprint.
+ * `console/app.py` `DESKTOP_SOFTWARE`. A camera Make without any of these is an
+ * in-camera JPEG, which carries no readable fingerprint (`docs/gates.md`).
  */
 const DESKTOP_SOFTWARE = [
   "adobe", "photoshop", "lightroom", "acd", "capture one", "darktable",
@@ -349,11 +314,7 @@ const DESKTOP_SOFTWARE = [
   "apple", "preview",
 ];
 
-/**
- * `console/app.py::_diagnose`: why there was nothing to find, when it can be
- * said from measurement. Stops a photographer distrusting a camera that is
- * fine. Never guesses at a cause it cannot see.
- */
+/** `console/app.py::_diagnose`: why there was nothing to find, only when measurable. */
 export function diagnose(bytes: Uint8Array, fileName: string, signals: Signals | null): string | null {
   if (signals?.tooSoftToMeasure) {
     return (

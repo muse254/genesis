@@ -1,16 +1,8 @@
-"""Birthmark-shaped image records plus a PRNU attestation.
+"""Birthmark-shaped image records with a PRNU attestation.
 
-We adopt the Birthmark record field-for-field and substitute two fields
-(BUILD.md sec.5):
-
-* manufacturer certificate -> PCE score against a privately held fingerprint
-* in-camera ECDSA signature -> ingest-time signing on the photographer's
-  machine. This is genuinely weaker than signing inside the body, and the
-  README says so rather than hoping nobody asks.
-
-``modification_level``: 0 raw | 1 exposure/WB/denoise/crop | 2 clone,
-object removal, generative fill. These map onto the editing rules photo
-competitions already publish, which is why the scale is worth keeping.
+Substitutes PCE score for the manufacturer certificate, and ingest-time signing
+for in-camera ECDSA (weaker: attests custody, not capture).
+``modification_level``: 0 raw | 1 exposure/WB/denoise/crop | 2 clone/removal/generative fill.
 """
 
 from __future__ import annotations
@@ -55,12 +47,7 @@ class ImageRecord:
 
 
 def body_id(fingerprint_commitment: bytes) -> bytes:
-    """The on-chain identifier for a body, derived from its commitment.
-
-    Derived rather than assigned: two people enrolling the same camera reach
-    the same id, and the id reveals nothing about K beyond what the
-    commitment already does.
-    """
+    """On-chain body id, derived from the commitment; reveals nothing about K beyond it."""
     return keccak(RECORD_VERSION + b"body" + bytes(fingerprint_commitment))
 
 
@@ -86,30 +73,17 @@ def build_record(
         A saved ``.npz``, or the ``(planes, meta)`` pair
         :func:`prnu.load_fingerprint` returns.
     score : float, optional
-        A PCE already measured by the caller. Supply it when the image needs
-        the orientation or scale search: this function's own scoring is the
-        aligned path only, and a portrait frame -- a fingerprint lives in
-        sensor space, which is always landscape -- raises a shape mismatch
-        there. `scoring.app._score_against` picks the right path, and it is
-        what verification's Rust port (core/) is parity-tested against, so
-        passing its answer here keeps registration and verification from
-        disagreeing about the same photograph.
+        A PCE from `scoring.app._score_against`. Pass it for portrait or scaled
+        frames: scoring here is the aligned path only, and using that answer
+        keeps registration agreeing with verification (core/).
     parent : bytes, optional
-        ``image_hash`` of the original this was edited from. Absent for an
-        original, which is what makes the records an edit graph rather than
-        a list.
+        ``image_hash`` this was edited from; absent for an original.
     modification_level : int
         0 raw, 1 exposure/WB/denoise/crop, 2 clone/removal/generative fill.
     hmac_key, timestamp, geolocation, owner
-        Fed to :func:`hashing.metadata_hmac`. Without a key the field is
-        zero, which says "nothing committed" rather than "nothing to hide".
+        Fed to :func:`hashing.metadata_hmac`. Without a key the field is zero.
 
-    Returns
-    -------
-    ImageRecord
-        Unsigned. :func:`sign_record` is a separate step because the score
-        is evidence and the signature is custody, and they are made at
-        different moments by different parties.
+    Returns an unsigned ImageRecord; :func:`sign_record` is a separate step.
     """
     if isinstance(fingerprint, (str, Path)):
         planes, meta = prnu.load_fingerprint(fingerprint)
@@ -141,8 +115,7 @@ def build_record(
             if hmac_key
             else bytes(32)
         ),
-        # uint32 on chain, and a negative score is a non-match rather than a
-        # small one, so it floors at zero.
+        # uint32 on chain; a negative score is a non-match, so floor at zero.
         pce_score=max(0, min(int(round(score)), 2**32 - 1)),
         registered_at=int(timestamp if isinstance(timestamp, (int, float)) else time.time()),
     )
@@ -153,11 +126,7 @@ def hashing_raw_suffixes():
 
 
 def canonical_bytes(record: ImageRecord) -> bytes:
-    """The exact bytes a signature covers.
-
-    Fixed field order, fixed widths, no JSON: a signature over a
-    pretty-printed dictionary is a signature over whitespace.
-    """
+    """The exact bytes a signature covers: fixed order and widths, no JSON."""
     parts = [
         RECORD_VERSION,
         record.image_hash,
@@ -173,13 +142,7 @@ def canonical_bytes(record: ImageRecord) -> bytes:
 
 
 def sign_record(record: ImageRecord, private_key: bytes) -> bytes:
-    """ECDSA secp256k1 over the record's canonical encoding.
-
-    Ingest-time, on the photographer's machine. Attests custody at import,
-    not capture -- do not let the pitch blur those. A camera that signed
-    inside the body would attest capture; this cannot, and the claim has to
-    stop where the evidence does.
-    """
+    """ECDSA secp256k1 over the canonical encoding. Attests custody at import, not capture."""
     from eth_keys import keys
 
     key = keys.PrivateKey(bytes(private_key))
@@ -195,16 +158,9 @@ def recover_signer(record: ImageRecord, signature: bytes) -> str:
 
 
 def to_erc7053_commit(record: ImageRecord, asset_cid: str | None = None) -> dict:
-    """Shape a record into an ERC-7053 ``commit()`` call.
+    """Shape a record into an ERC-7053 ``commit()`` call, PCE included as the content validation.
 
-    ERC-7053 defines the index and explicitly declines to validate the
-    content behind the CIDs. PRNU is that validation, and it travels in the
-    commit data as ``pce_score`` so an indexer can see what the claim rests
-    on without fetching anything.
-
-    ``asset_cid`` is the caller's if they have pinned the record somewhere.
-    Absent that, a ``genesis:`` URI over the pixel hash stands in -- honest
-    about being local rather than a CID that resolves to nothing.
+    Without ``asset_cid``, a local ``genesis:`` URI over the pixel hash stands in.
     """
     return {
         "assetCid": asset_cid or f"genesis:{record.image_hash.hex()}",

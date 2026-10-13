@@ -4,7 +4,7 @@ Local, offline PCE scoring against your own enrolled fingerprint (K),
 entirely client-side. A fourth Vite app sibling to `site/`, `verify/` and
 `dashboard/`, deployed at `/score/`.
 
-See `docs/wasm-scoring-plan.md` (Phase 5) and `docs/security.md`
+See `docs/security.md`
 ("Where K lives") for the invariant this page exists to preserve: K never
 leaves the machine it's on. This page makes no network request involving
 either the K file or the photo -- both are read from local `File` objects

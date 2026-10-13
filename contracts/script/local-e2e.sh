@@ -2,9 +2,7 @@
 #
 # Enrol -> register -> look up, entirely offline against a local anvil.
 #
-# This is the demo path (docs/demo-script.md) minus ENS and the subgraph, and
-# it is the thing to run before touching a testnet: if it does not work here
-# it will not work there, and here it costs nothing and takes seconds.
+# Run this before touching a testnet.
 #
 #   anvil &
 #   contracts/script/local-e2e.sh data/references/r10.npz path/to/frame.CR3
@@ -39,8 +37,7 @@ g() { printf '%s' "$REC" | "$PYTHON" -c "import json,sys; print(json.load(sys.st
 echo "   PCE $(g pceScore) against a threshold of $(g threshold)"
 
 echo "== deploying the registry"
-# true: anvil is chainid 31337, so this gets a registry `resetAll` can wipe,
-# which is what makes re-running this script on a live anvil possible at all.
+# true: test mode, so `resetAll` lets this re-run on the same anvil.
 ADDRESS=$(forge create "$ROOT/contracts/src/Registry.sol:Registry" \
   --root "$ROOT/contracts" --rpc-url "$RPC" --private-key "$PK" --broadcast \
   --constructor-args true \
@@ -48,8 +45,7 @@ ADDRESS=$(forge create "$ROOT/contracts/src/Registry.sol:Registry" \
 echo "   $ADDRESS"
 
 BODY=$(g bodyId)
-# A stand-in camera commitment. The real one comes from
-# `python -m ingest commit-body`, under a key that never leaves the machine.
+# Stand-in; the real one comes from `python -m ingest commit-body`.
 CAMERA=$(cast keccak "local-e2e camera commitment")
 echo "== registering the body"
 cast send "$ADDRESS" "registerBody(bytes32,bytes32,bytes32)" \

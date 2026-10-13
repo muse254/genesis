@@ -1,24 +1,7 @@
 /**
- * Verify page. Configuration and rendering only: the verification itself is
- * `core/` (`@genesis/core`), the same code the desktop app runs
- * (`docs/shared-verify-plan.md`).
- *
- *   image → SHA-256 of pixel data → exact hit?
- *            ├ yes → record                      (untouched file)
- *            └ no  → pHash lookup via The Graph → chain confirms → derived
- *
- * The lower branch is the differentiator, and demo step 4 rides on it: a
- * registered photo, stripped of metadata, resized, re-encoded as a web
- * JPEG — and it still resolves.
- *
- * Everything happens in the browser. Both hashes are computed from the photo
- * in a Web Worker (libjpeg-turbo and the Rust core, compiled to WASM), and
- * the chain and The Graph are read directly. The photo is never uploaded.
- *
- * This page holds no fingerprints, so it never reaches `fingerprint-only`:
- * that means scoring the photo against enrolled K files, and K never leaves
- * the machine it was enrolled on (`docs/security.md`, "Where K lives"). The
- * desktop app, which holds its owner's K, runs the same code with them.
+ * Verify page: config and rendering only; verification is `@genesis/core`.
+ * The photo is never uploaded. No K here (`docs/security.md`, "Where K lives"),
+ * so this page never reaches `fingerprint-only`.
  */
 
 import { createChainReader, verify, workerEngine, type ChainKey, type VerifyResult } from "@genesis/core";
@@ -57,8 +40,7 @@ function render(result: VerifyResult): void {
     : undefined;
 
   if (result.verdict === "no-record") {
-    // Neutral, deliberately. An absent record is not a finding about the
-    // image, and `docs/claims.md` is explicit that it means nothing.
+    // Neutral on purpose: absence means nothing (`docs/claims.md`).
     section.className = "no-record";
     rows.push("<h2>No record</h2>");
     rows.push(
@@ -67,10 +49,8 @@ function render(result: VerifyResult): void {
       }. That means we have no record — not that the image is fake.</p>`,
     );
   } else if (!result.registered) {
-    // The fingerprint matched and nobody registered the image. This is NOT a
-    // pass and must not look like one. Measured against our own reference: a
-    // forged image scores 393,382 where the best genuine frame scores 56,255,
-    // at a distortion of 51.6 dB — invisible. See `docs/adversarial.md`.
+    // NOT a pass and must not look like one: a planted fingerprint outscores a
+    // genuine frame (393,382 vs 56,255 at 51.6 dB; `docs/adversarial.md`).
     section.className = "pixels-only";
     rows.push("<h2>Fingerprint matched — but nothing is registered</h2>");
     if (result.body?.name) say("Fingerprint of", result.body.name);
@@ -89,8 +69,7 @@ function render(result: VerifyResult): void {
         "here.</p>",
     );
   } else if (result.verdict === "derived") {
-    // Real, and weaker than an exact match on purpose. The link is a
-    // perceptual hash: collidable, and cheap to forge.
+    // Weaker on purpose: a perceptual hash is collidable and cheap to forge.
     section.className = "derived";
     rows.push("<h2>Descends from a registered photograph</h2>");
     if (result.body?.name) say("Body", result.body.name);
@@ -126,8 +105,7 @@ function render(result: VerifyResult): void {
     if (result.body?.name) say("Body", result.body.name);
     sayIdentity(result, say);
     if (result.registration) {
-      // Read off the record, and the record's score is whatever the owner's
-      // machine reported: the contract does not check it (docs/security.md).
+      // Owner-reported; the contract does not check it (docs/security.md).
       say(
         "PCE at registration",
         `${result.registration.pceAtRegistration.toFixed(1)} (threshold ${result.threshold}) — reported by the owner`,
@@ -150,11 +128,7 @@ function render(result: VerifyResult): void {
   section.hidden = false;
 }
 
-/**
- * A near-identical image registered by someone else. Priority is by the
- * chain's clock, so an earlier one is said first and loudest: a later copy
- * under another body must not read as the original.
- */
+/** Priority is by chain clock: an earlier near-identical registration is said loudest. */
 function sayCompeting(result: VerifyResult, rows: string[]): void {
   const earlier = result.competing.filter((c) => c.earlier);
   if (earlier.length) {
@@ -177,9 +151,7 @@ function sayCompeting(result: VerifyResult, rows: string[]): void {
 
 function sayTestRegistry(result: VerifyResult, rows: string[]): void {
   if (!result.resettableRegistry) return;
-  // Loud, and above the caveat rather than below it: on this registry the
-  // date is the part that stops being true, and the date is what a reader
-  // came for.
+  // Above the caveat: on a wipeable registry the date is what stops being true.
   rows.push(
     "<p class=\"caveat\"><strong>Test registry.</strong> This deployment can be " +
       "wiped by its administrator, so the registration time above is not a " +
@@ -189,11 +161,7 @@ function sayTestRegistry(result: VerifyResult, rows: string[]): void {
   );
 }
 
-/**
- * "Body X is registered to identity Y" (`docs/claims.md`). The name is shown
- * when it forward-resolves and the raw address otherwise: an address is a
- * perfectly good identity, only a less readable one.
- */
+/** "Body X is registered to identity Y" (`docs/claims.md`): ENS name if verified, else the address. */
 function sayIdentity(result: VerifyResult, say: (label: string, value: string) => void): void {
   const body = result.body;
   if (body?.ownerName) {

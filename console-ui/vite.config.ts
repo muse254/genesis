@@ -3,19 +3,14 @@ import { defineConfig } from "vite";
 
 export default defineConfig({
   server: {
-    // Bind the v4 loopback explicitly. Vite's default binds `localhost`, which
-    // on this machine resolves to ::1 only -- so http://127.0.0.1:5173 refuses
-    // the connection while http://localhost:5173 works. Both addresses appear
-    // in the console API's CORS allowlist and in the handoff's chrome, and a
-    // presenter typing the wrong one loses a minute on camera to a blank page.
+    // Vite's default `localhost` can resolve to ::1 only, refusing 127.0.0.1.
     host: "127.0.0.1",
     port: 5173,
     strictPort: true,
     // core/ lives outside this app; see the alias below.
     fs: { allow: [".."] },
   },
-  // Verification is core/ (docs/shared-verify-plan.md), shared with the web
-  // page. There is no npm workspace, so it is reached by alias.
+  // core/ is shared with the web page; no npm workspace, so it's an alias.
   resolve: {
     alias: { "@genesis/core": fileURLToPath(new URL("../core/src/index.ts", import.meta.url)) },
   },

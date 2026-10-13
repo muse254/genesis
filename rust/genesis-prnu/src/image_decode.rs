@@ -1,12 +1,8 @@
 //! Decode a delivered (non-RAW) image and sample it back onto the CFA
 //! photosite lattice -- a Rust port of `fingerprint/prnu.py::load_delivered_planes`.
-//! See `docs/wasm-scoring-plan.md` Phase 4.
 //!
-//! [`planes_from_rgb`] does the sampling from pixels already decoded, which
-//! is what the verify path uses: JPEG is decoded by libjpeg-turbo so the
-//! pixels are Pillow's exactly (`crate::hashing` explains why the `image`
-//! crate's decoder is not). [`load_delivered_planes`] decodes with the
-//! `image` crate first, for callers holding file bytes.
+//! The verify path uses [`planes_from_rgb`] on libjpeg-turbo-decoded pixels so
+//! they match Pillow's exactly (see `crate::hashing`).
 
 use std::collections::BTreeMap;
 

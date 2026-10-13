@@ -120,15 +120,14 @@ to seventeen-times faster cold start and one fewer process to reason about.
 Shrinking it (dropping `tcl`/`tk` from the bundled runtime, which this
 project never imports) is future work, not yet done.
 
-**A native-Rust scoring command does not shrink this number.** Phase 6 of
-`docs/wasm-scoring-plan.md` added `score_delivered_image`, a Tauri command
+**A native-Rust scoring command does not shrink this number.** The app has `score_delivered_image`, a Tauri command
 (`desktop/src-tauri/src/lib.rs`) that scores a delivered (non-RAW: JPEG/PNG/
 TIFF) probe image against a K file using `genesis-prnu` directly, in this
 process, with no round trip through the embedded Python interpreter for
 that one request. It is also explicitly partial: enrolment
 (`estimate_fingerprint`/`postprocess`), RAW decoding (`load_raw_planes`,
 which needs `rawpy`/LibRaw), and `commitment()` all stay Python-only, by
-deliberate decision (`docs/wasm-scoring-plan.md`), so the
+deliberate decision, so the
 bundled Python runtime — `numpy`, `scipy`, `rawpy`, and the rest — still has
 to ship in full. The bundle is still ~217 MB; nothing here removes a single
 dependency from `requirements.txt` or lets `bundle-python.sh` drop anything.
@@ -137,7 +136,7 @@ become one if enrolment and RAW decode also moved off Python, which is not
 what this phase does.
 
 **Since 29 September the app verifies in its webview**, on `core/`, the same
-code as the public verify page (`docs/shared-verify-plan.md`): the crop and
+code as the public verify page: the crop and
 scale search, the portrait retry and the consistency signals are all Rust
 now, compiled to WASM. The console's `/verify` is gone; the embedded Python
 serves the enrolled K files, decodes RAW, and proxies the chain read-only.

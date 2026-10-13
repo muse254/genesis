@@ -1,15 +1,6 @@
 /**
- * Checking a photo the agent holds, not only a hash it already knows.
- *
- * The hashing is core/'s `hashImage`, the code the verify page and the
- * desktop app run, bundled into dist/core by scripts/bundle-core.mjs: the
- * same libjpeg-turbo WASM, the same Rust WASM, so the same digests as
- * `ingest/hashing.py`. The perceptual fallback is core/'s `nearest`, as on
- * the verify page. Nothing here decodes or hashes pixels itself.
- *
- * The photo never leaves the machine. What goes out is the pixel hash (for
- * the exact lookup) and one query for the registered perceptual hashes,
- * which are compared here.
+ * Check a local photo using core/'s `hashImage` and `nearest`, bundled into
+ * dist/core, so digests match the verify page. Only hashes leave the machine.
  */
 
 import { readFile } from "node:fs/promises";
@@ -41,8 +32,7 @@ let prnuWasm: Promise<Buffer> | undefined;
 
 async function loadCore(): Promise<Core> {
   try {
-    // Specifiers held in variables, so tsc does not try to resolve modules
-    // that exist only after the bundle step.
+    // Variables, so tsc doesn't resolve modules that exist only after bundling.
     const hashes = pathToFileURL(join(coreDir, "hashes.js")).href;
     const chain = pathToFileURL(join(coreDir, "chain.js")).href;
     const [h, c] = await Promise.all([import(hashes), import(chain)]);

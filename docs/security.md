@@ -118,7 +118,7 @@ fails if that ordering is broken.
 ## Chainlink CRE, and what confidential compute does not do
 
 Built on simulation for ETHOnline and removed for Colosseum; the code is at the
-`ethonline-submission` tag and `docs/cre.md` has the measurements.
+`ethonline-submission` tag, measurements included.
 Recorded here because it is easy to mistake for a defence against what this
 document describes, and it is not one.
 
@@ -144,14 +144,14 @@ every path that can be run, and only a deployed workflow may set it True.
 
 ## Where K lives, and what the public service may do
 
-Decided 17 September for Colosseum, after dropping CRE (`COLOSSEUM.md` §3).
+Decided 17 September for Colosseum, after dropping CRE.
 
 **K lives only on the photographer's machine.** Enrolment and scoring run
 there, in the console and the desktop app, next to the RAW archive that
 produced K. No server holds a reference.
 
 **Planned (30 September), not built: Genesis Cloud may store K, and only as
-ciphertext it cannot read.** The paid tier (`docs/cloud-plan.md`) backs K and
+ciphertext it cannot read.** The paid tier backs K and
 the RAW archive up off the machine. It keeps this section true only if the
 encryption happens on the device with a key Genesis never holds (the plan's
 decision C1, recommended that way). If server-held keys were chosen instead,
@@ -163,7 +163,7 @@ it loads no reference, answers `/score` with 403,
 and refuses to start if a reference is present in its directory. Its only job
 was to hash pixels (`imageHash`, `perceptualHash`) for the verify page, and
 since 29 September the page does that itself, in WASM, so the photo never
-leaves the browser (`core/`, `docs/shared-verify-plan.md`).
+leaves the browser (`core/`).
 
 **In the desktop app, K reaches the app's own webview, and only it.**
 Verification runs in the webview on `core/`, the same code as the verify
@@ -239,7 +239,7 @@ space is unreachable without the key.
 **Why the contract and not the resolver.** Through ETHOnline this lived in the
 ENS body subname's resolver records, because `registerBody` took an ENS node
 and adding a field would have meant abandoning the live Sepolia registration.
-For Colosseum, ENS is dropped (`COLOSSEUM.md`, D2) and the Base mainnet
+For Colosseum, ENS is dropped and the Base mainnet
 registry is a new deployment anyway. So the commitment takes the slot the ENS
 node held. The ABI types are unchanged, and the commitment now sits under the
 same first-registration timestamp as the body itself, which is the timestamp

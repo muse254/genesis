@@ -1,12 +1,9 @@
 # Build the Genesis desktop app for every platform and attach the installers
 # to a draft GitHub release. Draft on purpose: a person publishes it.
 #
-# The Python imaging core is embedded (PyO3), not a sidecar process --
-# desktop/src-tauri/src/lib.rs -- so there is nothing to spawn at runtime,
-# only a Python runtime to bundle at build time (bundle-python.sh). Proven
-# on macOS: 2s cold start, a real CR3 decoded through the bundled runtime
-# (17 Sept). The Linux and Windows steps below follow the same script and
-# have not been run; the first real run here is their actual test.
+# The Python imaging core is embedded via PyO3, so only a Python runtime is
+# bundled at build time (bundle-python.sh). Only macOS has been proven;
+# Linux and Windows are untested.
 #
 # Run it from the Actions tab (workflow_dispatch), or push a tag such as
 # `desktop-v0.1.0`.
@@ -21,10 +18,9 @@ permissions:
   contents: write
 
 jobs:
-  # tauri-action creates the release when none exists, and since 12 Oct GitHub
-  # refuses that call ("Resource not accessible by integration") while still
-  # accepting uploads to an existing one. So the draft is made here, once,
-  # before any platform builds.
+  # tauri-action can no longer create the release ("Resource not accessible
+  # by integration") but can upload to an existing one, so create the draft
+  # here, once, before any platform builds.
   prepare:
     if: ${{ github.ref_type == 'tag' }}
     runs-on: ubuntu-latest
@@ -72,9 +68,8 @@ jobs:
 
       - uses: astral-sh/setup-uv@v3
 
-      # The app verifies with core/ (docs/shared-verify-plan.md), whose two
-      # WASM modules console-ui's build compiles first: wasm-pack for the
-      # Rust core, Emscripten for libjpeg-turbo.
+      # console-ui's build first compiles core/'s two WASM modules: wasm-pack
+      # for the Rust core, Emscripten for libjpeg-turbo.
       - uses: jetli/wasm-pack-action@v0.4.0
         with:
           version: "latest"
@@ -89,9 +84,8 @@ jobs:
         shell: bash
         run: desktop/scripts/bundle-python.sh
 
-      # PyO3 links against Python at compile time (desktop/src-tauri/.cargo/
-      # config.toml); actions/setup-python's own `python3.12` is fine on
-      # macOS and Linux, but does not exist under that name on Windows.
+      # PyO3 links against Python at compile time (src-tauri/.cargo/config.toml);
+      # setup-python's `python3.12` does not exist under that name on Windows.
       - name: Point PyO3 at this runner's Python (Windows)
         if: runner.os == 'Windows'
         shell: bash
@@ -113,9 +107,8 @@ jobs:
 
   # Publish the draft once every platform has built: installers renamed to
   # genesis-<version>-<os>-<arch>.<ext>, a SHA256SUMS.txt, then a normal
-  # release, so the landing page's releases/latest link finds it.
-  # Only a complete release is published: a missing platform would become
-  # "latest" and leave that platform's download button with nothing to fetch.
+  # release so the landing page's releases/latest link finds it. Only a
+  # complete release is published, or a platform's download would 404.
   publish:
     needs: build
     if: ${{ needs.build.result == 'success' && github.ref_type == 'tag' }}

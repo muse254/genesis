@@ -1,16 +1,6 @@
 /**
- * Subgraph MCP server — the second Graph track.
- *
- * Nearly free once the subgraph exists, and it makes the product
- * conversational: an agent can ask whether an image is registered and get a
- * verdict back, rather than a human loading a web page.
- *
- * Read-only by construction. There is no tool here that registers anything:
- * registration needs the fingerprint, which never leaves the photographer's
- * machine, so an agent could not do it even if it wanted to.
- *
- * Which subgraph: GENESIS_SUBGRAPH_URL, else GENESIS_CHAIN (config.ts).
- * Install and client setup: mcp/README.md.
+ * Subgraph MCP server. Read-only by construction: registering needs K, which
+ * never leaves the photographer's machine. Setup: mcp/README.md.
  */
 
 import { resolve } from "node:path";
@@ -52,8 +42,7 @@ export const tools = [
   },
 ];
 
-// Resolved on first use, so importing this module (the tests do) never
-// throws over configuration.
+// Lazy, so importing this module (tests) never throws over configuration.
 let defaultClient: SubgraphClient | undefined;
 const client = () => (defaultClient ??= new SubgraphClient(subgraphUrl()));
 
@@ -123,9 +112,7 @@ export async function verifyImageFile(path: string, subgraph = client()) {
   return describeFileCheck(await checkImageFile(path, subgraph));
 }
 
-// Only start a transport when this file *is* the program. A looser check
-// (matching on basename, say) makes the server boot inside the test runner,
-// where it hangs waiting on a stdio transport that nothing is speaking to.
+// Exact path check: a looser one boots the server inside the test runner, which then hangs on stdio.
 if (process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1])) {
   const server = createServer();
   await server.connect(new StdioServerTransport());

@@ -1,18 +1,9 @@
 #!/usr/bin/env bash
-# Build libjpeg-turbo + decode.c to WASM for the verify page. Needs emcc
-# (Emscripten) on PATH; see core/README.md.
-#
-# LIBJPEG_TURBO_VERSION must equal the libjpeg-turbo bundled in the Pillow
-# the Python side runs -- `python -c "from PIL import features;
-# print(features.version('libjpeg_turbo'))"`, also recorded in
-# rust/genesis-prnu/tests/fixtures/hashing/manifest.json. Different
-# versions can decode to different pixels, and the pixel hash is exact.
-# ingest/validate_hash_fixtures.py and core/test/hashes.test.ts fail
-# loudly if they drift apart.
-#
-# SIMD is off because WASM can't use libjpeg-turbo's hand-written SIMD.
-# That changes nothing in the output: on this version the C paths decode
-# to the same bytes as the SIMD ones (checked on real photos both ways).
+# Build libjpeg-turbo + decode.c to WASM. Needs emcc (see core/README.md).
+# LIBJPEG_TURBO_VERSION must equal Pillow's bundled libjpeg-turbo
+# (`features.version('libjpeg_turbo')`): the pixel hash is exact.
+# core/test/hashes.test.ts fails if they drift. SIMD off (unavailable in WASM)
+# decodes to the same bytes on this version.
 set -euo pipefail
 
 LIBJPEG_TURBO_VERSION=3.1.4.1

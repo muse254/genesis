@@ -1,6 +1,4 @@
-// Types for the Emscripten module build.sh writes to core/src/raw/.
-// Hand-written and copied in by build.sh, because that directory is
-// generated and not committed.
+// Types for the generated core/src/raw/ module; build.sh copies this in.
 export interface LibRawModule {
   _raw_open(ptr: number, size: number): number;
   _raw_close(): void;

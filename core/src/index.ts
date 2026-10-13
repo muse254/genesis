@@ -1,7 +1,4 @@
-/**
- * Genesis verification, shared by the web page (`verify/`) and the desktop
- * app (`console-ui/`). See `docs/shared-verify-plan.md`.
- */
+/** Genesis verification, shared by the web page (`verify/`) and the desktop app (`console-ui/`). */
 
 export { verify, stages, diagnose, MEASURED_AUC } from "./verify";
 export type { VerifyResult, VerifyOptions, Verdict, Stage, Signal, LoadedBody, RawDecoder } from "./verify";

@@ -2,44 +2,23 @@
 //! numerical convention `pywt.wavedec2`/`pywt.waverec2` use with
 //! `mode="symmetric"`.
 //!
-//! PyWavelets does not ship readable source for this in the wheel installed
-//! in this repo's `.venv` (only compiled extensions), so the boundary
-//! convention below was reverse-engineered empirically: feeding small known
-//! arrays into `pywt.dwt`/`pywt.idwt`/`pywt.dwt2`/`pywt.idwt2` and comparing
-//! against hand-built extend+convolve+downsample candidates until an exact
-//! match was found across many signal lengths (odd, even, and lengths
-//! smaller than the filter itself). See the session notes for the
-//! experiment; the findings, confirmed at every step against real
-//! `pywt` output:
+//! The convention was reverse-engineered against real `pywt` output across
+//! odd, even and shorter-than-filter lengths:
 //!
-//! - Extension: **whole-sample symmetric** (edge sample repeated), i.e.
-//!   exactly `numpy.pad(x, pad, mode="symmetric")` -- despite the name,
-//!   PyWavelets' "symmetric" mode duplicates the edge sample
-//!   (`...,c,b,a,|a,b,c,...|,...,c,b,a,...`), not the half-sample variant
-//!   that skips it. This also has to work when `pad` exceeds the signal
-//!   length (deep decomposition levels on a small image), which
-//!   `numpy.pad`'s "symmetric" mode does via periodic reflection with period
-//!   `2n`; the index formula below reproduces that.
+//! - Extension: **whole-sample symmetric** (edge sample repeated), exactly
+//!   `numpy.pad(x, pad, mode="symmetric")`, including periodic reflection
+//!   (period `2n`) when `pad` exceeds the signal length.
 //! - Padding amount: `pad = filter_len - 2` if the signal length is even,
 //!   `filter_len - 1` if odd.
-//! - Forward: convolve the extended signal with the filter (`numpy.convolve`,
-//!   "full" mode), then take every second sample starting at index `pad + 1`,
-//!   for `dwt_coeff_len = (n + filter_len - 1) / 2` (integer division)
-//!   samples.
-//! - Inverse: zero-upsample each coefficient band by 2, convolve each with
-//!   its reconstruction filter ("full" mode), sum, then take `n` samples
-//!   starting at index `filter_len - 2` (this offset is constant, unlike the
-//!   forward one -- verified across even/odd/short lengths).
-//! - 2-D is separable exactly like `pywt.dwt2`/`idwt2`: filter columns
-//!   (axis 1, along each row) first into low/high, then filter rows (axis 0,
-//!   along each column) of each into four bands. `dwt2` labels: filtering
-//!   rows-of-low with (lo, hi) gives (approx, horizontal-detail
-//!   `cH`); rows-of-high with (lo, hi) gives (vertical-detail `cV`,
-//!   diagonal-detail `cD`). Confirmed against `pywt.dwt2` directly.
-//! - `dwt_max_level(n, "db8")` (used to clamp decomposition depth on small
-//!   images, matching `fingerprint/prnu.py`'s `noise_residual`) is
-//!   `floor(log2(n / (filter_len - 1)))` for `n > filter_len - 1`, else `0`
-//!   -- confirmed against `pywt.dwt_max_level` for n in 1..2000.
+//! - Forward: "full" convolution of the extended signal, then every second
+//!   sample from index `pad + 1`, for `(n + filter_len - 1) / 2` samples.
+//! - Inverse: zero-upsample each band by 2, "full"-convolve with its
+//!   reconstruction filter, sum, take `n` samples from index `filter_len - 2`.
+//! - 2-D is separable like `pywt.dwt2`: filter along rows (axis 1) into
+//!   low/high, then along columns (axis 0). rows-of-low gives (approx, `cH`);
+//!   rows-of-high gives (`cV`, `cD`).
+//! - `dwt_max_level(n, "db8")` is `floor(log2(n / (filter_len - 1)))` for
+//!   `n > filter_len - 1`, else `0` (checked for n in 1..2000).
 
 use ndarray::{Array2, Axis};
 
@@ -194,13 +173,8 @@ fn idwt1d(ca: &[f64], cd: &[f64], n: usize) -> Vec<f64> {
     let full_len = up_len + FILTER_LEN - 1;
     debug_assert!(offset + n <= full_len);
 
-    // Both `ca` and `cd` are zero-upsampled at *even* positions (like
-    // `numpy`'s `u[0::2] = c`), each convolved ("full" mode) with its own
-    // reconstruction filter, and the two full arrays added elementwise --
-    // NOT interleaved by parity into one combined sum. (An earlier version
-    // of this function wrongly assumed cd's upsampling sat at odd
-    // positions, which happened to type-check but silently produced wrong
-    // numbers -- caught by the round-trip test.)
+    // Both bands are upsampled at *even* positions (`u[0::2] = c`), convolved
+    // separately and summed -- not interleaved by parity.
     (0..n)
         .map(|i| {
             let center = offset + i;

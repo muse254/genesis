@@ -1,14 +1,5 @@
-// Live status for the systems this build actually depends on. Plain
-// checks, no framework, same reason as app.js: this is a static page and
-// nothing here should need a server of its own.
-//
-// Checked against the Colosseum rehearsal deployment
-// (docs/colosseum-checklist.md) -- Base Sepolia, not the ETHOnline registry
-// on Ethereum Sepolia. Getting that distinction wrong is exactly the bug
-// this page exists to catch early: every one of verify/, dashboard/ and
-// the console pointed at the wrong chain's registry for days without
-// erroring, because a subgraph and an RPC both answer happily regardless
-// of which contract you meant.
+// Live status of the deployed dependencies. Checks contract code at the
+// address: an RPC and a subgraph answer happily for the wrong registry.
 const REGISTRY = "0xBa5Ea549c9e1414C14038dB050e0caCB4f9E48cB";
 const RPC = "https://mainnet.base.org";
 const SUBGRAPH = "https://api.studio.thegraph.com/query/1758974/genesis/v1.0.0-base";
@@ -66,11 +57,7 @@ async function checkSubgraph() {
 }
 
 function checkScoringService() {
-  // No public deployment exists yet (docs/colosseum-checklist.md, "Scoring
-  // service hosted with GENESIS_PUBLIC=1"). Pinging localhost from a public
-  // page would either fail confusingly for every visitor but the one
-  // running it locally, or say nothing true about what's actually hosted --
-  // so this is a known-gap notice, not a network check.
+  // Not hosted yet, so a known-gap notice rather than a network check.
   return row("Public scoring service", "unknown", "not hosted yet — fingerprint-only verdicts need it, exact/derived matches don't");
 }
 

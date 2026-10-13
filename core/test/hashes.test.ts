@@ -1,10 +1,7 @@
 /**
- * src/hashes.ts against ingest/hashing.py, through the real WASM modules.
- *
- * The fixtures and their expected hashes come from
- * `python -m ingest.dump_hash_fixtures`. This is the only place the JPEG
- * cases run: cargo test cannot, because the Rust crate does not link
- * libjpeg-turbo. Needs `npm run wasm` first (CI does it via `npm run build`).
+ * src/hashes.ts against ingest/hashing.py (fixtures from `python -m
+ * ingest.dump_hash_fixtures`). The only place JPEG parity runs: the Rust crate
+ * does not link libjpeg-turbo. Needs `npm run wasm` first.
  */
 import { readFileSync } from "node:fs";
 import { join } from "node:path";

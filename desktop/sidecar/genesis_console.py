@@ -1,17 +1,7 @@
 """Entry point for the desktop app's backend -- as a separate process.
 
-SUPERSEDED (18 Sept): the imaging core now runs embedded in the Rust process
-itself (PyO3, `desktop/src-tauri/src/lib.rs` + `embedded_runner.py`), not as
-a PyInstaller-frozen subprocess. That removed a real bug class (the sidecar
-took 13-35s to cold-start, unpacking itself on every launch, and the page had
-no way to know when it was actually ready) along with the process boundary
-entirely -- see `desktop/PACKAGING.md`. Kept, unreferenced, because nothing
-here was asked to delete it and the *pattern* (one loopback HTTP server) is
-still exactly what the embedded runner also does.
-
-Runs the console API on loopback. The Tauri shell sets the data paths and the
-allowed origins through the environment (`desktop/src-tauri/src/lib.rs`), and
-PyInstaller freezes this file into the `genesis-console` sidecar.
+Superseded by `embedded_runner.py` (PyO3, in-process); kept unreferenced,
+see `desktop/PACKAGING.md`. Runs the console API on loopback.
 """
 
 from __future__ import annotations
@@ -33,11 +23,9 @@ from console.app import app  # noqa: E402
 def _exit_with_parent() -> None:
     """Exit when stdin closes.
 
-    The app holds our stdin open for as long as it runs. However it ends --
-    quit, crash, force-kill -- the pipe closes, and a backend that outlived it
-    would keep holding the port and the reference in memory. PyInstaller's
-    one-file bootloader also runs us as a child process, so killing the
-    process the app started does not by itself reach this one.
+    The app holds stdin open while it runs, so the pipe closes however it
+    ends. PyInstaller's bootloader makes us a grandchild, so killing the
+    process the app started does not reach this one.
     """
     try:
         while sys.stdin.buffer.read(1024):

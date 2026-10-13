@@ -1,6 +1,4 @@
-// Types for the Emscripten module build.sh writes to core/src/jpeg/.
-// Hand-written and copied in by build.sh, because that directory is
-// generated and not committed.
+// Types for the generated core/src/jpeg/ module; build.sh copies this in.
 export interface LibJpeg {
   _decode(ptr: number, size: number): number;
   _release(): void;

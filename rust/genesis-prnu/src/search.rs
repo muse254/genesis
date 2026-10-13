@@ -1,8 +1,7 @@
 //! Scoring an image of unknown provenance against one body: the port of
 //! `scoring/app.py::_score_against` and what it calls in `fingerprint/`
 //! (`prnu.crop_and_scale_search`, `sensor_field`, `_area_resize`;
-//! `stress.strip_uniform_border`, `green_channel`). See
-//! `docs/shared-verify-plan.md`, phase A.
+//! `stress.strip_uniform_border`, `green_channel`).
 //!
 //! Three paths, tried in order, decided by the pixels and never by what the
 //! uploader claims:

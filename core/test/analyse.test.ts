@@ -1,11 +1,7 @@
 /**
- * `analyse` through the real WASM modules, in-process, against what the
- * Python verify path returned for the same synthetic inputs
- * (`python -m fingerprint.dump_search_fixtures`).
- *
- * The Rust port itself is parity-tested by cargo (`search_parity.rs`); this
- * checks the TypeScript around it: the bindings, the candidate ordering,
- * the RAW path, the signals payload, and the progress the desktop shows.
+ * `analyse` through the real WASM against Python's output for the same inputs
+ * (`python -m fingerprint.dump_search_fixtures`). Cargo covers the Rust port;
+ * this covers the TypeScript around it.
  */
 import { readFileSync } from "node:fs";
 import { join } from "node:path";

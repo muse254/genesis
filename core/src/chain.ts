@@ -1,11 +1,7 @@
 /**
- * The registry reads verification needs, and the perceptual index.
- *
- * Ports of `console/chain.py` (`image`, `body`, `test_mode`) and
- * `console/subgraph.py` (`nearest`). The transport URL is the caller's: the
- * web page talks to a public RPC directly, the desktop to its own loopback
- * proxy (`console/app.py` `/rpc`, `/subgraph`), which keeps an API key in an
- * RPC URL out of the webview. The reads and the rules are the same.
+ * Registry reads and the perceptual index: ports of `console/chain.py` and
+ * `console/subgraph.py`. The desktop passes its loopback proxy URL so an RPC
+ * API key stays out of the webview.
  */
 
 import { createPublicClient, http, type Address, type Chain } from "viem";
@@ -100,9 +96,8 @@ export function createChainReader(config: ChainConfig): ChainReader {
 
     async image(hash) {
       const r = await client.readContract({ address, abi: REGISTRY_ABI, functionName: "images", args: [hash] });
-      // An unregistered hash reads back as a zeroed struct, not an error. The
-      // zero check is the registration check -- the only thing that may
-      // produce `registered`.
+      // Unregistered reads back zeroed, not as an error. This check is the
+      // only thing that may produce `registered`.
       if (isZero(r[0])) return null;
       return {
         imageHash: r[0],
@@ -129,9 +124,8 @@ export function createChainReader(config: ChainConfig): ChainReader {
     },
 
     async ensName(owner) {
-      // A reverse record is self-asserted, so it counts only if the name
-      // resolves back to the same address. On a chain with no ENS resolver
-      // (Base) the lookup throws, and the owner shows as an address.
+      // A reverse record is self-asserted: count it only if it forward-resolves
+      // to the same address. Throws on chains without ENS (Base).
       try {
         const name = await client.getEnsName({ address: owner });
         if (!name) return null;
@@ -145,10 +139,9 @@ export function createChainReader(config: ChainConfig): ChainReader {
 }
 
 /**
- * Bits of the 64-bit pHash allowed to differ (`console/subgraph.py`). On a
- * real photograph the hash moves zero bits from 1800px q95 down to 400px q60
- * (`docs/gates.md`, Gate B), so this is slack, not a tuned figure. Wider
- * starts attaching registrations to unrelated photographs.
+ * Bits of the 64-bit pHash allowed to differ (`console/subgraph.py`). Slack,
+ * not tuned: real photos move 0 bits from 1800px q95 to 400px q60 (`docs/gates.md`
+ * Gate B). Wider attaches registrations to unrelated photos.
  */
 export const MAX_HAMMING = 10;
 
@@ -158,10 +151,8 @@ export interface NearMatch {
 }
 
 /**
- * Every indexed image whose pHash is within `MAX_HAMMING`, nearest first.
- * Candidates only: each must be read off the chain before anything is said.
- * Returns an empty list when the index cannot answer -- a missing index costs
- * a link, never a verdict.
+ * Indexed images within `MAX_HAMMING`, nearest first. Candidates only: each must
+ * be confirmed on chain. Empty when the index fails: that costs a link, never a verdict.
  */
 export async function nearAll(
   subgraphUrl: string,
@@ -194,7 +185,6 @@ export async function nearAll(
   return matches.sort((a, b) => a.hammingDistance - b.hammingDistance);
 }
 
-/** The nearest `nearAll` match, or null. */
 export async function nearest(
   subgraphUrl: string,
   perceptualHash: string,

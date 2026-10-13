@@ -1,10 +1,6 @@
 /**
- * The verdict rules in src/verify.ts, with the pixel work, the chain and The
- * Graph faked. Hashing and scoring have their own tests against Python
- * (hashes.test.ts, analyse.test.ts); these check that each verdict is
- * reached only on the evidence it claims -- above all, that nothing but a
- * chain read grants `registered`, and that a failed chain read withholds
- * the verdict instead of downgrading it.
+ * Verdict rules in src/verify.ts with pixels, chain and The Graph faked: only a
+ * chain read grants `registered`, and a failed read withholds rather than downgrades.
  */
 import { describe, expect, it, vi } from "vitest";
 

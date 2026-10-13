@@ -1,24 +1,11 @@
-"""FastAPI wrapper around the scorer.
-
-The verify page cannot run PRNU in the browser -- the scorer is Python and
-there is no practical WASM path in 13 days. So: upload an image, get back a
-PCE score and a registry lookup.
+"""FastAPI wrapper around the scorer: upload an image, get a PCE score and hashes.
 
     uvicorn scoring.app:app --reload
 
-This service is the trust hole in the design when it holds references, and
-it is on purpose: whoever runs it holds K and you take its word for a PCE.
-The Chainlink CRE workflow was the ETHOnline answer and never ran outside
-the simulator; it is not in the Colosseum build (COLOSSEUM.md sec.3).
-
-So the hosted instance runs with ``GENESIS_PUBLIC=1`` and holds no K at
-all. It hashes pixels and nothing else. Scoring happens on the
-photographer's machine, where the RAW archive and K already are
-(`docs/security.md`, "Where K lives").
-
-Chain reads are deliberately NOT here. The page does those with viem, so
-this service never becomes the thing that decides what is on chain -- it
-only reports what the pixels say.
+Holding references makes this the trust hole (you take its word for a PCE), so
+the hosted instance runs ``GENESIS_PUBLIC=1``, holds no K and only hashes pixels;
+scoring runs on the photographer's machine (`docs/security.md`, "Where K lives").
+No chain reads here: the caller resolves hashes, so this never decides what is on chain.
 """
 
 from __future__ import annotations
@@ -34,13 +21,11 @@ from fastapi.middleware.cors import CORSMiddleware
 from fingerprint import prnu, stress
 from ingest import hashing, record
 
-#: Where enrolled fingerprints live. Each ``.npz`` is one body. K never
-#: leaves this machine; only scores and hashes go out over HTTP.
+#: Enrolled fingerprints, one ``.npz`` per body. K never leaves; only scores and hashes go out.
 REFERENCES = Path(os.environ.get("GENESIS_REFERENCES", "data/references"))
 
-#: The hosted, public instance. It loads no reference, refuses to score, and
-#: refuses to start beside one: a public host that merely *happened* not to be
-#: configured with K is one mistaken copy away from holding it.
+#: Public mode loads no reference, refuses to score, and refuses to start beside one,
+#: so holding no K is by construction, not by configuration.
 PUBLIC = os.environ.get("GENESIS_PUBLIC", "").strip() == "1"
 
 
@@ -56,19 +41,14 @@ _refuse_references_in_public_mode()
 
 app = FastAPI(title="Genesis scoring service")
 
-#: The verify page is served from a different origin -- Vite on 5173, or
-#: wherever it ends up hosted -- so without this the browser refuses every
-#: request and the page looks broken for a reason that never reaches the logs.
-#: Wide open because this service holds no secrets and takes no authority: it
-#: reads pixels and returns a number. The thing worth protecting is K, and K
-#: never appears in a response.
+#: The verify page is cross-origin. Wide open is fine: no secrets, no authority,
+#: and K never appears in a response.
 app.add_middleware(
     CORSMiddleware,
     allow_origins=os.environ.get("GENESIS_ALLOW_ORIGINS", "*").split(","),
     allow_methods=["GET", "POST"],
     allow_headers=["*"],
-    # See the identical note in console/app.py: without this, a WKWebView
-    # caller (the desktop app) gets a private-network preflight refused.
+    # Else the desktop app's WKWebView gets its private-network preflight refused.
     allow_private_network=True,
 )
 
@@ -92,12 +72,7 @@ _BODY_CACHE: dict = {"signature": None, "bodies": {}}
 
 
 def _signature() -> tuple:
-    """What the references directory looks like right now.
-
-    Name, size and mtime of every `.npz`. Cheap -- a handful of `stat` calls
-    against ~90 MB of loading -- and enough to notice an enrolment appearing
-    or being cleared.
-    """
+    """Name, size and mtime of every `.npz`: cheap change detection for the cache."""
     return tuple(
         (p.name, p.stat().st_size, p.stat().st_mtime_ns)
         for p in sorted(REFERENCES.glob("*.npz"))
@@ -105,18 +80,9 @@ def _signature() -> tuple:
 
 
 def _bodies() -> dict:
-    """Every enrolled body this service can score against.
+    """Every enrolled body, cached (~90 MB each) and reloaded when the directory changes.
 
-    Cached, because loading a fingerprint is ~90 MB off disk and doing it per
-    request would make the service unusable. The cache used to say "restart to
-    pick up a new enrolment", which was true and was a trap: the console and
-    the scorer are separate processes, so clearing enrolments through one left
-    the other answering from memory for a body that no longer exists on disk.
-    A stale *reference* is worse than a slow load -- it scores against a
-    fingerprint nobody can point to any more.
-
-    So it re-checks the directory signature instead. The reload cost is paid
-    only when the directory has actually changed.
+    The console may change enrolments from another process; a stale reference is worse than a slow load.
     """
     if PUBLIC:
         return {}
@@ -140,13 +106,12 @@ def _bodies() -> dict:
 
 
 def _bodies_cache_clear() -> None:
-    """Drop the cache outright. Kept because the tests call it, and because a
-    caller that has just changed the directory should not have to guess."""
+    """Drop the cache outright."""
     _BODY_CACHE["signature"] = None
     _BODY_CACHE["bodies"] = {}
 
 
-#: `lru_cache` used to provide this and the tests still call it.
+#: The tests call `_bodies.cache_clear()`.
 _bodies.cache_clear = _bodies_cache_clear
 
 
@@ -159,12 +124,9 @@ def _save(upload: UploadFile) -> Path:
 
 
 def _score_against(body: dict, path: Path, progress=None) -> dict:
-    """Score one image against one body, choosing the path the image needs.
+    """Score one image against one body: aligned per-plane if the lattice survives, else search.
 
-    An untouched file still has its photosite lattice, so it can be scored
-    plane by plane, which is both stronger and cheaper. A resized one has no
-    lattice left and needs the scale and orientation search. Which applies
-    is decided by the pixels, not by what the uploader claims.
+    The pixels decide which path, not the uploader.
     """
     planes, meta = body["planes"], body["meta"]
 
@@ -184,17 +146,10 @@ def _score_against(body: dict, path: Path, progress=None) -> dict:
     except (ValueError, KeyError):
         pass  # fall through to the search, which assumes nothing about size
 
-    # A portrait capture is the common reason the shapes disagree. The sensor
-    # is physically landscape and RAW is stored in sensor space, so a RAW is
-    # unaffected -- but a developed JPEG has been turned, and the aligned path
-    # cannot see past that. Turning it back is worth two correlations: on a
-    # real portrait frame it recovers 810 where the scale search finds 282.
-    #
-    # Both directions are tried because only one is right and which one is not
-    # knowable from the pixels: 270 gives 810 on that frame and 90 gives -32.
-    # Two tries raise the null a little, as any search does (`docs/gates.md`),
-    # which is why this is attempted only after the aligned path has already
-    # failed and only for a probe that is actually portrait.
+    # Portrait JPEGs are turned out of (landscape) sensor space. Rotating back
+    # recovered PCE 810 vs 282 from the search on a real frame. Both directions
+    # are tried (unknowable from pixels); extra tries raise the null
+    # (`docs/gates.md`), so only for portrait probes after aligned failed.
     if path.suffix.lower() not in record.hashing_raw_suffixes():
         from PIL import Image
 
@@ -244,11 +199,8 @@ def _score_against(body: dict, path: Path, progress=None) -> dict:
         with Image.open(path) as opened:
             image = opened.convert("RGB")
 
-    # A flat margin defeats the search rather than the fingerprint: padding
-    # changes the aspect ratio and `crop_and_scale_search` looks for a uniform
-    # scale, so no factor maps the canvas back onto the lattice. Measured on a
-    # real file, a 200px white border took 90,846 to 37.9 and cropping it back
-    # gave 86,097. Bordered exports are ordinary, so strip before searching.
+    # A flat border breaks the uniform-scale search (measured: 200px white border
+    # took PCE 90,846 to 37.9; stripping gave 86,097), so strip it first.
     bordered = image.size
     image = stress.strip_uniform_border(image)
     stripped = image.size != bordered
@@ -256,10 +208,7 @@ def _score_against(body: dict, path: Path, progress=None) -> dict:
     step("extracting the noise residual")
     residual = prnu.noise_residual(stress.green_channel(image))
 
-    # The expensive part, and the reason an unfamiliar image takes a minute:
-    # twenty-one correlations, every one of which a file destined for
-    # `no-record` still pays for. Reported per correlation so a caller can
-    # show a count rather than a spinner.
+    # Twenty-one correlations (~a minute); report each so callers show a count.
     def searching(done: int, total: int, label: str) -> None:
         step(f"searching scale and orientation — {done + 1} of {total} ({label})")
 
@@ -271,8 +220,7 @@ def _score_against(body: dict, path: Path, progress=None) -> dict:
         "path": "scale search",
         "orientation": match.orientation,
         "scale": match.scale,
-        # Reported, because a score that only exists after cropping is a
-        # different claim from one measured on the file as supplied.
+        # A score after cropping is a different claim from one on the file as supplied.
         "borderStripped": f"{bordered[0]}x{bordered[1]} to {image.size[0]}x{image.size[1]}"
         if stripped
         else None,
@@ -281,12 +229,7 @@ def _score_against(body: dict, path: Path, progress=None) -> dict:
 
 @app.post("/score")
 async def score(file: UploadFile = File(...), body: str | None = Query(default=None)) -> dict:
-    """Score an uploaded image against one registered body.
-
-    Verification against a *known* body -- not closed-set identification
-    among 126 sensors. That distinction is the whole answer to PRNU-Bench's
-    73.65% (BUILD.md sec.2).
-    """
+    """Score an uploaded image against one known body (verification, not closed-set identification)."""
     _refuse_if_public()
     bodies = _bodies()
     if not bodies:
@@ -311,16 +254,9 @@ async def score(file: UploadFile = File(...), body: str | None = Query(default=N
 
 @app.post("/lookup")
 async def lookup(file: UploadFile = File(...)) -> dict:
-    """Flow C: exact pixel-hash hit, else pHash candidates then PRNU re-score.
+    """Hashes for the caller to resolve on chain, plus a PRNU verdict against every held body.
 
-    In public mode ``candidates`` is always empty and ``verdict`` is always
-    ``no-match``: the hashes are the whole answer, and the caller resolves
-    them against the chain.
-
-    Returns the hashes for the caller to resolve on chain and, when nothing
-    resolves exactly, the PRNU verdict against every body this service holds.
-    The exact branch dies the moment a platform re-encodes; the lower branch
-    is the one that works on images that already left.
+    In public mode ``candidates`` is empty and ``verdict`` is ``no-match``.
     """
     path = _save(file)
     try:

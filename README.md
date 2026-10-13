@@ -62,7 +62,7 @@ What Genesis does not say, and why ([`docs/claims.md`](docs/claims.md)):
   for telling a genuine frame from a forged one;
 - a camera pointed at a good screen takes a genuine exposure of a fabricated
   scene. That defeats every provenance system, in-camera signing included;
-- phone photographs are outside its scope ([`docs/phones.md`](docs/phones.md)).
+- phone photographs are outside its scope.
 
 ## Why
 
@@ -149,7 +149,7 @@ or re-encoded copy has a different hash, so the perceptual hash finds the
 original through The Graph, and the registry confirms it before anything is
 shown. The web page and the desktop app run the same verification,
 [`core/`](core/): Rust compiled to WASM for the pixel work, TypeScript for the
-chain and the verdict ([`docs/shared-verify-plan.md`](docs/shared-verify-plan.md)).
+chain and the verdict.
 The desktop app adds a fingerprint score against its owner's K.
 
 Where K lives, what the stored score does and does not mean, and why scoring
@@ -196,8 +196,6 @@ same light. That gain error, K, is fixed at manufacture and multiplies the
 signal. Genesis estimates it by maximum likelihood over the enrolment frames
 and verifies with Peak to Correlation Energy (PCE).
 
-- [`docs/camera-sensors.md`](docs/camera-sensors.md): the physics, with
-  references
 - [`fingerprint/prnu.py`](fingerprint/prnu.py): the implementation, citing
   equations by number
 - J. Fridrich, [*Digital Image Forensics Using Sensor
@@ -209,10 +207,7 @@ and verifies with Peak to Correlation Energy (PCE).
 
 ## For developers
 
-[`BUILD.md`](BUILD.md) is the full design: architecture, toolchain, and the
-reasoning behind each choice. [`COLOSSEUM.md`](COLOSSEUM.md) is the current
-plan and [`docs/colosseum-checklist.md`](docs/colosseum-checklist.md) what is
-done. The enrolment frames and fingerprints used for the measurements are
+The enrolment frames and fingerprints used for the measurements are
 deliberately not in this repository ([`docs/claims.md`](docs/claims.md), "Why
 the test files are not published"); everything regenerates from your own
 camera.

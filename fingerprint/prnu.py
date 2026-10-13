@@ -1,20 +1,9 @@
-"""PRNU imaging core.
+"""PRNU imaging core: CFA-plane-native sensor fingerprint extraction and comparison.
 
-CFA-plane-native sensor fingerprint extraction and comparison.
-
-Pipeline (BUILD.md sec.4, Flow A):
     RAW -> CFA plane split -> wavelet Wiener residual -> ML estimator -> K
 
-Everything here operates on the *raw* Bayer planes, not a demosaiced RGB
-image. That is the point of difference from polimi-ispl/prnu-python, which
-assumes delivered RGB and must be adapted rather than imported.
-
-Canonical behaviour reference: Binghamton DDE Lab MATLAB implementation.
-
-This module is not the only implementation of the pipeline any more: the
-scoring subset (noise residual, cross-correlation, PCE, score) has been
-ported to Rust and compiled to WASM in `rust/genesis-prnu`, parity-tested
-against this file. Enrolment and RAW decode remain Python-only here.
+Works on raw Bayer planes, never demosaiced RGB. The scoring subset is also
+ported to Rust/WASM in `rust/genesis-prnu` and parity-tested against this file.
 
 References
 ----------
@@ -44,63 +33,29 @@ from scipy.ndimage import uniform_filter
 
 # --- constants -------------------------------------------------------------
 
-#: Wavelet basis for the denoiser. [F09] Appendix A Step 1 specifies the
-#: 8-tap Daubechies QMF, which is ``db8`` in PyWavelets. The choice is not
-#: free: the fingerprint lives in the high-frequency detail bands, and a
-#: shorter filter leaks more scene edge into them, which is exactly the
-#: content the estimator must not mistake for sensor noise.
+#: [F09] Appendix A Step 1: 8-tap Daubechies QMF. A shorter filter leaks scene
+#: edges into the detail bands the fingerprint lives in.
 WAVELET = "db8"
-#: Decomposition depth, [F09] Appendix A Step 1. Four levels is what reaches
-#: far enough down the frequency scale to catch the low-frequency part of the
-#: residual while still separating it from scene structure. Fewer levels
-#: leaves fingerprint energy in the approximation band, which this pipeline
-#: discards; more levels starts folding scene content back in.
+#: [F09] Appendix A Step 1. Fewer levels leave fingerprint in the discarded
+#: approximation band; more fold scene content back in.
 WAVELET_LEVELS = 4
-#: Local-variance neighbourhoods for the Mihcak estimator, [F09] Appendix A
-#: Step 2. The estimate is the *minimum* over these four sizes, and the
-#: minimum is the point: a small window tracks detail, a large one is stable,
-#: and taking the smallest variance biases the filter towards calling a
-#: coefficient noise rather than signal. That bias is deliberate -- a
-#: fingerprint wrongly classified as scene content is gone for good.
+#: Mihcak local-variance windows, [F09] Appendix A Step 2. Taking the minimum
+#: biases towards calling a coefficient noise: fingerprint lost to "scene" is gone.
 WIENER_WINDOWS = (3, 5, 7, 9)
-#: Assumed sensor noise sigma for the Wiener shrinkage, in the [0, 1] scale
-#: these planes use. [F09] Appendix A: "In all experiments, we used sigma0 = 2
-#: (for dynamic range of images 0, ..., 255) to be conservative and to make
-#: sure that the filter extracts a substantial part of the PRNU noise even for
-#: cameras with a large noise component." Deliberately over-estimating the
-#: noise costs some scene leakage and buys fingerprint that would otherwise be
-#: filtered away. Raw CFA planes are linear where that figure was set on
-#: gamma-encoded 8-bit, so this is a starting point to be re-measured per
-#: body, not a constant of nature.
+#: Wiener noise sigma on the [0, 1] scale: [F09]'s sigma0 = 2/255, a deliberate
+#: over-estimate. Set on gamma-encoded 8-bit, not linear raw: re-measure per body.
 SIGMA = 2.0 / 255.0
-#: PCE decision threshold. Measured, not guessed -- but on thin evidence.
-#:
-#: The null is not zero: peaking over every shift puts it near 2*ln(N), and
-#: searching orientations too raises it further, since the null is then the
-#: largest of eight tries. Observed on R10 planes: 24 to 43 against rotated
-#: and shuffled fingerprints, 39.1 for a genuinely different R10 body, -44.0
-#: for that same body through the orientation search (docs/gates.md).
-#:
-#: 100 sits at roughly twice the worst null seen and well under the weakest
-#: true match, 629 for a delivered JPEG. It was 50, which left only 1.1x over
-#: a null of 44 -- too tight to defend once a real negative existed.
-#:
-#: This still rests on ONE other body. A defensible false-positive rate needs
-#: dozens, and until then this number is a floor with a margin, not a
-#: calibrated operating point.
+#: PCE decision threshold. The null is near 2*ln(N), higher through the
+#: orientation search: R10 nulls 24-43, a different R10 body 39.1 / -44.0
+#: (docs/gates.md). 100 is ~2x the worst null, well under the weakest true
+#: match (629, delivered JPEG). Rests on ONE other body: a floor, not calibrated.
 PCE_THRESHOLD = 100.0
-#: Fraction of full scale at which a photosite counts as saturated. A clipped
-#: pixel is clamped rather than modulated, so it carries no PRNU at all and
-#: contributes only noise to the denominator of the estimator.
+#: Fraction of full scale counted as saturated: a clipped pixel carries no PRNU.
 SATURATION_LEVEL = 0.99
-#: Warn when more than this fraction of an enrolment frame is saturated. Gate
-#: A found bright unsaturated frames scoring an order of magnitude above dim
-#: ones, which is what the CRLB in [F09] eq. (7) predicts.
+#: Warn above this saturated fraction per enrolment frame ([F09] eq. (7) CRLB).
 SATURATION_WARN = 0.01
-#: Byte-serialisation version for :func:`commitment`. Changing anything about
-#: how K is serialised MUST change this string -- see the docstring there. A
-#: body registered on chain under one serialisation can never be verified
-#: under another, so this is a one-way door per registration.
+#: Serialisation version for :func:`commitment`. Any change to how K is
+#: serialised MUST change this; on-chain commitments cannot be re-verified otherwise.
 COMMITMENT_VERSION = b"genesis-prnu-k-v1"
 
 
@@ -110,21 +65,14 @@ COMMITMENT_VERSION = b"genesis-prnu-k-v1"
 def load_raw_planes(path, crop: int | None = None):
     """Read a RAW file and return its CFA planes, black/white-level corrected.
 
-    Uses rawpy (LibRaw bindings) -- the only realistic CR3 path. Reads
-    ``raw_image_visible``, splits by ``raw_colors_visible``, subtracts
-    ``black_level_per_channel`` and normalises by ``white_level``.
-
-    Splitting happens before anything else and never demosaics: each CFA
-    colour lands on its own regular sublattice, so a plane is a real image
-    of one photosite type rather than an interpolation of four.
+    Uses rawpy (LibRaw), the only realistic CR3 path. Never demosaics.
 
     Parameters
     ----------
     path : str | Path
         RAW file. CR3 requires LibRaw >= 0.21.
     crop : int, optional
-        If given, take a centred ``crop`` x ``crop`` square of the CFA grid
-        before splitting. Cheap mode for `pair` and for sanity checks.
+        Centred ``crop`` x ``crop`` square of the CFA grid, taken before splitting.
 
     Returns
     -------
@@ -156,10 +104,7 @@ def load_raw_planes(path, crop: int | None = None):
 def split_cfa(image, colors, black, white: float, source="<array>"):
     """Split a Bayer mosaic into one normalised plane per CFA colour.
 
-    Kept separate from :func:`load_raw_planes` so the sublattice indexing and
-    the per-channel black-level subtraction -- the two places a silent error
-    would poison every fingerprint downstream -- are testable without a RAW
-    file and without LibRaw.
+    Separate so sublattice indexing and black-level subtraction are testable without LibRaw.
     """
     image = np.asarray(image, dtype=np.float32)
     colors = np.asarray(colors)
@@ -170,7 +115,7 @@ def split_cfa(image, colors, black, white: float, source="<array>"):
     if not np.array_equal(tiled[: colors.shape[0], : colors.shape[1]], colors):
         raise ValueError(
             f"{source}: CFA is not a 2x2 Bayer pattern. X-Trans and friends are "
-            "out of scope (BUILD.md sec.13)."
+            "out of scope."
         )
 
     planes: dict[int, np.ndarray] = {}
@@ -187,11 +132,7 @@ def split_cfa(image, colors, black, white: float, source="<array>"):
 
 
 def cfa_pattern(path) -> list:
-    """The 2x2 CFA colour indices of a RAW file, as ``[[c, c], [c, c]]``.
-
-    Recorded at enrolment so a delivered JPEG can later be sampled back onto
-    the same photosite lattice the fingerprint was built on.
-    """
+    """The 2x2 CFA colour indices of a RAW file, as ``[[c, c], [c, c]]``."""
     import rawpy
 
     with rawpy.imread(str(path)) as raw:
@@ -203,14 +144,8 @@ def cfa_pattern(path) -> list:
 def load_delivered_planes(path, pattern, channels=None):
     """Sample a delivered RGB image back onto the CFA photosite lattice.
 
-    A JPEG out of the camera is demosaiced, tone-curved and re-encoded, but
-    every output pixel still sits over one physical photosite. Taking each
-    pixel from the colour channel that photosite actually measured recovers
-    planes that align with an enrolled fingerprint, one for one.
-
-    Only valid at **native sensor resolution**. A resized image no longer has
-    a pixel-to-photosite correspondence, which is the crop-and-scale search
-    that Gate B needs and this function does not do.
+    Only valid at **native sensor resolution**; resized images need
+    :func:`crop_and_scale_search`.
 
     Parameters
     ----------
@@ -256,11 +191,7 @@ def _centre_crop(a, size: int):
 
 
 def _variance_estimate(coef, sigma2: float, windows=WIENER_WINDOWS):
-    """Mihcak local signal variance: min over several window sizes.
-
-    Taking the minimum is what keeps edges from being read as signal
-    variance and swallowing the noise the fingerprint lives in.
-    """
+    """Mihcak local signal variance: min over several window sizes."""
     squared = coef * coef
     est = None
     for w in windows:
@@ -271,25 +202,15 @@ def _variance_estimate(coef, sigma2: float, windows=WIENER_WINDOWS):
 
 
 def noise_residual(plane: "np.ndarray", sigma: float = SIGMA) -> "np.ndarray":
-    """Extract the noise residual W from one CFA plane.
+    """Noise residual W = plane - denoised, Mihcak wavelet Wiener [M99], [F09] App. A.
 
-    The Mihcak wavelet-domain Wiener denoiser [M99], as specified in [F09]
-    Appendix A: ``db8`` decomposition to
-    ``WAVELET_LEVELS``, per-coefficient local variance estimated over
-    ``WIENER_WINDOWS`` (minimum across scales), shrinkage, reconstruct,
-    then W = plane - denoised.
-
-    Implemented in the equivalent direct form -- keep the *noise* part of
-    each detail coefficient, ``c * sigma^2 / (var + sigma^2)``, zero the
-    approximation band, reconstruct -- which by linearity is exactly
-    ``plane - denoised`` without materialising the denoised image.
+    Direct form: keep ``c * sigma^2 / (var + sigma^2)`` of each detail
+    coefficient and zero the approximation; by linearity this equals plane - denoised.
     """
     plane = np.asarray(plane, dtype=np.float32)
     sigma2 = float(sigma) ** 2
 
-    # A small image cannot carry four levels of db8 without every coefficient
-    # picking up boundary effects. Clamp rather than produce quiet rubbish --
-    # a web thumbnail is exactly the case that hits this.
+    # Small images (web thumbnails) can't carry four db8 levels without boundary effects.
     levels = min(WAVELET_LEVELS, pywt.dwt_max_level(min(plane.shape), WAVELET))
     coeffs = pywt.wavedec2(plane, WAVELET, level=max(levels, 1), mode="symmetric")
 
@@ -309,24 +230,11 @@ def noise_residual(plane: "np.ndarray", sigma: float = SIGMA) -> "np.ndarray":
 
 
 def estimate_fingerprint(images, planes=None, *, crop: int | None = None, progress=None):
-    """Maximum-likelihood fingerprint estimator K = sum(W*I) / sum(I^2).
+    """Maximum-likelihood fingerprint estimator K = sum(W*I) / sum(I^2), [F09] eq. (6).
 
-    This is [F09] eq. (6), the ML estimate under the sensor model
-    ``I = I0 + I0*K + Theta`` of eq. (3). The ML form rather than a plain
-    average of residuals: PRNU is multiplicative, so a residual from a bright
-    frame carries more evidence than one from a dark frame and the estimator
-    weights it accordingly. The model is linear, so by the CRLB in eq. (7)
-    the estimator is minimum-variance unbiased with variance ~ 1/frames.
-
-    That same bound says which frames are worth enrolling: [F09] concludes
-    "the best images for estimation of K are those with high luminance (but
-    not saturated) and small sigma^2 (which means smooth content)". A dim or
-    busy frame contributes far less than its place in the count suggests, and
-    a saturated pixel contributes nothing at all.
-
-    Needs 40+ enrolment frames to be stable (BUILD.md sec.9, Gate A):
-    defocused flat field, CR3 not C-RAW, Long Exposure NR off, high-ISO NR
-    off, base ISO, nothing clipping.
+    ML rather than a plain average because PRNU is multiplicative: bright frames
+    carry more evidence. Best frames are bright, unsaturated and smooth. Needs
+    40+ frames: defocused flat field, CR3 not C-RAW, NR off, base ISO.
 
     Parameters
     ----------
@@ -406,12 +314,8 @@ def _as_planes(item, crop: int | None = None):
 def postprocess(k: "np.ndarray") -> "np.ndarray":
     """Zero-mean rows/columns then DFT Wiener filter.
 
-    Suppresses the non-unique artefacts (CFA interpolation, JPEG blocking,
-    row/column readout patterns) that would otherwise make two different
-    bodies of the same model correlate.
-
-    Accepts a single K or a dict of per-plane K and returns the same shape
-    of thing.
+    Removes model-wide artefacts (CFA, JPEG blocking, readout patterns) that
+    would make two bodies of one model correlate. Accepts K or a dict of K.
     """
     if isinstance(k, dict):
         return {c: postprocess(v) for c, v in k.items()}
@@ -430,12 +334,7 @@ def _zero_mean(k):
 
 
 def _wiener_dft(k):
-    """Attenuate periodic structure in the frequency domain.
-
-    Anything that survives as a strong, spatially coherent frequency is
-    almost certainly a sensor-model artefact rather than this body's
-    photo-response non-uniformity.
-    """
+    """Attenuate periodic structure: a strong coherent frequency is a model artefact, not PRNU."""
     sigma2 = float(k.var())
     if sigma2 <= 0:
         return k
@@ -454,21 +353,11 @@ def _wiener_dft(k):
 
 
 def pce(residual: "np.ndarray", reference: "np.ndarray", squared_size: int = 11) -> float:
-    """Peak-to-Correlation-Energy between a test residual and a reference.
+    """Signed Peak-to-Correlation-Energy, [F09] eq. (14).
 
-    [F09] eq. (14). PCE rather than raw normalised correlation: it is
-    shift-invariant and
-    its null distribution is stable enough to set one threshold across
-    bodies. ``squared_size`` is the neighbourhood excluded around the peak
-    when estimating the correlation energy.
-
-    Returns a signed value: a strong *negative* peak is not a match, and
-    silently taking the absolute value would hide that.
-
-    The peak is taken over every shift, which buys alignment-independence at
-    the cost of a raised null: for uncorrelated inputs PCE concentrates near
-    ``2 * ln(N)`` -- about 22 on a 256x256 plane, about 31 on a full-frame
-    one -- rather than near 1. Any threshold has to clear that, not zero.
+    ``squared_size`` is the neighbourhood excluded around the peak. Signed
+    because a strong negative peak is not a match. Peaking over every shift
+    raises the null to ~2*ln(N): ~22 at 256x256, ~31 full-frame.
     """
     return _pce_of(cross_correlation(residual, reference), squared_size)
 
@@ -506,19 +395,9 @@ def _zero_mean_flat(a):
 def score(planes, reference, mask_saturated: bool = True) -> float:
     """One verdict for one image against one body's fingerprint.
 
-    Two things this does that scoring a single plane cannot.
-
-    It uses every CFA plane at once. Each plane is an independent measurement
-    of the same body, and a genuine match peaks at the same shift in all
-    four, so summing the correlation surfaces adds the peaks coherently and
-    the noise incoherently. Measured on the R10 set, this roughly doubles the
-    weakest score against taking the best single plane.
-
-    It drops saturated pixels from both sides of the correlation. A clipped
-    photosite is clamped rather than modulated: it carries no fingerprint but
-    still contributes to the energy the peak is measured against, so leaving
-    it in dilutes the very statistic the verdict rests on. On frames with
-    10-18% clipping this is worth another 3-9x.
+    Sums the correlation surfaces of every CFA plane (peaks add coherently;
+    ~2x the weakest R10 score vs best single plane) and masks saturated pixels
+    from both sides (3-9x on frames with 10-18% clipping).
 
     Parameters
     ----------
@@ -565,10 +444,7 @@ def score(planes, reference, mask_saturated: bool = True) -> float:
 def sensor_field(planes, greens=(1, 3)):
     """Collapse per-plane fingerprints into one field to match a resized image.
 
-    A resized photograph has no photosite lattice left, so the per-plane
-    fingerprints have to be combined before they can be compared with it.
-    The green planes are averaged and the others dropped: green is half the
-    photosites and most of the luminance a resize preserves.
+    Averages the greens: half the photosites and most of the luminance a resize keeps.
     """
     available = [c for c in greens if c in planes]
     if not available:
@@ -577,14 +453,9 @@ def sensor_field(planes, greens=(1, 3)):
 
 
 def _area_resize(field, size):
-    """Downscale by averaging, not by sampling.
+    """Downscale by area averaging, as a resize does to K.
 
-    This is the whole trick of the scale search. Resizing an image *averages*
-    neighbouring pixels, so the fingerprint left in the result is the area
-    average of K. Interpolating K instead -- ``zoom``, bicubic, anything that
-    samples -- keeps high-frequency detail the resized image no longer has,
-    and the two decorrelate. Measured: interpolation scores at the null where
-    area averaging scores 408.
+    Interpolating instead keeps detail the resized image lost: measured at the null vs 408.
     """
     from PIL import Image
 
@@ -611,18 +482,10 @@ class ScaleMatch(NamedTuple):
 
 def crop_and_scale_search(residual, reference, scales=None, verbose=False,
                           exhaustive=False, progress=None):
-    """Search over scale and orientation for a match -- the Gate B path.
+    """Search a narrow scale band and all eight orientations for the best PCE.
 
-    A web JPEG has been resized and re-encoded, so the test residual is no
-    longer pixel-aligned with K. The nominal scale follows from the two
-    shapes; what is unknown is the exact factor, because a platform may crop
-    a few pixels or round differently. So search a narrow band around nominal
-    and keep the best PCE.
-
-    The reference is resampled rather than the residual: it is the side that
-    must be made to look like it went through the resize, and doing it this
-    way keeps every correlation at the small size, which is what makes the
-    search affordable.
+    For resized web JPEGs. The reference is resampled, not the residual, so
+    every correlation runs at the small size.
 
     Parameters
     ----------
@@ -635,25 +498,13 @@ def crop_and_scale_search(residual, reference, scales=None, verbose=False,
     verbose : bool
         Print each combination as it is tried.
     exhaustive : bool
-        Try every orientation at every scale. By default the orientation is
-        settled first at nominal scale, then only the winner is scanned over
-        scale -- eight correlations plus thirteen rather than a hundred and
-        four.
+        Try every orientation at every scale (104 correlations). Default
+        settles orientation at nominal scale first (8 + 13).
     progress : callable, optional
         Called as ``progress(done, total, label)`` before each correlation.
-        This search is where the wall-clock goes on an unfamiliar image -- a
-        file that will end up as `no-record` still costs all twenty-one -- so
-        a caller that wants to show determinate progress has a real count to
-        show rather than a spinner.
 
-    All eight orientations are tried, not four. A fingerprint lives in sensor
-    space, which is always landscape, while a developed portrait photograph
-    has been turned ninety degrees, and an image that has passed through an
-    editor or a careless upload may also be flipped. PCE is shift-invariant
-    but neither rotation- nor reflection-invariant, so any of those scores at
-    the null until it is put back. The orientation tag would say which, but
-    this is the path for images whose metadata is gone, so the answer has to
-    come from the pixels.
+    Eight orientations because PCE is neither rotation- nor reflection-invariant
+    and this path is for images whose orientation metadata is gone.
 
     Returns
     -------
@@ -703,9 +554,7 @@ def crop_and_scale_search(residual, reference, scales=None, verbose=False,
 def save_fingerprint(path, k, meta: dict | None = None) -> None:
     """Persist K to an .npz alongside enrolment metadata.
 
-    The reference is NEVER published. A published fingerprint is a
-    published forgery kit (BUILD.md sec.5) -- only its commitment hash
-    goes on chain.
+    K is NEVER published: it is a forgery kit. Only its commitment goes on chain.
     """
     planes = k if isinstance(k, dict) else {0: k}
     payload = {f"plane_{c}": np.asarray(v, dtype=np.float32) for c, v in planes.items()}
@@ -733,15 +582,11 @@ def load_fingerprint(path):
 
 
 def commitment(k: "np.ndarray") -> bytes:
-    """SHA-256 commitment over K's canonical byte serialisation.
+    """SHA-256 commitment over K's canonical bytes (``BodyRecord.fingerprintCommitment``).
 
-    This is ``BodyRecord.fingerprintCommitment``. Serialisation must be
-    pinned before the first on-chain registration -- a change to dtype,
-    byte order or shape silently invalidates every prior commitment.
-
-    Pinned, and covered by a regression test: version tag, then for each
-    CFA plane in ascending index order, the index, the shape and the plane
-    as little-endian float32 in C order.
+    Pinned by a regression test: version tag, then per plane in index order the
+    index, the shape and little-endian float32 C-order data. Changing any of it
+    silently invalidates every on-chain commitment.
     """
     planes = k if isinstance(k, dict) else {0: k}
     h = hashlib.sha256()

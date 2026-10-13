@@ -1,17 +1,8 @@
-"""The endpoints that sign. Kept in their own module on purpose.
+"""The endpoints that sign, kept in their own module so the boundary is visible.
 
-`registerImage`'s `require(body.owner == msg.sender)` is the only mechanism
-in the system that no attack in `docs/adversarial.md` got past, so everything
-the product claims sits downstream of a transaction sent from here. That
-boundary should be visible in a file listing, not buried in a router.
-
-Transactions go through `cast`, which `contracts/script/local-e2e.sh` already
-uses and which the README already requires. That is one fewer dependency than
-a Python signing stack, and the identical code path to the one the offline run
-has been exercising since day one.
-
-The key is fed to `cast --interactive` on stdin, never as an argument. An
-argument would put it in `ps` output for every process on the machine.
+`registerImage`'s owner check is the one mechanism no attack in
+`docs/adversarial.md` got past; every claim sits downstream of a transaction
+sent from here. Transactions go through `cast` (same path as `local-e2e.sh`).
 """
 
 from __future__ import annotations
@@ -37,20 +28,11 @@ CAST_TIMEOUT = 180
 
 
 
-#: Who the metadata commitment names as owner. Was `ENS_PARENT_NAME` while
-#: the photographer was an ENS name; kept as a fallback so an existing `.env`
-#: commits to the same owner string it always did.
+#: Owner named in the metadata commitment. `ENS_PARENT_NAME` fallback keeps old `.env`s committing the same string.
 OWNER = os.environ.get("GENESIS_OWNER") or os.environ.get("ENS_PARENT_NAME")
 
 def _hmac_key() -> bytes | None:
-    """`METADATA_HMAC_KEY` as bytes.
-
-    It arrives from the environment as a string and `hashing.metadata_hmac`
-    takes bytes, which raised a TypeError inside the request rather than at
-    startup -- the endpoint returned 500 and the demo looked like the chain
-    had refused it. Hex is decoded as hex because that is what `.env` holds;
-    anything else is taken as UTF-8, which is what `local-e2e.sh` passes.
-    """
+    """`METADATA_HMAC_KEY` as bytes: hex if it parses (`.env`), else UTF-8 (`local-e2e.sh`)."""
     raw = os.environ.get("METADATA_HMAC_KEY", "").strip()
     if not raw:
         return None
@@ -68,12 +50,10 @@ def _key() -> str:
 
 
 def _signer() -> tuple[list[str], str | None]:
-    """The wallet flags for `cast send`, and the secret to redact from errors.
+    """Wallet flags for `cast send`, and the secret to redact from errors.
 
-    A Foundry keystore (`DEPLOYER_ACCOUNT`, from `cast wallet import`) wins
-    when it is set: the key stays encrypted on disk and never reaches argv.
-    Its password comes from `DEPLOYER_PASSWORD_FILE`, since there is no
-    terminal here to prompt on. `DEPLOYER_PRIVATE_KEY` remains the fallback.
+    A Foundry keystore (`DEPLOYER_ACCOUNT` + `DEPLOYER_PASSWORD_FILE`) wins: the key
+    never reaches argv. `DEPLOYER_PRIVATE_KEY` is the fallback.
     """
     account = os.environ.get("DEPLOYER_ACCOUNT", "").strip()
     if account:
@@ -90,34 +70,20 @@ def _signer() -> tuple[list[str], str | None]:
 
 
 def _invalidate_state() -> None:
-    """Drop the cached pre-flight gate after anything that changes it.
-
-    `/state` is cached for a few seconds because it is polled and each call
-    costs about eight `eth_call`s. That is fine for a gate nobody is changing
-    and wrong the moment something is: a body that has just been registered
-    should not still read "not registered" for another three seconds, because
-    the next screen tells the operator to go and register it.
-    """
+    """Drop the cached `/state` gate after anything that changes it."""
     from console.app import invalidate_state
 
     invalidate_state()
 
 
 def cast_send(args: list[str]) -> dict:
-    """One transaction, and the receipt fields the console reports.
-
-    Raises rather than returning a failure shape. A registration that did not
-    land must not be reportable as one.
-    """
+    """One transaction and its receipt fields. Raises on failure, so a failed registration can't be reported as one."""
     if not chain.REGISTRY:
         raise HTTPException(503, "REGISTRY_ADDRESS is not set")
 
-    # `--interactive` reads the key from a terminal, and there is no terminal
-    # here: piping to it fails with "Device not configured". So the key goes
-    # on the argv, which is visible in `ps` for the length of one transaction.
-    # Acceptable for a localhost demo driver on the operator's own machine
-    # (`docs/security.md`), and not acceptable for anything hosted -- which
-    # this is not, and must not become.
+    # Without a keystore the key goes on argv (`--interactive` needs a TTY), so it
+    # is visible in `ps` for one transaction. OK for a localhost demo driver
+    # (`docs/security.md`); this must never become hosted.
     wallet, secret = _signer()
     command = [
         "cast", "send", chain.REGISTRY, *args,
@@ -139,9 +105,7 @@ def cast_send(args: list[str]) -> dict:
         raise HTTPException(504, f"cast timed out after {CAST_TIMEOUT}s")
 
     if done.returncode != 0:
-        # A revert the contract has a word for deserves that word, not a wall
-        # of hex. "already registered" is the common one and it is not an
-        # error the operator can fix by retrying.
+        # Translate known reverts into plain words instead of hex.
         for phrase, message in (
             ("image already registered",
              "This photograph is already registered. Registering the same pixels "
@@ -159,8 +123,7 @@ def cast_send(args: list[str]) -> dict:
             if phrase in done.stderr:
                 raise HTTPException(409, message)
 
-        # stderr can echo the calldata; the key is redacted so a failed
-        # transaction cannot spill it into a log or a screen recording.
+        # stderr can echo the key; redact it.
         leaked = (done.stderr.replace(secret, "<key>") if secret else done.stderr).strip()
         raise HTTPException(502, f"transaction failed: {leaked[:400]}")
 
@@ -179,21 +142,13 @@ def cast_send(args: list[str]) -> dict:
         "txHash": tx_hash,
         "blockNumber": int(str(receipt.get("blockNumber", "0")), 0),
         "explorerUrl": chain.explorer_url(tx_hash, "tx"),
-        # Every signing endpoint returns these, so anything the console puts on
-        # chain comes back with the places it can be checked.
         "links": chain.reference_links(tx_hash),
     }
 
 
 @router.post("/register-body")
 async def register_body(name: str = Form(...), body_commitment: str = Form("")) -> dict:
-    """Demo step 2a.
-
-    Done before anything else because `registerBody` is a race: `bodyId`
-    derives from `SHA-256(K)`, so anyone holding a leaked K can compute the id
-    and claim the slot first, and the real photographer is then permanently
-    locked out (`docs/security.md`).
-    """
+    """Demo step 2a. Do it first: anyone with a leaked K can claim the slot forever (`docs/security.md`)."""
     bodies = {b["name"]: (body_id, b) for body_id, b in _bodies().items()}
     if name not in bodies:
         raise HTTPException(404, f"no enrolled body {name}")
@@ -207,11 +162,8 @@ async def register_body(name: str = Form(...), body_commitment: str = Form("")) 
             "impossible by design; the slot is claimed.",
         )
 
-    # The keyed camera commitment (`ingest/hashing.py:body_commitment`),
-    # computed on the photographer's machine by `python -m ingest commit-body`.
-    # It arrives already hashed: this endpoint never sees the serial or the key.
-    # Blank means none, and there is no setter -- a commitment is worth
-    # something only because it predates any dispute.
+    # Precomputed by `python -m ingest commit-body`; never the serial or key.
+    # Blank means none; no setter, since its value is predating any dispute.
     camera = body_commitment.strip().lower().removeprefix("0x")
     if camera and (len(camera) != 64 or any(c not in "0123456789abcdef" for c in camera)):
         raise HTTPException(422, "body_commitment must be 32 bytes of hex, or blank")
@@ -233,31 +185,17 @@ async def register_image(
     body: str = Form(...),
     description: str = Form(""),
 ) -> dict:
-    """Demo step 2b: score, refuse if it does not clear, then register.
-
-    The threshold check happens here and not only in the contract. A frame
-    that does not clear is refused before it reaches the chain, which is what
-    `local-e2e.sh` has always done -- registering a photograph the pixels do
-    not support would put a claim on chain that the system itself disagrees
-    with.
-    """
+    """Demo step 2b: score, refuse below threshold before the chain, then register."""
     bodies = {name: (bid, b) for bid, b in _bodies().items() for name in (b["name"], bid)}
     if body not in bodies:
         raise HTTPException(404, f"unknown body {body}")
     body_id, holder = bodies[body]
 
-    # Enrolled is not registered, and the contract is the one that knows.
-    # `registerImage` reverts `unknown body` when the id has no record, and
-    # the two ways to arrive there are both ordinary: a fresh enrolment that
-    # has not been registered yet, and a `resetAll` that cleared the chain out
-    # from under one that had. Checked here rather than left to the revert
-    # because the scoring below takes a minute, and spending that to arrive at
-    # a hex-encoded error is the worst version of this.
+    # Enrolled is not registered (fresh enrolment, or after `resetAll`). Check
+    # now rather than after a minute of scoring ends in a revert.
     try:
         registered = chain.body("0x" + body_id)
     except chain.ChainError as error:
-        # Unreadable chain: the transaction below would fail anyway, and
-        # saying which half is broken beats a gas-estimation error.
         raise HTTPException(503, f"cannot read the registry: {error}")
     if registered is None:
         raise HTTPException(
@@ -276,14 +214,8 @@ async def register_image(
     path = Path(handle.name)
 
     try:
-        # Score through the shared `_score_against` -- the function core/'s
-        # Rust port is parity-tested against, so registering and verifying
-        # agree (docs/shared-verify-plan.md; E2 moves this onto core/ too). `build_record`'s
-        # own scoring is the aligned path only, so a portrait frame raised a
-        # shape mismatch and returned 500 -- the fingerprint lives in sensor
-        # space, which is always landscape. Registration and verification
-        # disagreeing about one photograph is the failure worth engineering
-        # against, so there is one scorer and this is it.
+        # One scorer: `_score_against` is what core/'s Rust port is parity-tested
+        # against, and it handles portrait frames `build_record` alone cannot.
         measured = _score_against(holder, path)
         built = record.build_record(
             path,
@@ -299,11 +231,7 @@ async def register_image(
                 "the chain. The pixels do not support the claim.",
             )
 
-        # Every field is bytes32 on chain. The perceptual hash is only eight
-        # bytes -- it is a 64-bit pHash -- so it has to be left-padded, and
-        # `cast` rejects the short form with a bare "parser error" that says
-        # nothing about which field is wrong. The registered record on Sepolia
-        # shows the padding: 0x0000...e829e9b0556d25cb.
+        # Left-pad to bytes32: the 8-byte pHash otherwise gets a bare cast "parser error".
         def word(value: bytes) -> str:
             return "0x" + value.rjust(32, b"\x00").hex()
 
@@ -317,9 +245,7 @@ async def register_image(
             "registerImage((bytes32,bytes32,bytes32,uint8,bytes32,bytes32,uint32,uint64))",
             tuple_arg,
         ])
-        # The chain gets the hash; the disk gets the meaning. Without this a
-        # photographer holding 0x2224a686... has no way to learn it was
-        # IMG_0230.CR3 -- see `console/catalogue.py`.
+        # The chain gets the hash; the local catalogue gets the meaning.
         catalogue.record_image(
             image_hash="0x" + built.image_hash.hex(),
             perceptual_hash="0x" + built.perceptual_hash.hex(),
@@ -350,24 +276,10 @@ async def register_session(
     files: list[UploadFile] = File(...),
     body: str = Form(...),
 ) -> dict:
-    """Register a whole shoot in one transaction.
+    """Register a whole shoot as one Merkle root via `commitSession`.
 
-    This is what `commitSession` is for and why it exists: a shoot is two
-    thousand frames, and one write per photograph is neither affordable nor
-    necessary. The frames are scored locally, their pixel hashes become the
-    leaves of a Merkle tree, and **one** root goes on chain. Any frame's
-    membership is then provable against that root with `verifyInclusion`,
-    without the chain ever holding the frame.
-
-    What this does not do is give each frame its own `ImageRecord`. A session
-    proves *a set of photographs was fixed at a time*; `registerImage` is what
-    attaches a body, a score and an owner to one photograph. They answer
-    different questions and the demo uses both -- so a frame that needs an
-    individual record still gets `/register-image`.
-
-    Frames below `PCE_THRESHOLD` are refused and named, and the session is
-    committed without them rather than failing whole. One bad frame in two
-    thousand should not cost the shoot.
+    Proves a set was fixed at a time; per-frame `ImageRecord`s still need
+    `/register-image`. Frames below threshold are refused and named, not fatal.
     """
     bodies = {name: (bid, b) for bid, b in _bodies().items() for name in (b["name"], bid)}
     if body not in bodies:
@@ -426,8 +338,7 @@ async def register_session(
 
         leaves = [a["imageHash"] for a in accepted]
         root = merkle.merkle_root(leaves)
-        # The session id is derived, not assigned, so two people committing the
-        # same set of frames arrive at the same id and cannot collide by luck.
+        # Derived, so the same set of frames always gets the same id.
         session_id = hashlib.sha256(b"genesis-session" + root).digest()
 
         receipt = cast_send([
@@ -440,8 +351,6 @@ async def register_session(
         for index, entry in enumerate(accepted):
             catalogue.record_image(
                 image_hash="0x" + entry["imageHash"].hex(),
-                # Recorded, or the archive counts a session's frames as
-                # belonging to no body and the statistics undercount.
                 body_id=body_id_hex,
                 body_name=holder["name"],
                 pce=entry["pce"],
@@ -476,23 +385,10 @@ async def register_session(
 
 @router.post("/reset")
 async def reset_registry(confirm: str = Form(...), clear_enrolments: bool = Form(True)) -> dict:
-    """Wipe every record, so the demo can be run again.
+    """Wipe every record so the demo can run again (body ids are fixed by K, so otherwise a redeploy).
 
-    `bodyId` derives from `SHA-256(K)`, so the same camera always reaches the
-    same id and `registerBody` refuses a duplicate forever. That refusal is
-    correct -- it is what stops someone claiming a body out from under its
-    owner -- and it is also why rehearsing twice needed a fresh deployment
-    until now.
-
-    **Gated on the contract, not on configuration.** `testMode()` is read from
-    the registry itself: a console that trusted a local flag could offer this
-    against a registry that has no reset, and the failure would arrive as an
-    unexplained revert mid-demo. A production registry answers false here and
-    this endpoint refuses before it spends anything.
-
-    `confirm` must be the registry address. Not ceremony: this is the one
-    button in the console that destroys work, and the operator should have to
-    look at which registry they are pointed at before pressing it.
+    Gated on the contract's `testMode()`, not config. `confirm` must be the
+    registry address, so the operator looks before destroying work.
     """
     if not chain.REGISTRY:
         raise HTTPException(503, "REGISTRY_ADDRESS is not set")
@@ -515,25 +411,9 @@ async def reset_registry(confirm: str = Form(...), clear_enrolments: bool = Form
     receipt = cast_send(["resetAll()"])
     _invalidate_state()
 
-    # The chain is only half of a clean slate. `resetAll` clears records; the
-    # enrolled references are files on this machine and the wipe never touched
-    # them, so the console kept reporting a body that had nothing on chain
-    # behind it. For a rehearsal that reads as a bug, and for demo step 1 --
-    # enrol from an archive folder -- it is one, because the screen has
-    # nothing left to do.
-    #
-    # Deleted rather than moved aside: these are 89 MB each and a rehearsal
-    # loop would accumulate them. The frames they were estimated from are
-    # untouched, so an enrolment can always be run again -- but **not** to the
-    # same K unless the same frames are chosen, because `save_fingerprint`
-    # does not record which ones were used (`docs/adversarial.md`). The UI
-    # says so before this runs.
-    # The archive describes what this machine registered, keyed by image hash.
-    # After the wipe none of those hashes resolve on chain, so every row is a
-    # claim the registry will not confirm and screen 06 would go on presenting
-    # them as registered work. It goes with the chain, always -- unlike the
-    # references, there is nothing here that cannot be rebuilt by registering
-    # again, so there is no reason to make it a choice.
+    # Local state describing the chain must go with it. The archive always goes.
+    # References (89 MB each) are deleted, not moved; re-enrolling gives the
+    # same K only from the same frames (`docs/adversarial.md`), and the UI warns.
     archived = catalogue.clear()
 
     cleared: list[str] = []
@@ -544,8 +424,7 @@ async def reset_registry(confirm: str = Form(...), clear_enrolments: bool = Form
             reference.unlink()
         _bodies.cache_clear()
 
-    # The scorer is a separate process with its own cache, and it notices the
-    # references directory changing on its own -- see `scoring.app._bodies`.
+    # A separate scorer process notices the directory change itself (`scoring.app._bodies`).
     return {
         "registry": chain.REGISTRY,
         "epochBefore": before,
@@ -560,22 +439,9 @@ async def reset_registry(confirm: str = Form(...), clear_enrolments: bool = Form
 async def register_image_stream(
     file: UploadFile = File(...), body: str = Form(...), description: str = Form("")
 ) -> dict:
-    """Demo step 2b, as a job you can watch.
+    """Demo step 2b as a watchable job; each real phase is an event.
 
-    The blocking version reports nothing between the upload and the receipt,
-    and the wait is dominated by a part nobody would guess: registering runs
-    the full PRNU scale and orientation search, twenty-one correlations on an
-    unfamiliar frame, which is most of the wall clock. The transaction at the
-    end is seconds. A screen that named the transaction while running the
-    search taught operators to distrust a chain that was not the problem.
-
-    So every phase is an event with a timestamp and an elapsed figure, and the
-    phases are the real ones rather than a tidy fiction:
-
-        reading · hashing · scoring (with the search's own progress) ·
-        building the record · threshold · signing · broadcasting · receipt
-
-    `jobs.Job.emit` stamps them; nothing here has to remember to.
+    Most of the wait is the PRNU search, not the chain, so the events say so.
     """
     bodies = {name: (bid, b) for bid, b in _bodies().items() for name in (b["name"], bid)}
     if body not in bodies:
@@ -606,9 +472,7 @@ async def register_image_stream(
             job.emit(event="step", phase="reading", label=f"reading {file.filename}")
 
             def searching(label: str) -> None:
-                # The scorer's own progress, passed through rather than
-                # summarised: "searching scale and orientation — 7 of 21" is
-                # the only line that tells an operator the wait is finite.
+                # Passed through: "7 of 21" shows the wait is finite.
                 job.emit(event="step", phase="scoring", label=label)
 
             measured = _score_against(holder, path, progress=searching)

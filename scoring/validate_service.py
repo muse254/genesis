@@ -1,10 +1,4 @@
-"""Scoring service tests.
-
-The service is the trust hole in the design (see the module docstring), so
-what is tested here is that it reports what the pixels say and nothing more:
-no chain reads, no fingerprint leaving the machine, and a refusal that says
-"no record" rather than "fake".
-"""
+"""Scoring service tests: reports what the pixels say, no K leaves, refusal means "no record" not "fake"."""
 
 from __future__ import annotations
 
@@ -62,8 +56,7 @@ def public(client, monkeypatch):
 
 
 def test_the_public_service_loads_no_fingerprint(public, tmp_path):
-    """Even with a reference on disk, public mode must not load it: the
-    hosted instance holds no K, by construction rather than by omission."""
+    """Public mode must not load a reference even if one is on disk."""
     from fingerprint import validate_synthetic as sim
 
     api, body = public
@@ -129,11 +122,7 @@ def test_lookup_refuses_another_body(client, tmp_path):
 
 
 def test_nothing_about_the_fingerprint_leaves(client, tmp_path):
-    """K stays on the machine. Only scores, hashes and a commitment go out.
-
-    A response carrying the reference would hand every caller the means to
-    forge images for that body.
-    """
+    """K stays on the machine; a response carrying it would let callers forge for that body."""
     from fingerprint import validate_synthetic as sim
 
     api, body = client
@@ -159,12 +148,7 @@ def test_score_rejects_an_unknown_body(client, tmp_path):
 
 
 def test_the_browser_can_actually_call_this(client):
-    """CORS, without which the verify page fails for an invisible reason.
-
-    The page runs on another origin, so a preflight that does not come back
-    with the right headers means every request is refused before it reaches
-    the handler, and nothing appears in the service log to say why.
-    """
+    """CORS: a failed preflight refuses every request with nothing in the service log."""
     api, _ = client
     response = api.options(
         "/lookup",
@@ -178,7 +162,7 @@ def test_the_browser_can_actually_call_this(client):
 
 
 def test_the_desktop_app_s_webview_can_preflight_across_the_private_network(client):
-    """Same fix as `console/app.py`, same reason: see that test's docstring."""
+    """Private Network Access preflight; see the matching test in `console/validate_console.py`."""
     api, _ = client
     response = api.options(
         "/lookup",

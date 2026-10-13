@@ -1,11 +1,6 @@
 """Degradation ladder: how much insult does the fingerprint survive?
 
-Applies each transform a published image actually undergoes -- resize, JPEG
-re-encode at descending quality, crop, mild sharpening, a social-platform
-round trip -- and records the PCE after each.
-
-This produces the evidence behind the retroactive claim. Gate B (BUILD.md
-sec.9) is one row of this table promoted to a go/no-go decision.
+Resizes and re-encodes like a publishing platform and records the PCE after each step.
 """
 
 from __future__ import annotations
@@ -15,8 +10,6 @@ import numpy as np
 from fingerprint import prnu
 
 #: The ladder run for `docs/gates.md`: (longest edge in pixels, JPEG quality).
-#: Native resolution first, then the sizes a photo-sharing site actually
-#: serves, at a good and a mean quality setting.
 DEFAULT_STEPS = (
     (6000, 95),
     (6000, 80),
@@ -30,11 +23,7 @@ DEFAULT_STEPS = (
 
 
 def develop(path):
-    """Render a RAW the way a photographer would before publishing it.
-
-    Demosaic, white balance and gamma, with auto-brightness off so the ladder
-    measures the compression rather than a tone change.
-    """
+    """Develop a RAW; auto-brightness off so the ladder measures compression, not tone."""
     import rawpy
     from PIL import Image
 
@@ -43,13 +32,9 @@ def develop(path):
 
 
 def to_web_jpeg(image, longest_edge: int = 1800, quality: int = 80, path=None):
-    """Export at Flickr-ish dimensions -- the Gate B stimulus.
+    """Lanczos down to ``longest_edge``, then JPEG at ``quality``.
 
-    Lanczos down to ``longest_edge`` then JPEG at ``quality``. Both halves
-    matter and they do not matter equally: on the R10 ladder, 1800px at
-    quality 95 scores 408 while the same 1800px at quality 80 scores 37,
-    which is the null. Resolution costs the fingerprint linearly; quantisation
-    can take all of it at once.
+    Quality dominates: on the R10, 1800px q95 scores 408, q80 scores 37 (the null).
 
     Parameters
     ----------
@@ -65,8 +50,7 @@ def to_web_jpeg(image, longest_edge: int = 1800, quality: int = 80, path=None):
     Returns
     -------
     PIL.Image.Image
-        The image as re-read from the encoded JPEG, so the caller sees
-        exactly the pixels a downloader would.
+        The image as re-read from the encoded JPEG.
     """
     import tempfile
 
@@ -92,27 +76,10 @@ def to_web_jpeg(image, longest_edge: int = 1800, quality: int = 80, path=None):
 def strip_uniform_border(image, tolerance: float = 2.0, max_fraction: float = 0.25):
     """Remove a flat added margin, returning the photograph inside it.
 
-    A border is neither a crop nor a resize and `crop_and_scale_search` models
-    neither: it looks for a *uniform* scale, and padding changes the aspect
-    ratio, so no single factor maps the canvas back onto the photosite
-    lattice. Measured on a real file -- a 6000x4000 frame scores 90,846 and
-    the same frame inside a 200px white margin, 6400x4400, scores 37.9 and
-    reports "mirrored, 90 deg", which is the largest of eight orientations on
-    noise. Cropped back to 6000x4000 it scores 86,097. The fingerprint was
-    never damaged; the search could not find it.
-
-    So this runs before the search rather than trying to make the search
-    cleverer. Bordered exports are ordinary -- print margins, gallery frames,
-    social templates -- and every one of them currently reads `no-record`,
-    which is the wrong answer about a genuine photograph.
-
-    Deliberately conservative. A row or column counts as border only if it is
-    almost perfectly flat (`tolerance`, in 0-255 levels), and at most
-    `max_fraction` of each side is ever removed, so a photograph that happens
-    to open on sky or a studio backdrop cannot be eaten into. Nothing is
-    removed unless all four sides agree there is a margin.
-
-    Returns the image unchanged when there is no border to strip.
+    Padding changes aspect ratio, so the scale search cannot find K through
+    it (a 200px margin took a real file from 90,846 to 37.9). Conservative:
+    lines must be flat within `tolerance` (0-255 levels), at most
+    `max_fraction` per side, and all four sides must agree. Otherwise unchanged.
     """
     import numpy as np
     from PIL import Image
@@ -134,8 +101,7 @@ def strip_uniform_border(image, tolerance: float = 2.0, max_fraction: float = 0.
     left = min(run(grey[:, i] for i in range(limit_h)), limit_h)
     right = min(run(grey[:, width - 1 - i] for i in range(limit_h)), limit_h)
 
-    # All four sides, or it is scene content rather than a frame. A photograph
-    # with a blown sky has a flat top and nothing else.
+    # All four sides, or it is scene content (e.g. a blown sky).
     if min(top, bottom, left, right) == 0:
         return image
 
@@ -149,24 +115,20 @@ def strip_uniform_border(image, tolerance: float = 2.0, max_fraction: float = 0.
 def green_channel(image):
     """The green channel of a delivered image, in [0, 1].
 
-    Green rather than luminance: it is the channel with the most photosites
-    behind it, and mixing channels dilutes the fingerprint with two weaker
-    ones. Measured, luminance sits at the null where green scores 408.
+    Green has the most photosites; luminance measured at the null where green scored 408.
     """
     return np.asarray(image, dtype=np.float32)[:, :, 1] / 255.0
 
 
 def ladder(image, reference, steps=None):
-    """Run the degradation ladder and return [(label, pce), ...].
+    """Run the degradation ladder and return [(label, pce, scale, orientation), ...].
 
     Parameters
     ----------
     image : PIL.Image.Image | str | Path
         A developed image, or a RAW path.
     reference : dict[int, np.ndarray] | np.ndarray
-        An enrolled fingerprint. Per-plane fingerprints are collapsed with
-        :func:`prnu.sensor_field`, since a resized image has no CFA lattice
-        left to score plane by plane.
+        An enrolled fingerprint; per-plane ones are collapsed with :func:`prnu.sensor_field`.
     steps : sequence[tuple[int, int]], optional
         ``(longest_edge, quality)`` pairs. Defaults to :data:`DEFAULT_STEPS`.
     """

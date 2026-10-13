@@ -691,7 +691,7 @@ escape.
 
 One thing not to claim: no document was found in which C2PA considered and
 rejected PRNU. What is observable is that the deployed systems key at capture,
-and that the sensor-noise route — the Birthmark Standard, `BUILD.md` §2 — is
+and that the sensor-noise route — the Birthmark Standard — is
 the unadopted one. That is an observation about adoption, not a proof about
 merit.
 
@@ -847,7 +847,7 @@ finding about the image. The "origin, not truth" caveat moved to the
 registered verdict only, since on the perceptual branch it was the exact
 sentence a forgery falsifies.
 
-**`README.md:36` and `BUILD.md:491`** carry the same sentence and need the same
+**`README.md:36`** carries the same sentence and need the same
 edit.
 
 ## Reproducing this

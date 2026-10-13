@@ -5,7 +5,7 @@ GitHub Pages (`.github/workflows/pages.yml`).
 
 This app is configuration and rendering. The verification is `core/`
 (`@genesis/core`), the same code the desktop app runs, so the two cannot
-disagree about a photo (`docs/shared-verify-plan.md`). See `core/README.md`
+disagree about a photo. See `core/README.md`
 for how it works, its two WASM modules and its tests.
 
 The photo never leaves the browser. It is decoded and hashed in a Web

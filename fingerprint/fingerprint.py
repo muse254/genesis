@@ -23,11 +23,7 @@ from fingerprint import prnu  # noqa: E402
 
 
 def cmd_enroll(args) -> int:
-    """Build K from a folder of RAW frames and write it to --out.
-
-    Archive-scan mode (day 5): walk a directory, resume from a partial run,
-    report progress. A photographer's archive is tens of thousands of frames.
-    """
+    """Build K from a folder of RAW frames and write it to --out."""
     paths = _expand(args.images)
     if len(paths) < 40:
         print(
@@ -65,11 +61,7 @@ def cmd_enroll(args) -> int:
 
 
 def cmd_test(args) -> int:
-    """Score images against a saved fingerprint; print PCE per file.
-
-    With --crop-scale, runs the Gate B search so web-mangled JPEGs still
-    resolve.
-    """
+    """Score images against a saved fingerprint; --crop-scale handles resized JPEGs."""
     reference, meta = prnu.load_fingerprint(args.fingerprint)
     if args.crop_scale:
         return _test_scaled(args, reference, meta)
@@ -95,12 +87,7 @@ def cmd_test(args) -> int:
 
 
 def _test_scaled(args, reference, meta) -> int:
-    """Score images that have been resized -- the Gate B path.
-
-    A resized image has no photosite lattice left, so this drops to a single
-    combined field and searches for the scale that puts the fingerprint back
-    in register.
-    """
+    """Score resized images: no photosite lattice left, so search scale on one combined field."""
     from PIL import Image
 
     from fingerprint import stress
@@ -206,12 +193,7 @@ DELIVERED_SUFFIXES = {".jpg", ".jpeg", ".png", ".tif", ".tiff", ".webp"}
 
 
 def _load_probe(path, meta):
-    """Read an image to score, RAW or delivered.
-
-    A delivered file is sampled back onto the photosite lattice the
-    fingerprint was enrolled on, which needs the CFA pattern recorded at
-    enrolment and only works at native sensor resolution.
-    """
+    """Read an image to score, RAW or delivered (native resolution only)."""
     if Path(path).suffix.lower() in DELIVERED_SUFFIXES:
         pattern = meta.get("cfa_pattern")
         if pattern is None:

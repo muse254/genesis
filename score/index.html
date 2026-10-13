@@ -9,18 +9,8 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;600;700;800&display=swap" />
     <style>
-      /*
-       * Same header chrome as site/style.css, verify/index.html and
-       * dashboard/index.html: the lockup logo, the 2px bottom border, the
-       * nav across all four pages. Duplicated rather than shared as a
-       * file because these are four independent Vite builds that only
-       * meet at deploy time (.github/workflows/pages.yml assembles them
-       * side by side) -- there is no bundler step that spans them to
-       * import a common stylesheet from. Keep the four copies in sync by
-       * hand if this changes.
-       */
-      /* Light only, matching the other three pages -- not a dark/light
-         choice the reader gets to make per-page. */
+      /* Header chrome duplicated in site/, verify/ and dashboard/ (separate
+         Vite builds, no shared stylesheet): keep in sync by hand. Light only. */
       :root {
         --ink: #1c1c1a; --paper: #fbfbf9; --line: #d8d6d0; --secondary: #6f6c66;
         --ui: Archivo, ui-sans-serif, system-ui, -apple-system, sans-serif;
@@ -78,14 +68,6 @@
         </nav>
       </div>
     </header>
-    <!--
-      A local, offline PCE score against your own enrolled fingerprint.
-      Everything below runs in this tab: a small Rust/WASM module (built
-      from rust/genesis-prnu, the same scoring core as the Python
-      reference and the desktop app) decodes the photo, reads the K file,
-      and computes the PCE -- nothing is uploaded anywhere. See
-      docs/security.md, "Where K lives".
-    -->
     <main>
       <h1>Score a photo against your fingerprint</h1>
       <p class="lede">

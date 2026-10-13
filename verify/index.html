@@ -9,17 +9,8 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;600;700;800&display=swap" />
     <style>
-      /*
-       * Same header chrome as site/style.css and dashboard/index.html: the
-       * lockup logo, the 2px bottom border, the nav back to the other two
-       * pages. Duplicated rather than shared as a file because these are
-       * three independent Vite builds that only meet at deploy time
-       * (.github/workflows/pages.yml assembles them side by side) -- there
-       * is no bundler step that spans them to import a common stylesheet
-       * from. Keep the three copies in sync by hand if this changes.
-       */
-      /* Light only, matching site/style.css -- not a dark/light choice the
-         reader gets to make per-page. */
+      /* Header chrome duplicated in site/, score/ and dashboard/ (separate
+         Vite builds, no shared stylesheet): keep in sync by hand. Light only. */
       :root {
         --ink: #1c1c1a; --paper: #fbfbf9; --line: #d8d6d0; --secondary: #6f6c66;
         --ui: Archivo, ui-sans-serif, system-ui, -apple-system, sans-serif;
@@ -42,11 +33,9 @@
         color: inherit; cursor: pointer; }
       #result { margin-top: 1.75rem; padding: 1.1rem 1.25rem; border: 1px solid var(--line);
         border-radius: .6rem; border-left-width: 4px; }
-      /* Three outcomes, three treatments. A fingerprint score is not a
-         verdict, so it must not borrow the colour of one. */
+      /* A fingerprint score is not a verdict, so it must not borrow a verdict's colour. */
       #result.registered { border-left-color: #0a8f4d; }
       #result.pixels-only { border-left-color: #9a7b12; border-left-width: 6px; }
-      /* Derived sits between registered and pixels-only, and looks it. */
       #result.derived { border-left-color: #2f6f8f; }
       #result.no-record { border-left-color: var(--line); }
       #result.error { border-left-color: #b3261e; }
@@ -75,12 +64,6 @@
         </nav>
       </div>
     </header>
-    <!--
-      One page. An upload control and a result. No framework.
-      viem for chain reads, fetch to the scoring service.
-
-      This page and the fingerprint are the two things that are never cut.
-    -->
     <main>
       <h1>Verify an image</h1>
       <p class="lede">Drop a photograph. We tell you whether its owner registered it — or that we have no record.</p>

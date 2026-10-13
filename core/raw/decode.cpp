@@ -1,22 +1,8 @@
 /*
- * RAW sensor data with LibRaw, compiled to WASM by build.sh, for enrolling
- * a camera in the browser (docs/shared-verify-plan.md; the Python side is
- * fingerprint/prnu.py::load_raw_planes and cfa_pattern).
- *
- * Returns exactly the fields enrolment reads through `rawpy`, computed the
- * way `rawpy` 0.27.1 computes them, from the same LibRaw version (0.22.1):
- *
- *   raw_image_visible        the undeveloped mosaic, margins removed
- *   raw_pattern              COLOR() over an n x n tile, reduced 4 -> 2
- *   raw_colors_visible       that tile wrapped over the full raw, then cut
- *   black_level_per_channel  rawpy's adjust_bl_ (vendored, data_helper.h)
- *   white_level              imgdata.rawdata.color.maximum
- *
- * No demosaicing and no processing: enrolment splits the mosaic into its
- * CFA planes itself. The sensor values are lossless-decoded data, so any
- * correct decoder agrees on them; the metadata rules above are where a
- * port could silently differ, which is why they are copied, not re-derived.
- *
+ * RAW sensor data with LibRaw (WASM, build.sh) for in-browser enrolment.
+ * Parity: the fields fingerprint/prnu.py::load_raw_planes reads via rawpy
+ * 0.27.1 / LibRaw 0.22.1. The metadata rules are copied from rawpy, not
+ * re-derived, because that is where a port could silently differ.
  * One file at a time: raw_open() replaces the previous one.
  */
 #include <cstdlib>
@@ -47,9 +33,7 @@ EMSCRIPTEN_KEEPALIVE void raw_close(void) {
   }
 }
 
-/* rawpy's raw_pattern: COLOR() relative to the visible area, over an n x n
- * tile whose size depends on the filter layout, and a 4 x 4 tile that is
- * really 2 x 2 reduced to 2 x 2. 0 on success. */
+/* rawpy's raw_pattern: COLOR() over an n x n tile; 4 x 4 reduced to 2 x 2 when it repeats. */
 static int compute_pattern(void) {
   unsigned filters = raw->imgdata.idata.filters;
   int n;
@@ -76,8 +60,7 @@ static int compute_pattern(void) {
   return 0;
 }
 
-/* Open and unpack a RAW file held in memory. 0 on success; on failure,
- * raw_error() says why. */
+/* 0 on success; otherwise raw_error() says why. */
 EMSCRIPTEN_KEEPALIVE int raw_open(const unsigned char *data, size_t size) {
   raw_close();
   message[0] = 0;
@@ -127,16 +110,13 @@ EMSCRIPTEN_KEEPALIVE int raw_height(void) { return raw ? raw->imgdata.sizes.heig
 EMSCRIPTEN_KEEPALIVE int raw_pattern_size(void) { return pattern_n; }
 EMSCRIPTEN_KEEPALIVE int raw_pattern_at(int y, int x) { return pattern[y][x]; }
 
-/* raw_colors_visible at (y, x): the pattern wrapped over the full raw (numpy
- * pad mode='wrap' from the raw's origin), then cut to the visible area. */
+/* raw_colors_visible: pattern wrapped from the raw's origin, then cut to the visible area. */
 EMSCRIPTEN_KEEPALIVE int raw_color_visible(int y, int x) {
   const libraw_image_sizes_t &s = raw->imgdata.sizes;
   return pattern[(y + s.top_margin) % pattern_n][(x + s.left_margin) % pattern_n];
 }
 
-/* black_level_per_channel[c], c in 0..3. */
 EMSCRIPTEN_KEEPALIVE unsigned raw_black(int c) { return black.cblack[c]; }
-/* white_level. */
 EMSCRIPTEN_KEEPALIVE unsigned raw_white(void) { return raw ? raw->imgdata.rawdata.color.maximum : 0; }
 
 /* Identity, for refusing a set of frames from more than one camera. */

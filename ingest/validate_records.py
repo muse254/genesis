@@ -1,11 +1,4 @@
-"""Record construction tests.
-
-These cover the properties the rest of the system depends on and cannot
-check for itself: that stripping metadata does not change an image's
-identity, that the perceptual hash survives what the pixel hash does not,
-that the Merkle rules match the ones the Solidity verifier will use, and
-that a signature covers every field of a record.
-"""
+"""Record construction tests: hashing, Merkle rules, signatures, body commitments."""
 
 from __future__ import annotations
 
@@ -19,14 +12,7 @@ from ingest import hashing, merkle, record
 
 
 def _photo(seed: int = 0, size=(512, 384)):
-    """A stand-in with a photograph's spectrum, not a noise field.
-
-    This matters more than it looks. A perceptual hash reads low-frequency
-    structure, so a small noisy fixture has nothing for it to hold on to and
-    the hash moves under any resize -- which says nothing about the hash. A
-    real photograph run through the same steps moves zero bits. Smoothed
-    noise at a realistic size behaves like the real thing.
-    """
+    """Smoothed noise with a photograph's spectrum: pure noise gives pHash nothing to hold."""
     from scipy.ndimage import gaussian_filter
 
     rng = np.random.default_rng(seed)
@@ -41,11 +27,7 @@ def _photo(seed: int = 0, size=(512, 384)):
 
 
 def test_pixel_hash_ignores_metadata():
-    """Stripping EXIF must not change image_hash, or every record breaks.
-
-    This is the property the whole retroactive claim leans on: a platform
-    that discards metadata on upload must not thereby discard identity.
-    """
+    """Stripping EXIF must not change image_hash, or every record breaks."""
     photo = _photo()
 
     with_exif = io.BytesIO()
@@ -80,9 +62,7 @@ def test_perceptual_hash_survives_resize_and_re_encode():
     distance = hashing.hamming(
         hashing.perceptual_hash(photo), hashing.perceptual_hash(Image.open(buffer))
     )
-    # Measured on a real R10 photograph at 1800px q95 down to 400px q60:
-    # zero bits moved at every step. The allowance here is slack, not a
-    # target.
+    # Real R10 photo, 1800px q95 -> 400px q60: zero bits moved. This is slack.
     assert distance <= 8, f"pHash moved {distance} bits through a resize and a re-encode"
 
 
@@ -157,11 +137,7 @@ def _record(**overrides):
 
 
 def test_signature_covers_every_field():
-    """A signature that misses a field is a signature on nothing.
-
-    Flip each field in turn and check the signer no longer recovers, so a
-    score or a parent cannot be edited under a valid signature.
-    """
+    """Flip each field in turn; the signer must no longer recover."""
     key = bytes(range(1, 33))
     original = _record()
     signature = record.sign_record(original, key)
@@ -201,9 +177,7 @@ def test_erc7053_commit_is_deterministic_and_carries_the_score():
     assert given["assetCid"] == "ipfs://bafy"
 
 
-#: Regression vector. A change to the field order, the length-prefixing or
-#: BODY_COMMITMENT_VERSION moves this, and every commitment already written
-#: into a registry body record stops verifying.
+#: Regression vector: if this moves, every existing on-chain body commitment stops verifying.
 PINNED_BODY_COMMITMENT = "dfdc609697348023fbe729c63fc9450e6d382342173570f059764e717a80e093"
 
 
@@ -272,8 +246,7 @@ def test_the_body_commitment_scheme_is_versioned():
 
 
 def test_commit_body_cli_matches_the_library_and_keeps_its_key(tmp_path, capsys):
-    """The CLI is what photographers run, so it must agree with the function
-    the reveal is checked against, and create its key private."""
+    """The CLI agrees with the library and creates its key 0600."""
     from ingest.__main__ import main
 
     key_file = tmp_path / "k.key"

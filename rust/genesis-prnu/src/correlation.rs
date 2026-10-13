@@ -1,6 +1,5 @@
 //! Circular cross-correlation, PCE, and `score` -- a Rust port of
-//! `fingerprint/prnu.py::cross_correlation`/`_pce_of`/`pce`/`score`. See
-//! `docs/wasm-scoring-plan.md` Phase 3.
+//! `fingerprint/prnu.py::cross_correlation`/`_pce_of`/`pce`/`score`.
 
 use std::collections::BTreeMap;
 use std::sync::Arc;
@@ -19,9 +18,7 @@ fn zero_mean_flat(a: &Array2<f64>) -> Array2<f64> {
     a.mapv(|v| v - mean)
 }
 
-/// 1-D FFT along `axis` of a complex 2-D array, forward if `inverse` is
-/// false. `FftPlanner` caches algorithms per length, so reuse it across the
-/// row pass and the column pass.
+/// 1-D FFT along `axis` of a complex 2-D array, forward if `inverse` is false.
 fn fft_axis(a: &mut Array2<Complex64>, axis: ndarray::Axis, inverse: bool) {
     let n = a.len_of(axis);
     if n == 0 {

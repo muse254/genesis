@@ -74,11 +74,9 @@ def cmd_record(args) -> int:
 
 
 def _body_key(path: Path) -> bytes:
-    """The photographer's commitment key: read it, or create it once.
+    """Read the photographer's commitment key, or create it once (0600, never printed).
 
-    Created 0600 and never printed. Losing it makes the commitment
-    unrevealable, and leaking it makes the serial enumerable again, so the
-    only copy that matters is the one the photographer backs up.
+    Lost: the commitment can't be revealed. Leaked: the serial is enumerable again.
     """
     if path.exists():
         key = path.read_bytes()
@@ -98,9 +96,7 @@ def _body_key(path: Path) -> bytes:
 def cmd_commit_body(args) -> int:
     """Print the keyed camera commitment `registerBody` takes.
 
-    The serial is prompted for rather than taken as an argument by default,
-    so it does not land in shell history. Nothing here touches the network:
-    the serial and the key never leave this machine, only the digest does.
+    Serial is prompted (keeps it out of shell history); serial and key never leave this machine.
     """
     serial = args.serial or getpass.getpass("camera serial (not echoed): ").strip()
     if not serial:

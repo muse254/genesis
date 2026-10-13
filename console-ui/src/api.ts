@@ -1,20 +1,10 @@
 /**
- * Typed client for the console API (`console/app.py`, spec
- * `docs/console-server.md`).
- *
- * Shapes mirror the server exactly. Where the server decides something --
- * whether a pre-flight row passes, what a registration signed -- this client
- * carries the answer through untouched. A second opinion here is a second
- * place to be wrong.
- *
- * Verification is the exception, and not a second opinion: it runs in
- * `verifier.ts` on `@genesis/core`, the one implementation the web page runs
- * too, and the console only supplies its inputs (`docs/shared-verify-plan.md`).
+ * Typed client for the console API (`console/app.py`). Shapes mirror the
+ * server; server decisions pass through untouched, never re-judged here.
+ * Verification runs in `verifier.ts` on `@genesis/core`.
  */
 
-/** The desktop app injects its backend's port before any script runs
- *  (`desktop/src-tauri/src/lib.rs`); a browser session uses the env or the
- *  historical default. */
+/** Desktop injects its backend port (`desktop/src-tauri/src/lib.rs`); else env or default. */
 export const BASE =
   (window as { __GENESIS_CONSOLE__?: string }).__GENESIS_CONSOLE__ ??
   import.meta.env.VITE_CONSOLE_URL ??
@@ -35,9 +25,8 @@ export interface Check {
 export interface BodyStatus {
   name: string;
   bodyId: string;
-  /** Whether the registry has a record for it. Enrolled is not registered:
-   *  an image cannot attach to a body the chain has never heard of, and a
-   *  `resetAll` clears the registration while leaving the fingerprint. */
+  /** Whether the registry has a record for it. Enrolled is not registered
+   *  (`resetAll` clears the registration but keeps the fingerprint). */
   registered: boolean;
 }
 
@@ -56,11 +45,7 @@ export interface State {
     etherscan?: string;
     blockscout?: string;
   };
-  /**
-   * Whether this registry can be wiped, read from the contract's own
-   * `testMode()` rather than from configuration. The reset control is drawn
-   * only when it is true, so a production registry simply has no button.
-   */
+  /** The contract's own `testMode()`, not config; gates the reset control. */
   registry?: { resettable: boolean; epoch: number };
   /** What core/ needs to read the chain through `/rpc` and the index through `/subgraph`. */
   verify?: { chain: string; registry: string | null; explorer: string; subgraph: boolean };
@@ -79,9 +64,7 @@ export interface ResetResult {
   epochAfter: number;
   /** Names of the enrolled references deleted, if any were. */
   enrolmentsCleared: string[];
-  /** Archive rows removed. Always cleared: every row describes a chain record
-   *  the wipe just withdrew, so keeping them would present withdrawn work as
-   *  registered. */
+  /** Archive rows removed. Always cleared, or withdrawn work would show as registered. */
   archiveRowsCleared: number;
   txHash: string;
   blockNumber: number;
@@ -104,37 +87,22 @@ async function call<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 /**
- * The registry the console is pointed at, remembered from the last `/state`.
- *
- * The verdict card renders on-chain values and should say where to check
- * them, but it is a pure render function with no access to the server. This
- * is the smallest way to give it one, and it is deliberately null until a
- * state call has happened -- a link built from a guessed address is worse
- * than no link.
+ * The registry from the last `/state`, for the verdict card's links. Null
+ * until then: a link built from a guessed address is worse than none.
  */
 let seenRegistry: string | null = null;
 
 export const registryAddress = (): string | null => seenRegistry;
 
-/**
- * The Etherscan-family explorer for whichever chain the server is on. Read
- * from `/state` rather than hardcoded, because `console/chain.py` owns the
- * chain choice (`GENESIS_CHAIN`); until a state call lands this is the
- * Sepolia one the console has always shown.
- */
+/** Explorer for the server's chain, from `/state` (`console/chain.py` owns it); Sepolia until then. */
 export let ETHERSCAN = "https://sepolia.etherscan.io";
 
 /** Where the indexed events can be queried. `console/chain.py` agrees. */
 export const GRAPH_STUDIO = "https://thegraph.com/studio/subgraph/genesis";
 
 /**
- * Where a bytes32 the registry holds can be read back by anyone.
- *
- * Etherscan cannot deep-link a mapping read with its argument, so this points
- * at the verified contract's Read Contract tab -- which needs no wallet, and
- * is where `bodies(bytes32)` and `images(bytes32)` can be called with the
- * value beside it. `docs/claims.md` says a registration is verifiable by
- * anyone without taking our word for it; this is the "how".
+ * The Read Contract tab, where anyone can call `bodies`/`images` without a
+ * wallet (Etherscan cannot deep-link a mapping read).
  */
 export const readContractUrl = (): string | null =>
   seenRegistry ? `${ETHERSCAN}/address/${seenRegistry}#readContract` : null;
@@ -148,27 +116,18 @@ export const api = {
   },
 
   /**
-   * Wipe the registry so the demo can be run again. Testnet only; the server
-   * re-reads `testMode()` and refuses on a registry that has no reset, so a
-   * stale frontend cannot spend gas on a transaction that would revert.
-   *
-   * `confirm` is the registry address, which the server checks. It is not
-   * ceremony: this is the one control in the console that destroys work.
+   * Wipe a test registry; the server re-checks `testMode()`. `confirm` is the
+   * registry address, checked server-side: this control destroys work.
    */
   reset(registryAddress: string, clearEnrolments: boolean) {
     const form = new FormData();
     form.append("confirm", registryAddress);
-    // The chain is half a clean slate; the enrolled references are the other
-    // half and they live on disk, untouched by `resetAll`.
+    // Enrolled references live on disk, untouched by `resetAll`.
     form.append("clear_enrolments", String(clearEnrolments));
     return call<ResetResult>("/reset", { method: "POST", body: form });
   },
 
-  /**
-   * Demo step 2a, and the step the console never had. `registerBody` is a
-   * race -- `bodyId` derives from SHA-256(K), so a leaked reference lets
-   * someone else claim the slot -- which is why it comes before anything else.
-   */
+  /** `registerBody` is a race (a leaked reference lets someone claim the id), so it comes first. */
   registerBody(name: string, bodyCommitment: string) {
     const form = new FormData();
     form.append("name", name);
@@ -231,14 +190,7 @@ export const api = {
     return URL.createObjectURL(await response.blob());
   },
 
-  /**
-   * Demo step 2b, streamed.
-   *
-   * The blocking version says nothing between the upload and the receipt, and
-   * the wait is dominated by the PRNU scale search rather than by the chain.
-   * Every phase arrives as an event carrying the server's own timestamp and
-   * an elapsed figure, so the screen reports telemetry rather than guesses.
-   */
+  /** Register an image, streaming each phase with the server's timestamps. */
   registerImageStreaming(
     file: File,
     body: string,
@@ -256,11 +208,8 @@ export const api = {
             explorerUrl: string; links?: ReferenceLink[];
           }>((resolve, reject) => {
             const stream = new EventSource(`${BASE}/register-image/${job.jobId}/events`);
-            // An EventSource reports the server ending the response as an
-            // error and then tries to reconnect, so `onerror` fires on a
-            // perfectly normal finish and raced the resolve -- the screen
-            // wiped a completed registration and reported a broken stream.
-            // Only a drop *before* the job reports done is a real failure.
+            // EventSource fires `onerror` on a normal close too; only a drop
+            // before the job reports done is a real failure.
             let settled = false;
             stream.onmessage = (message) => {
               const event = JSON.parse(message.data);
@@ -288,8 +237,6 @@ export const api = {
     const form = new FormData();
     form.append("file", file);
     form.append("body", body);
-    // Typed rather than `Record<string, unknown>`: the screen renders the
-    // score and the links off this, and an untyped bag hides a rename.
     return call<{
       imageHash: string;
       perceptualHash: string;
@@ -303,10 +250,7 @@ export const api = {
     }>("/register-image", { method: "POST", body: form });
   },
 
-  /**
-   * A whole shoot in one transaction. `commitSession` exists because a shoot
-   * is two thousand frames and one write per photograph is not affordable.
-   */
+  /** A whole shoot in one transaction. */
   registerSession(files: File[], body: string) {
     const form = new FormData();
     for (const file of files) form.append("files", file);
@@ -326,13 +270,8 @@ export const api = {
 
   /** Progress arrives per frame; enrolment reads forty 24-megapixel RAWs. */
   /**
-   * Enrol from frames the operator picked, or from a server-side folder.
-   *
-   * `File[]` is the console path: the operating system's own dialog, which is
-   * where a photographer already knows how to find their frames. A string is
-   * a path on the machine running the API, kept for scripts and the offline
-   * run -- forty RAW frames is half a gigabyte and nobody should upload it
-   * twice.
+   * Enrol from picked frames (`File[]`) or a server-side folder path (for
+   * scripts, and to avoid uploading half a gigabyte).
    */
   enrol(
     from: File[] | string,
@@ -345,12 +284,8 @@ export const api = {
     else for (const file of from) form.append("files", file);
     form.append("name", name);
 
-    // XHR rather than fetch, for the one thing fetch cannot do: report how
-    // far an upload has got. Forty RAW frames is half a gigabyte, and the
-    // server says nothing at all until the last byte has arrived and the job
-    // starts -- so with fetch the screen sits silent through the longest part
-    // of the operation and looks hung. `docs/console-server.md` already had
-    // to learn this once about verification.
+    // XHR, not fetch: fetch cannot report upload progress, and this upload
+    // is large and otherwise silent.
     const upload = new Promise<{ jobId: string; frames: number }>((resolve, reject) => {
       const request = new XMLHttpRequest();
       request.open("POST", `${BASE}/enrol`);

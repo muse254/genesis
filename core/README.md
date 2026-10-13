@@ -1,7 +1,7 @@
 # Genesis — core
 
 Verification, once, for both the web page (`verify/`) and the desktop app
-(`console-ui/`). See `docs/shared-verify-plan.md` for why there is one.
+(`console-ui/`), so the two cannot disagree about a photo.
 
 ```ts
 import { verify, workerEngine, createChainReader } from "@genesis/core";

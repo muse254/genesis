@@ -9,9 +9,8 @@
 //!   area-averaged the same way to still line up with a resized photo.
 //!
 //! Both are two-pass (horizontal, then vertical), each pass skipped when its
-//! dimension is unchanged, as `ImagingResampleInner` does. Pillow resamples
-//! only the rows the vertical pass will read; that saves work but not a
-//! single value, so this resamples all of them.
+//! dimension is unchanged, as `ImagingResampleInner` does. Unlike Pillow this
+//! resamples every row, which changes no value.
 
 use ndarray::Array2;
 

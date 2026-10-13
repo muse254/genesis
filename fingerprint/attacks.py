@@ -1,35 +1,9 @@
 """The fingerprint-copy attack, against this repo's own estimator.
 
-What happens to `this image was exposed on body X` when K leaks.
-
-The sensor model in [F09] eq. (3) is ``I = I0 + I0*K + Theta``. It is a
-*generative* model, and nothing in it is one-way: anyone holding K can
-evaluate it forwards. Plant ``alpha * J * K`` into a foreign image J and the
-estimator that was built to recognise the body will recognise it, because
-the estimator asks one question -- is there a term proportional to ``J*K``
-in this residual -- and the attacker has just put one there. This is the
-fingerprint-copy attack of [G10].
-
-The forgery is not an approximation of a photograph from body X. On the
-statistic the system actually decides on it is a *better* specimen than a
-real photograph, because a real frame carries K buried in one exposure's
-worth of shot noise while the forgery carries a 16-frame average of it with
-the noise already removed. That asymmetry is measurable, and it is the
-starting point for the defence at the bottom of this file.
-
-Two domains, because the system accepts two kinds of file:
-
-* **CFA planes** -- what `fingerprint test` and the scoring service's
-  `aligned` path read out of a RAW. Injection is per plane, then quantised
-  back to the 14-bit lattice a raw file can actually hold.
-* **Delivered RGB** -- what the scoring service is actually pointed at by
-  the verify page. Every output pixel of a native-resolution delivered image
-  sits over one photosite, which is how `prnu.load_delivered_planes` works
-  and equally how :func:`mosaic_field` puts K back onto that lattice.
-
-Nothing here modifies the estimator. Every number this module reports comes
-out of `prnu.score` and `prnu.crop_and_scale_search` unchanged, against the
-threshold as shipped.
+Anyone holding K can plant ``alpha * J * K`` into a foreign image J and the
+estimator ([F09] eq. (3)) will match it: the copy attack of [G10]. Works on
+CFA planes (quantised to 14-bit raw) and on native-resolution delivered RGB.
+Scores come from the shipped `prnu.score` and threshold, unmodified.
 
 Run it:
 
@@ -72,19 +46,12 @@ from fingerprint import prnu  # noqa: E402
 
 # --- constants -------------------------------------------------------------
 
-#: Quantisation levels between black and white in a 14-bit Canon raw
-#: (white 16383, black 2047). The attack is bounded from below by this and
-#: not by anything the defender chose: a perturbation of ``alpha * J * K``
-#: smaller than half a DN rounds away entirely. On a dim carrier -- the
-#: different-R10 frame here averages 0.05 of full scale -- that puts a hard
-#: floor under alpha which has nothing to do with the threshold.
+#: Levels in a 14-bit Canon raw (white 16383, black 2047). A plant under half
+#: a DN rounds away, so dim carriers put a hard floor under alpha.
 RAW_LEVELS = 16383 - 2047
-#: Same argument one domain along: a delivered 8-bit JPEG quantises to 256
-#: levels, so the floor is higher again and rises as the carrier darkens.
+#: Same floor for delivered 8-bit JPEG, higher still.
 DELIVERED_LEVELS = 255
-#: Bisection tolerance for :func:`minimum_alpha`, as a fraction of alpha.
-#: 2% is finer than the measurement is stable to -- PCE moves with the JPEG
-#: encoder's rounding -- so there is no point going tighter.
+#: Bisection tolerance, fraction of alpha. PCE jitters with JPEG rounding beyond this.
 ALPHA_TOLERANCE = 0.02
 
 
@@ -94,11 +61,7 @@ ALPHA_TOLERANCE = 0.02
 def mosaic_field(k, pattern, shape):
     """Interleave per-plane fingerprints back onto the full pixel lattice.
 
-    The inverse of the split `prnu.load_delivered_planes` does. That function
-    reads pixel ``(i, j)`` of a native-resolution delivered image from the
-    colour channel the photosite under it actually measured; this writes K
-    back to the same place, so a multiply by ``1 + alpha * M`` lands exactly
-    ``alpha * K[c]`` in every plane the scorer will later split back out.
+    Inverse of `prnu.load_delivered_planes`.
 
     Parameters
     ----------
@@ -135,16 +98,8 @@ def mosaic_field(k, pattern, shape):
 def inject_planes(planes, k, alpha: float, levels: int | None = RAW_LEVELS):
     """Plant K into CFA planes: ``J' = J * (1 + alpha * K)``.
 
-    [G10] section 2. Multiplicative rather than additive because that is the
-    form of the sensor model the estimator inverts -- an additive plant would
-    correlate with K but not with ``J*K``, and `prnu.score` correlates the
-    residual against ``J*K``, so the additive version throws away most of the
-    peak for the same distortion.
-
-    ``levels`` rounds the result back onto a real quantisation lattice. This
-    is not tidiness: without it the attack appears to work at alpha values
-    that no file format could carry, and the reported minimum alpha comes out
-    roughly five times too optimistic for the attacker.
+    [G10] sec. 2. Multiplicative because `prnu.score` correlates against ``J*K``.
+    ``levels`` quantises like a real file; without it minimum alpha is ~5x too optimistic.
     """
     out = {}
     for c, plane in planes.items():
@@ -158,17 +113,8 @@ def inject_planes(planes, k, alpha: float, levels: int | None = RAW_LEVELS):
 def inject_delivered(rgb, k, pattern, alpha: float):
     """Plant K into a native-resolution delivered RGB raster.
 
-    All three channels are scaled by the same field. Only one of them is read
-    back at any given pixel -- `prnu.load_delivered_planes` takes the channel
-    belonging to that photosite -- but scaling all three is what a plausible
-    forgery looks like and costs nothing, whereas touching one channel per
-    pixel leaves a chroma checkerboard that is trivially visible.
-
-    Done in the delivered gamma-encoded domain, not linearised first. [F09]'s
-    model is linear, so this is the wrong domain in principle; measured, it
-    does not matter, and `docs/gates.md` records the same thing from the
-    defender's side -- linearising a delivered JPEG through an inverse sRGB
-    curve made its genuine score *worse*, 309 against 1,148.
+    All three channels are scaled, since one channel per pixel leaves a visible
+    chroma checkerboard. Done in gamma space: linearising measured worse (docs/gates.md).
 
     Parameters
     ----------
@@ -192,15 +138,7 @@ def inject_delivered(rgb, k, pattern, alpha: float):
 def synthetic_carrier(shape=(4000, 6000), seed: int = 0):
     """An image that was never a photograph: gradients, discs, bars, noise.
 
-    The point of the strongest form of the attack. A forgery built on a frame
-    from another camera at least began as light falling on silicon somewhere;
-    this began in a random number generator, so a match against it makes
-    "exposed on body X" false in every sense the sentence has.
-
-    Deliberately a plain test pattern rather than anything generative. The
-    claim under test is about the fingerprint, not about how convincing the
-    picture is, and a pattern that anyone can regenerate from a seed makes
-    the result reproducible without shipping a file.
+    The strongest form of the attack, reproducible from a seed.
     """
     rng = np.random.default_rng(seed)
     height, width = shape
@@ -214,8 +152,7 @@ def synthetic_carrier(shape=(4000, 6000), seed: int = 0):
         r = rng.uniform(0.03, 0.12)
         disc = ((y - cy) ** 2 + (x - cx) ** 2) < r * r
         image = np.where(disc, image * rng.uniform(0.5, 1.4), image)
-    # A little grain, so the carrier is not so smooth that the denoiser has
-    # nothing to do and the residual becomes degenerate.
+    # Grain, so the residual is not degenerate.
     image = image + rng.normal(0.0, 0.01, size=(height, width)).astype(np.float32)
 
     grey = np.clip(image, 0.0, 1.0) * 255.0
@@ -235,15 +172,9 @@ def psnr(a, b, peak: float = 255.0) -> float:
 
 
 def ssim(a, b, peak: float = 255.0, window: int = 7) -> float:
-    """Mean structural similarity, Wang et al. 2004, in about fifteen lines.
+    """Mean structural similarity (Wang et al. 2004), uniform window, no scikit-image.
 
-    Written here rather than taking `scikit-image`, on the same reasoning as
-    `ingest/hashing.perceptual_hash`: it is one formula, the repo has no
-    other use for the dependency, and a vendored version cannot drift.
-
-    A uniform window rather than the paper's Gaussian. On a 24-megapixel
-    raster the difference is in the third decimal and this number is being
-    used to answer "is the damage visible", not to rank codecs.
+    Uniform rather than Gaussian window: differs in the third decimal at 24 MP.
     """
     from scipy.ndimage import uniform_filter
 
@@ -271,11 +202,8 @@ def ssim(a, b, peak: float = 255.0, window: int = 7) -> float:
 def minimum_alpha(evaluate, low: float = 0.0, high: float = 4.0, target=None, tolerance=None):
     """Smallest alpha whose forgery clears the threshold, by bisection.
 
-    ``evaluate(alpha) -> pce``. Assumes PCE rises monotonically in alpha,
-    which it does above the quantisation floor and does not below it -- under
-    the floor every alpha returns the carrier's own null score, so the
-    bisection converges on the floor itself. That is the answer the attacker
-    wants anyway.
+    ``evaluate(alpha) -> pce``. Assumes PCE is monotonic in alpha above the
+    quantisation floor; below it bisection converges on the floor.
 
     Returns
     -------
@@ -302,28 +230,16 @@ def minimum_alpha(evaluate, low: float = 0.0, high: float = 4.0, target=None, to
 # --- the defence: triangle test --------------------------------------------
 
 
-#: Block edge for the triangle test, in pixels of one CFA plane. [G11] sec.V
-#: used 128x128 and reports the test performing "equally well for blocks as
-#: small as 64x64 and as large as 256x256"; 125 divides a 2000x3000 R10 plane
-#: exactly, into 384 blocks, and so wastes no border.
+#: Triangle-test block edge, CFA-plane pixels. [G11] works at 64-256; 125
+#: tiles a 2000x3000 R10 plane exactly.
 TRIANGLE_BLOCK = 125
 
 
 def strip_fingerprint(planes, k, plane: int = 3):
-    """A frame's residual with the fingerprint it should carry projected out.
+    """A frame's residual with the ``J*K`` term projected out by least squares.
 
-    Both a genuine frame and a forgery contain a term proportional to
-    ``J*K`` -- that term is exactly what `prnu.score` measures, so it carries
-    no information about which is which and has to come out before anything
-    else is compared. Least squares, because the coefficient differs between
-    them: a genuine exposure has whatever PRNU strength the silicon has, a
-    forgery has whatever alpha the attacker chose.
-
-    What is left is everything else the body puts into a frame and the
-    published K does not contain -- readout structure, dark current, lens
-    signature, the unfiltered part of the PRNU that `prnu.postprocess`
-    deliberately removed. A genuine frame has all of it. A forgery has none
-    of it, because ``alpha * J * K`` is all it was ever given.
+    What remains (readout structure, dark current, unfiltered PRNU) is in a
+    genuine frame and absent from a forgery.
 
     Returns
     -------
@@ -349,15 +265,9 @@ def strip_fingerprint(planes, k, plane: int = 3):
 def collinearity(a, b) -> float:
     """Normalised correlation of two fingerprint-stripped residuals.
 
-    NOT the triangle test, and the difference matters -- see
-    `docs/adversarial.md`. [G11]'s test looks for an *excess* correlation
-    between a forgery and the specific frames K was built from. This looks
-    for a *deficit*: whatever a real frame of this body shares with other
-    real frames of this body beyond the published K, a forgery does not have.
-
-    Measured on the R10 this is the defence that worked, and by a wide
-    margin. It is also the one an attacker escapes most cheaply, since the
-    material it keys on is in any RAW file from the body.
+    NOT the triangle test (`docs/adversarial.md`): looks for a *deficit* of
+    shared body signal, not [G11]'s excess. Worked on the R10, but any RAW from
+    the body lets an attacker escape it.
     """
     denominator = np.sqrt(float(a @ a) * float(b @ b))
     return 0.0 if denominator <= 0 else float((a @ b) / denominator)
@@ -379,16 +289,9 @@ def _corr(a, b) -> float:
 
 
 class TriangleFrame:
-    """One image, reduced to what [G11] eqs (10)-(12) need of it.
+    """One image, precomputed for [G11] eqs (10)-(12); the test is quadratic in frames.
 
-    Precomputed because the triangle test is quadratic in the number of
-    frames: every candidate is correlated with every other to calibrate the
-    prediction, and none of the per-frame work depends on the pairing.
-
-    ``verifier`` is the fingerprint the *verifier* holds. In [G11] that is
-    Alice's own estimate from frames the attacker never had, which is the
-    assumption this system cannot meet once K itself leaks -- the leaked K
-    and the verifier's K are then the same object.
+    [G11] assumes the verifier's K differs from the leaked one; here they are the same.
     """
 
     def __init__(self, plane, verifier_blocks, verifier_norms, verifier_flat, edge=TRIANGLE_BLOCK):
@@ -401,9 +304,7 @@ class TriangleFrame:
         self.to_fingerprint = _corr(self.residual, verifier_flat)
         self.block_mean = self.image_blocks.mean(1)
 
-        # [G11] eq (12): the per-block attenuation factor, with q = 1. Setting
-        # q = 1 is sanctioned there -- a different fingerprint quality only
-        # rescales lambda in the calibration below, so it cancels.
+        # [G11] eq (12) with q = 1: q only rescales lambda, which calibration absorbs.
         residual_blocks = _blocks(residual, edge)
         expected = self.image_blocks * verifier_blocks
         centred_e = expected - expected.mean(1, keepdims=True)
@@ -429,10 +330,7 @@ def triangle_frames(planes, k, plane: int = 3, edge: int = TRIANGLE_BLOCK):
 def predicted_correlation(a: TriangleFrame, b: TriangleFrame) -> float:
     """[G11] eq. (10) with the mutual-content factor of eq. (11).
 
-    What ``corr(W_a, W_b)`` should be if the only thing the two images share
-    is the camera. The test is then whether the observed correlation exceeds
-    it, which happens when one image was *built out of* the other through a
-    stolen fingerprint estimate.
+    Expected ``corr(W_a, W_b)`` if the images share only the camera.
     """
     count = len(a.attenuation)
     mutual = (a.image_blocks * b.image_blocks).mean(1)
@@ -453,15 +351,9 @@ def observed_correlation(a: TriangleFrame, b: TriangleFrame) -> float:
 def calibrate_triangle(innocent):
     """Fit ``c = lambda * c_hat + eta`` on pairs known to be unrelated.
 
-    [G11] eq. (13). The affine fit absorbs the non-periodic artefacts eq. (10)
-    does not model, and the residual spread is what the decision threshold is
-    set against.
-
-    Returns ``(lambda, eta, sd, pearson)``. **Read the Pearson coefficient.**
-    If the prediction does not track the observation on the verifier's own
-    corpus, the test has no null to test against and every d below is
-    meaningless -- which is what happened on this repo's frames
-    (`docs/adversarial.md`).
+    [G11] eq. (13). Returns ``(lambda, eta, sd, pearson)``. **Read the
+    Pearson coefficient**: if it is low every d is meaningless, as on this
+    repo's frames (`docs/adversarial.md`).
     """
     predicted = []
     observed = []
@@ -495,14 +387,8 @@ def triangle_d(suspect, candidate, calibration) -> float:
 def degrade(k, *, downsample: int = 1, crop: float = 1.0, bits: int | None = None):
     """Weaken a leaked fingerprint, to ask how much of K an attacker needs.
 
-    Three ways a leak can be partial, each answering a different question:
-    ``downsample`` averages KxK blocks and expands them back (what survives
-    if K leaked through a resized artefact), ``crop`` keeps a centred
-    fraction and zeroes the rest (a partial file read), ``bits`` quantises
-    the values (a low-precision or lossily-stored copy).
-
-    Returns a fingerprint of the original shape, so it drops straight into
-    :func:`inject_planes` and the scorer never knows the difference.
+    ``downsample`` block-averages, ``crop`` keeps a centred fraction,
+    ``bits`` quantises. Returns the original shape.
     """
     out = {}
     for c, plane in k.items():
@@ -527,11 +413,8 @@ def degrade(k, *, downsample: int = 1, crop: float = 1.0, bits: int | None = Non
             field = np.where(keep, field, 0.0).astype(np.float32)
 
         if bits is not None:
-            # Mid-rise, not mid-tread: no quantisation level sits at zero, so
-            # ``bits=1`` degrades to a pure sign map rather than collapsing the
-            # whole field to zeros. That case is the interesting one -- a
-            # one-bit K still forges (docs/adversarial.md) -- and a mid-tread
-            # quantiser would have reported it as a failure.
+            # Mid-rise so bits=1 is a sign map, not all zeros: a one-bit K
+            # still forges (docs/adversarial.md).
             scale = float(np.abs(field).max())
             if scale > 0:
                 levels = 2**bits
@@ -566,9 +449,7 @@ def _carrier_rgb(path, size=None, seed: int = 0):
 
 
 def _workdir(args) -> Path:
-    """Where the probe JPEGs go. Never the working directory by default -- a
-    24-megapixel scratch file landing in the repo is how a forged image ends
-    up committed."""
+    """Where probe JPEGs go. Never the cwd by default, so forgeries don't get committed."""
     import tempfile
 
     return Path(args.workdir or tempfile.gettempdir())
@@ -698,9 +579,7 @@ def cmd_partial(args) -> int:
 
     carrier8 = np.clip(np.round(rgb), 0, 255).astype(np.uint8)
     print(f"carrier {args.carrier or 'synthetic'}, alpha {args.alpha}\n")
-    # PSNR is in the table because degrading K changes its amplitude as well as
-    # its structure -- a coarsely quantised K is a *louder* K, so its PCE is not
-    # comparable with the full one at the same alpha unless the cost is shown.
+    # PSNR shown because a coarsely quantised K is louder at the same alpha.
     print(f"  {'leaked K':<22} {'PCE':>10} {'PSNR':>9}  verdict")
     for label, kwargs in variants:
         weakened = k if not kwargs else degrade(k, **kwargs)
@@ -716,10 +595,8 @@ def cmd_partial(args) -> int:
 def cmd_triangle(args) -> int:
     """Both defences, side by side, on the same suspects and candidates.
 
-    ``--suspect`` may be given more than once as ``label=path``. Give it at
-    least one image known to be genuine as well as the one under suspicion:
-    neither statistic here has an absolute threshold, only a separation, and
-    a separation needs both sides.
+    ``--suspect`` repeats as ``label=path``. Include a known-genuine image:
+    neither statistic has an absolute threshold, only a separation.
     """
     k, meta = prnu.load_fingerprint(args.fingerprint)
     plane = args.plane

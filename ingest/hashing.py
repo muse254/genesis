@@ -1,11 +1,4 @@
-"""Content hashes for an image record.
-
-Two hashes, doing two different jobs (BUILD.md sec.4, Flow C):
-
-* ``pixel_sha256``  -- exact identity. Dies the moment a platform
-  re-encodes. Cheap, and correct for files the photographer still holds.
-* ``perceptual_hash`` -- survives resize and re-encode. This is the branch
-  that makes the tool work on images that already left.
+"""Content hashes: ``pixel_sha256`` (exact identity) and ``perceptual_hash`` (survives re-encode).
 
 Hash the PIXEL DATA, not the file bytes: stripping EXIF must not change
 ``image_hash``, or every record breaks on upload.
@@ -30,12 +23,7 @@ PIXEL_HASH_VERSION = b"genesis-pixels-v1"
 
 
 def _as_rgb8(image):
-    """Canonical pixel form: 8-bit RGB, row-major, no metadata anywhere.
-
-    A RAW is developed; anything else is read and converted. The point is
-    that two files with identical pixels and different EXIF hash the same,
-    which is the whole reason this hashes pixels rather than bytes.
-    """
+    """Canonical pixel form: 8-bit RGB, row-major, no metadata. RAWs are developed first."""
     from PIL import Image
 
     Image.MAX_IMAGE_PIXELS = None
@@ -63,12 +51,7 @@ def _as_rgb8(image):
 
 
 def pixel_sha256(image) -> bytes:
-    """SHA-256 over canonicalised pixel data. Metadata is excluded by design.
-
-    The digest covers a version tag and the image's shape as well as the
-    bytes, so that two different rasters cannot collide by sharing a byte
-    string at different dimensions.
-    """
+    """SHA-256 over version tag, shape and canonical pixels (shape stops dimension collisions)."""
     array = _as_rgb8(image)
     h = hashlib.sha256()
     h.update(PIXEL_HASH_VERSION)
@@ -79,14 +62,7 @@ def pixel_sha256(image) -> bytes:
 
 
 def perceptual_hash(image) -> int:
-    """DCT-based pHash. ~40 lines; written here rather than taking `imagehash`.
-
-    Reduce to a small grey square, take the 2-D DCT, keep the low-frequency
-    block, and threshold it at its own median. Low frequencies are what
-    survive a resize and a re-encode, which is exactly the branch this hash
-    exists to serve. The DC term is dropped because it only carries overall
-    brightness and would swamp the median.
-    """
+    """DCT pHash: grey 32x32, keep the 8x8 low-frequency block, threshold at its median (DC excluded)."""
     from PIL import Image
 
     array = _as_rgb8(image)
@@ -111,60 +87,19 @@ def hamming(a: int, b: int) -> int:
     return int(a ^ b).bit_count()
 
 
-#: Version tag mixed into :func:`body_commitment`. Adding or reordering a
-#: field changes the digest, so any prior commitment stops verifying -- the
-#: same one-way door as ``prnu.COMMITMENT_VERSION``. Changing the scheme MUST
-#: change this string, so an old commitment fails loudly rather than silently
-#: recomputing to something else.
+#: Version tag for :func:`body_commitment`. Changing the scheme MUST change this,
+#: so old commitments fail loudly instead of silently recomputing differently.
 BODY_COMMITMENT_VERSION = b"genesis-body-v1"
 
 
 def body_commitment(key: bytes, *, make, model, serial, owner=None, evidence=None) -> bytes:
-    """Bind a bodyId to the physical camera, without publishing its serial.
+    """Bind a bodyId to the physical camera without publishing its serial (length-prefixed HMAC-SHA256).
 
-    HMAC-SHA256 over make, model, serial and owner, length-prefixed like
-    :func:`metadata_hmac` so no two different tuples can collide by shuffling
-    separators.
-
-    **HMAC and not a plain hash, and that is the whole design.** A camera
-    serial is low entropy -- Canon bodies are ten digits, about 2^33 -- so
-    `SHA-256(serial)` is not a commitment at all. Anyone can enumerate the
-    space in seconds and recover it, which would publish the serial of every
-    registered body. Keyed, the space is unreachable without the key.
-
-    Committed at enrolment, revealed only if the claim is ever contested: the
-    photographer produces the serial and the key, and anyone recomputes this
-    value and compares it against the record. That the commitment predates the
-    dispute is what makes the reveal worth anything.
-
-    What this binds and what it does not:
-
-    - It binds a bodyId to a camera someone can physically produce. A
-      photographer holding the body can demonstrate that the registration
-      made at enrolment names *that* camera.
-    - It says nothing about any image. A serial read out of a file's EXIF is
-      worth nothing -- `docs/adversarial.md` writes `Canon EOS R10` into a
-      forged DNG, and `SerialNumber` is as easy. Only a serial committed at
-      enrolment and later checked against the physical body means anything.
-
-    So this strengthens claim 1 in `docs/claims.md`, record integrity. It does
-    nothing for claim 2 and nothing against forgery.
-
-    Parameters
-    ----------
-    evidence : bytes | str, optional
-        A digest of whatever supporting material the photographer holds -- a
-        purchase receipt, an insurance schedule, a service record. **We never
-        see the document and never verify it.** They hash it themselves and
-        pass the digest.
-
-        What committing it buys is one thing only: if a dispute arrives, they
-        can show the material they are producing *now* is the material they
-        committed to *before* the dispute existed. Whether the document is
-        genuine is not a question this system answers, and a receipt is a
-        forgeable image like any other -- an adjudicator with subpoena power
-        settles that, not us. Timestamping their own evidence is the whole
-        contribution, and it is a real one.
+    Keyed, not a plain hash: serials are ~2^33, so SHA-256(serial) is enumerable.
+    Revealed (serial + key) only in a dispute. Strengthens claim 1 in
+    `docs/claims.md` only; says nothing about any image or forgery.
+    ``evidence`` is a digest the photographer computes; we never see or verify
+    the document, only timestamp it.
     """
     mac = hmac.new(key, digestmod=hashlib.sha256)
     mac.update(BODY_COMMITMENT_VERSION)
@@ -183,14 +118,7 @@ def body_commitment(key: bytes, *, make, model, serial, owner=None, evidence=Non
 
 
 def metadata_hmac(key: bytes, timestamp, geolocation, owner) -> bytes:
-    """HMAC-SHA256 over timestamp, geolocation and owner.
-
-    Commits without revealing -- which is how a photographer registers a
-    geotagged frame without publishing where they stood (BUILD.md sec.5).
-
-    Fields are length-prefixed before hashing so that no two different
-    triples can produce the same input string by shuffling separators.
-    """
+    """Length-prefixed HMAC-SHA256 over timestamp, geolocation and owner: commits without revealing."""
     mac = hmac.new(key, digestmod=hashlib.sha256)
     for field in (timestamp, geolocation, owner):
         encoded = b"" if field is None else str(field).encode("utf-8")

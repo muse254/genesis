@@ -1,14 +1,6 @@
 /**
- * AssemblyScript mappings for the Registry subgraph.
- *
- * Two Graph tracks come out of this one body of work: the subgraph itself,
- * and the MCP server in ../mcp that puts it in front of an agent.
- *
- * The events carry only what is cheap to log — an image event has the hash,
- * the body and the score. The rest of the record lives in contract storage,
- * so the handlers read it back with a bound call. That costs an eth_call per
- * registration at index time and keeps the events small, which is the right
- * trade when a shoot is two thousand frames.
+ * Registry subgraph mappings. Events stay small (a shoot is thousands of
+ * frames), so handlers read the rest of each record back with a bound call.
  */
 
 import { BigInt, Bytes, store } from "@graphprotocol/graph-ts";
@@ -28,14 +20,8 @@ import {
 import { Attestation, Body, Challenge, CommitLog, Image, RegistryState, Session } from "../generated/schema";
 
 /**
- * The registry can be wiped on a testnet, and an index that outlived the
- * chain is worse than no index: it would answer for records that no longer
- * exist, and `lookup_body` would hand an agent a body the chain has never
- * heard of.
- *
- * Graph mappings cannot enumerate entities, so ids are tracked as they are
- * written and walked on reset. The lists grow with the registry, which is
- * fine for one that exists to be reset.
+ * A testnet registry can be wiped, and a stale index is worse than none.
+ * Mappings cannot enumerate entities, so ids are tracked here and walked on reset.
  */
 function state(): RegistryState {
   let s = RegistryState.load("genesis");
@@ -58,13 +44,7 @@ function track(list: Array<Bytes>, id: Bytes): Array<Bytes> {
   return list;
 }
 
-/**
- * Clear everything written before this epoch.
- *
- * `resettable` is set to true and never unset: a registry that has admitted
- * once that it can be wiped should not look pristine afterwards, and a reader
- * deciding what a registration date is worth needs to know.
- */
+/** Clear everything before this epoch. `resettable` is never unset: readers must discount the dates. */
 export function handleRegistryReset(event: RegistryReset): void {
   let s = state();
 
@@ -74,9 +54,8 @@ export function handleRegistryReset(event: RegistryReset): void {
   for (let i = 0; i < images.length; i++) store.remove("Image", images[i].toHexString());
   let sessions = s.sessionIds;
   for (let i = 0; i < sessions.length; i++) store.remove("Session", sessions[i].toHexString());
-  // CommitLog is deliberately NOT cleared. It records events, a reset cannot
-  // unhappen an event, and the entity is immutable so `store.remove` would be
-  // a silent no-op anyway. They carry `epoch` instead.
+  // CommitLog is NOT cleared: events can't unhappen, and `store.remove` on an
+  // immutable entity is a silent no-op. They carry `epoch` instead.
 
   s.epoch = event.params.newEpoch;
   s.resettable = true;
@@ -94,8 +73,7 @@ export function handleBodyRegistered(event: BodyRegistered): void {
 
   let body = new Body(event.params.bodyId);
 
-  // The event has the owner and the camera commitment; the fingerprint
-  // commitment is storage.
+  // The fingerprint commitment is only in storage.
   let registry = Registry.bind(event.address);
   let stored = registry.try_bodies(event.params.bodyId);
 
@@ -113,8 +91,7 @@ export function handleBodyRevoked(event: BodyRevoked): void {
   let body = Body.load(event.params.bodyId);
   if (body == null) return;
 
-  // Revocation stops future claims. The images stay indexed, because
-  // unwriting them would make every earlier record unfalsifiable.
+  // Images stay indexed: unwriting them would make earlier records unfalsifiable.
   body.revoked = true;
   body.save();
 }
@@ -123,8 +100,7 @@ export function handleBodyTransferred(event: BodyTransferred): void {
   let body = Body.load(event.params.bodyId);
   if (body == null) return;
 
-  // The new owner may register from here on. Images already indexed keep
-  // their body; the owner of the day is the one in the block that wrote them.
+  // Indexed images keep their body; their owner is the one at their block.
   body.owner = event.params.to;
   body.save();
 }
@@ -167,8 +143,7 @@ export function handleImageRegistered(event: ImageRegistered): void {
   image.registeredAt = event.block.timestamp;
 
   if (stored.reverted) {
-    // Indexing a chain whose state we cannot read would silently produce
-    // records that claim less than the contract does, so say so instead.
+    // Unreadable state: leave fields empty rather than guess.
     image.perceptualHash = Bytes.empty();
     image.metadataHmac = Bytes.empty();
     image.modificationLevel = 0;
@@ -177,8 +152,7 @@ export function handleImageRegistered(event: ImageRegistered): void {
     image.metadataHmac = stored.value.getMetadataHmac();
     image.modificationLevel = stored.value.getModificationLevel();
 
-    // A zero parent means an original. Anything else is an edit, and the
-    // link is what turns a list of records into an edit graph.
+    // A zero parent means an original.
     let parent = stored.value.getParentImageHash();
     if (!isZero(parent) && Image.load(parent) != null) {
       image.parent = parent;
@@ -201,10 +175,7 @@ export function handleSessionCommitted(event: SessionCommitted): void {
 }
 
 export function handleCommit(event: Commit): void {
-  // ERC-7053 is deliberately content-agnostic: it indexes assertions and
-  // declines to say whether they are true. Kept as its own entity so an
-  // indexer following only the standard sees the same log we do, without
-  // inheriting our opinion about what the commit data means.
+  // Separate entity: ERC-7053 is content-agnostic, so don't impose our reading of commit data.
   let id = event.transaction.hash.concatI32(event.logIndex.toI32());
   let log = new CommitLog(id);
   log.epoch = state().epoch;
@@ -214,8 +185,7 @@ export function handleCommit(event: Commit): void {
   log.blockNumber = event.block.number;
   log.timestamp = event.block.timestamp;
 
-  // The local URI ingest/record.py mints is "genesis:<image hash>", so a
-  // commit that came from registerImage can be joined back to its image.
+  // ingest/record.py mints "genesis:<image hash>"; join such commits to their image.
   if (event.params.assetCid.startsWith("genesis:")) {
     let hex = event.params.assetCid.slice(8);
     if (hex.length == 64) {

@@ -1,6 +1,4 @@
-/* Design tokens from design_handoff_genesis_console/README.md.
-   Border-radius 0 everywhere, no shadows, no gradients -- the console is an
-   instrument, not a product page. */
+/* Design tokens. Border-radius 0, no shadows, no gradients. */
 :root {
   --paper: #fbfbf9;
   --ink: #1c1c1a;
@@ -36,11 +34,6 @@ html, body {
   -webkit-font-smoothing: antialiased;
 }
 
-/* The handoff draws 1280x720 because that is the recording resolution, not
-   because the console should be that size. Locked to it and scaled, anything
-   that is not 16:9 letterboxes and the page's height goes unused -- so the
-   stage fills the viewport instead and the layout flexes into it. Size the
-   window to 16:9 when recording and it is the board again, exactly. */
 #stage {
   width: 100vw;
   height: 100vh;
@@ -49,9 +42,6 @@ html, body {
 }
 
 header.chrome {
-  /* Handoff says 54px. Raised deliberately: at the recording resolution the
-     chrome is the one thing a presenter reads at a glance, and 54 was
-     measured on a board rather than on a monitor. */
   height: 76px;
   flex: 0 0 76px;
   border-bottom: 2px solid var(--ink);
@@ -60,10 +50,7 @@ header.chrome {
   gap: 14px;
   padding: 0 20px;
 }
-/* Explicit box: the native art is 1540x416, so 20px tall is 74px wide.
-   `width:auto` here would reflow the step tabs as the PNG decodes. */
-/* Native art is 1540x416, so 30px tall is 111px wide. Both set, because
-   width:auto reflows the step tabs as the PNG decodes. */
+/* 1540x416 art at 30px tall; explicit width stops reflow as the PNG decodes. */
 header.chrome img { height: 30px; width: 111px; display: block; }
 header.chrome .divider { width: 1px; height: 30px; background: var(--hairline); }
 nav.steps { display: flex; gap: 2px; }

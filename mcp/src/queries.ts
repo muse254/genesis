@@ -1,11 +1,4 @@
-/**
- * The subgraph queries, and the shaping of their answers.
- *
- * Split from the server so they can be tested against a stubbed fetch
- * without standing up an MCP transport. Everything an agent is told comes
- * from here, which makes this the file where the claims discipline has to
- * hold: origin, never authenticity.
- */
+/** Subgraph queries and everything an agent is told: origin, never authenticity (`docs/claims.md`). */
 
 export interface BodyRecord {
   id: string;
@@ -74,15 +67,7 @@ export class SubgraphClient {
     return data.image;
   }
 
-  /**
-   * Candidates by perceptual hash.
-   *
-   * Equality for now, which finds re-encodes that did not move a single bit
-   * of the hash but misses anything further away. Proper nearest-neighbour
-   * over Hamming distance is not something a subgraph can do; core/'s
-   * `nearest` does it client-side over the indexed hashes, as the verify
-   * page does.
-   */
+  /** Exact pHash equality only; Hamming search is core/'s `nearest`, client-side. */
   async imagesByPerceptualHash(hash: string, limit = 10): Promise<ImageRecord[]> {
     const data = await this.query<{ images: ImageRecord[] }>(
       `query ByPHash($hash: Bytes!, $limit: Int!) {
@@ -93,11 +78,7 @@ export class SubgraphClient {
     return data.images;
   }
 
-  /**
-   * The body a revealed camera commitment belongs to. What a dispute starts
-   * from: the photographer recomputes the commitment from serial and key, and
-   * this says which registration it was committed in.
-   */
+  /** The body a revealed camera commitment belongs to: where a dispute starts. */
   async bodyByCommitment(commitment: string): Promise<BodyRecord | null> {
     const data = await this.query<{ bodies: BodyRecord[] }>(
       `query ByCommitment($commitment: Bytes!) {
@@ -123,15 +104,7 @@ export class SubgraphClient {
 
 const LEVELS = ["unedited", "adjusted (exposure, white balance, crop)", "generative edit"];
 
-/**
- * Turn a record into something an agent can repeat without overclaiming.
- *
- * Every sentence here is load-bearing. An agent that reads "verified" will
- * say "verified", and this system does not verify anything: it says which
- * sensor the light fell on. A camera pointed at a high-quality screen makes
- * a genuine exposure of a fabricated scene and defeats every provenance
- * system there is, this one included.
- */
+/** Every sentence is load-bearing: an agent repeats what it reads, so never say "verified". */
 export function describeImage(record: ImageRecord | null, hash: string): string {
   if (!record) {
     return [
@@ -144,11 +117,8 @@ export function describeImage(record: ImageRecord | null, hash: string): string 
   }
 
   const lines = [
-    // Not "exposed on body X". `registerImage` checks that the body's owner
-    // sent the transaction and nothing else, so a registration establishes
-    // who claimed the image and when -- not where the light fell. A
-    // fingerprint can be planted by anyone holding one RAW file off the body
-    // (docs/adversarial.md), the owner included. See docs/claims.md.
+    // Not "exposed on body X": `registerImage` checks only the sender, and a
+    // fingerprint can be planted (docs/adversarial.md, docs/claims.md).
     `Registered by the owner of body ${record.body.id}`,
     `  Owner                ${record.body.owner}`,
     `  PCE score            ${record.pceScore}`,

@@ -1,13 +1,7 @@
-"""Synthetic-sensor validation harness -- the regression suite, not a demo.
+"""Synthetic-sensor regression suite: known ground-truth PRNU through the full pipeline.
 
-Simulates a sensor with a known ground-truth PRNU, runs the full extraction
-pipeline, and asserts the recovered fingerprint correlates with truth and
-that same-body PCE separates from other-body PCE by orders of magnitude.
-
-These are SYNTHETIC UPPER BOUNDS. The simulation has a perfectly stable
-fingerprint, no lens vignetting, no dark current and no demosaic. Real
-figures will be far lower, and the moment real ones exist they replace
-these everywhere -- here, in the README, and in the pitch (BUILD.md sec.15).
+SYNTHETIC UPPER BOUNDS: no vignetting, dark current or demosaic. Real figures
+are far lower and are in docs/gates.md.
 """
 
 from __future__ import annotations
@@ -19,26 +13,17 @@ from fingerprint import prnu
 
 # --- simulation parameters -------------------------------------------------
 
-#: Multiplicative PRNU strength -- the K of the sensor model
-#: ``I = I0 + I0*K + Theta`` (Fridrich 2009, eq. 3; see fingerprint/prnu.py
-#: for the full citation). Published RMS figures are lower than this: CMOS
-#: parts are commonly specified under 1%, and a measured large-format
-#: scientific CMOS came in at 1.1% raw. 2% is therefore a deliberately
-#: generous simulation, not a claim about any real body -- what it tests is
-#: that the estimator recovers whatever K it is handed. The number that
-#: matters for this project is measured, not simulated (docs/gates.md).
+#: Multiplicative PRNU strength K in ``I = I0 + I0*K + Theta`` ([F09] eq. 3).
+#: Real CMOS is usually under 1%; 2% is deliberately generous.
 PRNU_STRENGTH = 0.02
 #: Read/shot noise standard deviation, in the same [0, 1] scale as a plane.
 NOISE_SIGMA = 0.01
-#: Frames per enrolment. Gate A asks for 40-50 on a real body; the synthetic
-#: sensor is stationary, so fewer suffice to prove the estimator works.
+#: Frames per enrolment. Real bodies need 40-50; a stationary synthetic sensor needs fewer.
 FRAMES = 24
 SHAPE = (256, 256)
 
 # --- acceptance floors -----------------------------------------------------
-# Deliberately well below what the simulation actually achieves. These are a
-# regression alarm, not a score to report. Anything measured on real frames
-# replaces them (BUILD.md sec.9).
+# Well below what the simulation achieves: a regression alarm, not a score to report.
 
 MIN_TRUTH_CORRELATION = 0.35
 MIN_MATCH_PCE = prnu.PCE_THRESHOLD
@@ -61,8 +46,7 @@ def simulate_exposure(sensor_prnu, scene=None, seed: int = 0):
     shape = sensor_prnu.shape
 
     if scene is None:
-        # A defocused flat: mid-grey with a gentle gradient, which is what a
-        # Gate A enrolment frame is meant to look like.
+        # A defocused flat, like a real enrolment frame.
         y = np.linspace(0.45, 0.55, shape[0], dtype=np.float32)[:, None]
         x = np.linspace(0.98, 1.02, shape[1], dtype=np.float32)[None, :]
         scene = y * x
@@ -72,7 +56,7 @@ def simulate_exposure(sensor_prnu, scene=None, seed: int = 0):
 
 
 def enrol(sensor_prnu, frames: int = FRAMES, seed: int = 0):
-    """Run Flow A end to end against a simulated body."""
+    """Enrol a simulated body end to end."""
     exposures = [simulate_exposure(sensor_prnu, seed=seed + n) for n in range(frames)]
     return prnu.postprocess(prnu.estimate_fingerprint(exposures))
 
@@ -88,12 +72,7 @@ def correlation(a, b) -> float:
 
 
 def score(image, k) -> float:
-    """PCE of one image against a fingerprint.
-
-    The reference is ``image * K``, not K alone: PRNU is multiplicative, so
-    the fingerprint only appears in a test frame scaled by that frame's own
-    intensity.
-    """
+    """PCE of one image against ``image * K`` (PRNU is multiplicative)."""
     return prnu.pce(prnu.noise_residual(image), np.asarray(image, dtype=np.float32) * k)
 
 
@@ -125,12 +104,7 @@ def test_body_separation():
 
 
 def test_commitment_is_pinned():
-    """K's serialisation cannot drift without invalidating prior registrations.
-
-    A body registered today must still hash the same way tomorrow, so this
-    fixes the commitment of a known array rather than trusting the code to
-    stay put (BUILD.md sec.5).
-    """
+    """K's serialisation cannot drift without invalidating prior registrations."""
     k = np.arange(12, dtype=np.float32).reshape(3, 4) / 100.0
 
     expected = "efccc13a457ce758eb92e80486df987eddca917d05d53512eddaf94f2ad96446"
@@ -139,13 +113,7 @@ def test_commitment_is_pinned():
 
 
 def test_cfa_split_is_per_photosite():
-    """Each CFA plane is one photosite type, black-corrected on its own level.
-
-    Exercises the split without a RAW file: RGGB mosaic, a different constant
-    per colour, a different black level per channel. If the sublattice
-    indexing or the per-channel subtraction is wrong, the planes come back
-    mixed and every fingerprint built on them is quietly wrong.
-    """
+    """Each CFA plane is one photosite type, black-corrected on its own level."""
     values = {0: 1000.0, 1: 2000.0, 2: 3000.0, 3: 4000.0}
     colors = np.tile(np.array([[0, 1], [3, 2]]), (4, 4))
     image = np.vectorize(values.get)(colors).astype(np.float32)
@@ -171,11 +139,7 @@ def _four_plane_exposure(body, seed: int):
 
 
 def test_score_beats_the_best_single_plane():
-    """Summing correlation surfaces across CFA planes adds signal coherently.
-
-    A true match peaks at the same shift in every plane while the noise does
-    not, so the combined statistic must exceed the best plane taken alone.
-    """
+    """Summing correlation surfaces across CFA planes beats the best single plane."""
     body = _four_plane_body(seed=10)
     frames = [_four_plane_exposure(body, seed=200 + 10 * n) for n in range(FRAMES)]
     k = prnu.postprocess(prnu.estimate_fingerprint(frames))
@@ -191,11 +155,7 @@ def test_score_beats_the_best_single_plane():
 
 
 def test_saturation_mask_recovers_clipped_frames():
-    """Clipped pixels carry no fingerprint; excluding them lifts the score.
-
-    They are clamped rather than modulated, so they contribute nothing to the
-    correlation peak while still inflating the energy it is measured against.
-    """
+    """Clipped pixels carry no fingerprint; excluding them lifts the score."""
     body = _four_plane_body(seed=10)
     frames = [_four_plane_exposure(body, seed=200 + 10 * n) for n in range(FRAMES)]
     k = prnu.postprocess(prnu.estimate_fingerprint(frames))
@@ -210,12 +170,7 @@ def test_saturation_mask_recovers_clipped_frames():
 
 
 def test_delivered_image_maps_back_to_the_photosite_lattice():
-    """A delivered RGB frame is sampled onto the same lattice as the raw.
-
-    Builds a mosaic from four known plane values, renders it as the RGB image
-    a demosaic would produce, and checks each plane comes back off the right
-    photosites and the right channel.
-    """
+    """A delivered RGB frame is sampled onto the same photosites and channels as the raw."""
     import tempfile
 
     from PIL import Image
@@ -238,12 +193,7 @@ def test_delivered_image_maps_back_to_the_photosite_lattice():
 
 
 def test_scale_search_finds_a_resized_match():
-    """A downscaled frame still matches, once the reference is area-averaged.
-
-    Resizing averages neighbouring pixels, so the fingerprint left behind is
-    the area average of K. The search has to model that; sampling K instead
-    lands at the null, which is the failure this test guards against.
-    """
+    """A downscaled frame still matches, once the reference is area-averaged."""
     from PIL import Image
 
     from fingerprint import stress
@@ -271,16 +221,12 @@ def test_scale_search_finds_a_resized_match():
     assert turned.pce >= MIN_MATCH_PCE, f"portrait copy scored {turned.pce:.1f}"
     assert turned.rotation == 3 and not turned.mirrored, f"reported {turned.orientation}"
 
-    # So must a mirrored one -- an editor or a careless upload can flip a
-    # photograph, and a flip is not a rotation.
+    # So must a mirrored one: a flip is not a rotation.
     flipped = prnu.crop_and_scale_search(np.fliplr(residual), field)
     assert flipped.pce >= MIN_MATCH_PCE, f"mirrored copy scored {flipped.pce:.1f}"
     assert flipped.mirrored, f"reported {flipped.orientation}"
 
-    # The null here has to be a different body, not a rotated copy of this
-    # one: once the search tries all eight orientations it simply undoes the
-    # rotation and matches. A rotated K stops being a negative control the
-    # moment orientation is part of the search.
+    # The null must be a different body: the search undoes any rotated copy.
     other = _four_plane_body(seed=50)
     other_frames = [_four_plane_exposure(other, seed=700 + 10 * n) for n in range(FRAMES)]
     other_field = prnu.sensor_field(prnu.postprocess(prnu.estimate_fingerprint(other_frames)))
@@ -302,8 +248,7 @@ def test_web_jpeg_export_round_trips():
 
 
 def test_a_uniform_border_is_stripped_back_to_the_photograph():
-    """Measured on a real file: a 200px margin took 90,846 to 37.9, and
-    cropping it back gave 86,097. The fingerprint was never damaged."""
+    """A 200px margin took a real file from PCE 90,846 to 37.9; cropping restored it."""
     import numpy as np
     from PIL import Image
 
@@ -330,8 +275,7 @@ def test_a_photograph_without_a_border_is_left_alone():
 
 
 def test_a_blown_sky_is_not_mistaken_for_a_border():
-    """Flat on one side only is scene content. Eating into it would crop a
-    real photograph to make a score look better."""
+    """Flat on one side only is scene content, not a border."""
     import numpy as np
     from PIL import Image
 

@@ -4,40 +4,26 @@ pragma solidity ^0.8.24;
 import {MerkleProof} from "openzeppelin-contracts/contracts/utils/cryptography/MerkleProof.sol";
 
 /// @title Registry -- ERC-7053 commit log plus a camera-body registry.
-/// @notice ERC-7053 defines the index and explicitly declines to validate
-///         the content behind the CIDs. PRNU is that validation; this
-///         contract records the verdict, it does not compute it.
-/// @dev Conform to Numbers Protocol's ERC-7053 interface rather than
-///      reimplementing the event shape and getting it subtly wrong.
+/// @notice Records the PRNU verdict; it does not compute it.
+/// @dev Follows Numbers Protocol's ERC-7053 event shape exactly.
 contract Registry {
     /// @notice This contract's version, semver.
-    /// @dev A registry is never upgraded in place: its dates are the claim,
-    ///      and a proxy whose owner can swap the code can rewrite them. An
-    ///      upgrade is a new deployment with a new VERSION, and the old one
-    ///      stays live and readable forever. Records do not migrate; a
-    ///      verifier reads every registry it trusts and gives priority to the
-    ///      earliest registration across all of them.
+    /// @dev Never upgraded in place: its dates are the claim, and a proxy
+    ///      owner could rewrite them. An upgrade is a new deployment; old ones
+    ///      stay readable and the earliest registration across them wins.
     string public constant VERSION = "1.0.0";
 
     /// @notice Domain tag for body ids. Must equal RECORD_VERSION in
-    ///         ingest/record.py -- the id is derived the same way on both
-    ///         sides so that neither can register something the other
-    ///         cannot reproduce.
-    /// @dev Separate from VERSION, and bumped only when the id derivation
-    ///      changes. A later registry that keeps it derives the same body
-    ///      id for the same camera, so a body is recognisable across
-    ///      versions.
+    ///         ingest/record.py, or the two sides derive different ids.
+    /// @dev Bumped only when id derivation changes, so body ids stay stable
+    ///      across registry versions.
     bytes public constant RECORD_VERSION = "genesis-record-v1";
 
     /// @notice One enrolled camera body.
-    /// @dev fingerprintCommitment is a hash of K. K itself never goes on
-    ///      chain -- a published reference is a published forgery kit.
-    ///
-    ///      bodyCommitment binds the body to a camera someone can physically
-    ///      produce: an HMAC over make, model, serial and owner from
-    ///      `ingest/hashing.py:body_commitment`, never the serial in clear.
-    ///      Zero when the photographer chose not to commit one. It takes the
-    ///      slot the ENS node used to occupy, so the ABI types are unchanged
+    /// @dev fingerprintCommitment is a hash of K. K never goes on chain:
+    ///      a published reference is a published forgery kit.
+    ///      bodyCommitment is an HMAC over make, model, serial and owner
+    ///      (`ingest/hashing.py:body_commitment`), zero if none
     ///      (`docs/security.md`, "Binding a body to a physical camera").
     struct BodyRecord {
         bytes32 fingerprintCommitment;
@@ -59,19 +45,15 @@ contract Registry {
     }
 
     /// @notice True only on a registry that can be wiped. See `resetAll`.
-    /// @dev Immutable and refused outright off a testnet, so no upgrade, no
-    ///      admin action and no mistake can turn it on for a mainnet
-    ///      deployment. A verifier should read this before believing a
-    ///      registration date: on a resettable registry, "first registered
-    ///      at T" is not a claim anyone can rely on.
+    /// @dev Immutable and refused off a testnet. Verifiers should check it:
+    ///      on a resettable registry, registration dates prove nothing.
     bool public immutable testMode;
 
     /// @notice Who may call `resetAll`. Zero when `testMode` is false.
     address public immutable admin;
 
-    /// @notice Bumped by `resetAll`. Every record is scoped to the epoch it
-    ///         was written in, so a reset is one storage write rather than an
-    ///         unbounded loop over records nothing on chain can enumerate.
+    /// @notice Bumped by `resetAll`. Records are scoped by epoch, so a reset
+    ///         is one storage write, not an unbounded loop.
     uint64 public epoch;
 
     /// @notice ERC-7053 commit log: asset CID -> commit indices.
@@ -79,19 +61,16 @@ contract Registry {
 
     mapping(uint64 => mapping(bytes32 => BodyRecord)) private _bodies;
     mapping(uint64 => mapping(bytes32 => ImageRecord)) private _images;
-    /// @notice Session batching: one Merkle root per import, not one write
-    ///         per photograph. A shoot is 2,000 frames.
+    /// @notice One Merkle root per import rather than one write per frame.
     mapping(uint64 => mapping(bytes32 => bytes32)) private _sessionRoots;
 
     /// @notice Running count of commits, which is what commitLogs indexes.
-    /// @dev Deliberately NOT reset: a commit that happened, happened, and
-    ///      reusing an index across epochs would make the event log ambiguous.
+    /// @dev Deliberately NOT reset: reusing an index across epochs would
+    ///      make the event log ambiguous.
     uint256 public commitCount;
 
-    /// @notice The same reads the auto-generated getters used to provide, so
-    ///         the ABI is unchanged for the verify page, the console and the
-    ///         subgraph. Records from a previous epoch read as absent, which
-    ///         is exactly how an unregistered hash has always read.
+    /// @notice Getter-shaped reads over the current epoch; records from a
+    ///         previous epoch read as absent.
     function bodies(bytes32 bodyId) external view returns (
         bytes32 fingerprintCommitment, address owner, bytes32 bodyCommitment, bool revoked
     ) {
@@ -138,10 +117,7 @@ contract Registry {
     event RegistryReset(uint64 indexed previousEpoch, uint64 indexed newEpoch, address indexed by);
 
     /// @param enableTestMode Allow `resetAll`. **Pass false for mainnet.**
-    /// @dev Refused outright off a known testnet, so this cannot be switched
-    ///      on by accident where it would matter. The list is explicit rather
-    ///      than "anything but mainnet", so it fails closed on a chain nobody
-    ///      thought about.
+    /// @dev Explicit testnet allowlist, so it fails closed on unknown chains.
     constructor(bool enableTestMode) {
         if (enableTestMode) {
             require(
@@ -158,21 +134,11 @@ contract Registry {
     }
 
     /// @notice Wipe every body, image, session and commit log in one call.
-    /// @dev Exists so the demo can be rehearsed end to end without a fresh
-    ///      deployment each time: `bodyId` derives from SHA-256(K), so the
-    ///      same camera always reaches the same id and `registerBody` would
-    ///      otherwise refuse forever after the first run.
-    ///
-    ///      **This is not revocation, and it is not a feature.** `revokeBody`
-    ///      says "no more from here" and leaves written records standing,
-    ///      because rewriting history would make every past record
-    ///      unfalsifiable. This does precisely that rewriting, which is why it
-    ///      cannot exist on mainnet: `docs/security.md` counts
-    ///      first-registration time as one of only two boundaries the system
-    ///      has, and a registry whose dates can be withdrawn has one.
-    ///
-    ///      Records are made unreachable rather than deleted, and the reset is
-    ///      an event, so the wipe is itself part of the permanent history.
+    /// @dev Testnet only, for rehearsals: body ids are deterministic, so
+    ///      `registerBody` would otherwise refuse the same camera forever.
+    ///      This rewrites history, which is why it can never exist on mainnet
+    ///      (`docs/security.md`: first-registration time is a trust boundary).
+    ///      Records become unreachable, not deleted, and the reset is an event.
     function resetAll() external {
         require(testMode, "not a test registry");
         require(msg.sender == admin, "not the admin");
@@ -185,10 +151,8 @@ contract Registry {
     // --- ERC-7053 ---------------------------------------------------------
 
     /// @notice Log a commit against an asset CID.
-    /// @dev The EIP deliberately says nothing about what the CID points at
-    ///      or whether the data is true. Anyone may call this; a caller
-    ///      asserting a body they do not own should use registerImage,
-    ///      which checks.
+    /// @dev Unchecked, per the EIP: anyone may call it. Ownership-checked
+    ///      writes go through registerImage.
     function commit(string calldata assetCid, string calldata commitData) external {
         _commit(assetCid, commitData);
     }
@@ -207,16 +171,13 @@ contract Registry {
     // --- body registry ----------------------------------------------------
 
     /// @notice The id a fingerprint commitment must be registered under.
-    /// @dev Derived rather than chosen, so the same camera reaches the same
-    ///      id for everyone and nobody can squat an id that does not follow
-    ///      from their own commitment.
+    /// @dev Derived, not chosen, so nobody can squat someone else's id.
     function deriveBodyId(bytes32 fingerprintCommitment) public pure returns (bytes32) {
         return keccak256(abi.encodePacked(RECORD_VERSION, "body", fingerprintCommitment));
     }
 
-    /// @param bodyCommitment Optional; zero for none. There is no setter, on
-    ///        purpose: the commitment is worth something only because it
-    ///        predates any dispute, and one added later would not.
+    /// @param bodyCommitment Optional; zero for none. No setter on purpose:
+    ///        it is only worth something if it predates any dispute.
     function registerBody(bytes32 bodyId, bytes32 fingerprintCommitment, bytes32 bodyCommitment) external {
         require(fingerprintCommitment != bytes32(0), "empty commitment");
         require(bodyId == deriveBodyId(fingerprintCommitment), "bodyId must derive from commitment");
@@ -234,9 +195,8 @@ contract Registry {
 
     /// @notice Revocation matters: a sold or stolen body must stop
     ///         certifying for its former owner.
-    /// @dev Records already written stay written. Revocation says "no more
-    ///      from here", not "none of that happened" -- rewriting history
-    ///      would make every past record unfalsifiable.
+    /// @dev Existing records stay: rewriting history would make every past
+    ///      record unfalsifiable.
     function revokeBody(bytes32 bodyId) external {
         BodyRecord storage body = _bodies[epoch][bodyId];
         require(body.fingerprintCommitment != bytes32(0), "unknown body");
@@ -247,13 +207,9 @@ contract Registry {
         emit BodyRevoked(bodyId);
     }
 
-    /// @notice Hand a body to a new owner, keeping every record already
-    ///         written. A camera sold second hand keeps its history.
-    /// @dev Only the current owner may call it, and only while the body is
-    ///      not revoked. Images registered earlier stay attributed to the
-    ///      body and to the owner of the time (`ImageRegistered` and the
-    ///      block that holds it show who). The new owner may register from
-    ///      here on; the old one may not.
+    /// @notice Hand a body to a new owner; its history stays.
+    /// @dev Current owner only, not while revoked. Earlier images stay
+    ///      attributed to the owner of the time.
     function transferBody(bytes32 bodyId, address newOwner) external {
         BodyRecord storage body = _bodies[epoch][bodyId];
         require(body.fingerprintCommitment != bytes32(0), "unknown body");
@@ -267,11 +223,7 @@ contract Registry {
 
     // --- attestations and challenges --------------------------------------
     //
-    // Event-only, so they cost little and store nothing. They decide nothing
-    // on chain: a witness, a KYC provider or an arbitrator writes here, and a
-    // verifier chooses whose statements to trust. They exist so that
-    // witnessed enrolment, dedupe findings and disputes have a dated,
-    // permanent place to land without a second registry.
+    // Event-only and unchecked: verifiers choose whose statements to trust.
 
     /// @param subject A body id, an image hash or any other 32-byte subject.
     /// @param kind    A tag the attester defines, e.g. keccak256("witnessed-enrolment-v1").
@@ -291,13 +243,9 @@ contract Registry {
     // --- image registry ---------------------------------------------------
 
     /// @notice Register one photograph against its body.
-    /// @dev Only the body's owner may attribute an image to it. Without
-    ///      that check anyone could point a record at someone else's
-    ///      camera, which is the claim the whole system exists to make.
-    ///
-    ///      `registeredAt` is set here from `block.timestamp`. Whatever the
-    ///      caller passes is ignored: the date is the claim, and a date the
-    ///      owner could write would let them backdate a registration.
+    /// @dev Only the body's owner may attribute an image to it.
+    ///      `registeredAt` comes from `block.timestamp`, never the caller,
+    ///      so a registration cannot be backdated.
     function registerImage(ImageRecord calldata input) external {
         ImageRecord memory record = input;
         record.registeredAt = uint64(block.timestamp);
@@ -317,8 +265,7 @@ contract Registry {
         _images[epoch][record.imageHash] = record;
         emit ImageRegistered(record.imageHash, record.bodyId, record.pceScore);
 
-        // An ERC-7053 entry as well, so an indexer following the standard
-        // sees this without knowing anything about this contract.
+        // Also an ERC-7053 entry, for standard indexers.
         _commit(_assetCid(record.imageHash), "");
     }
 
@@ -345,10 +292,8 @@ contract Registry {
     }
 
     /// @notice Prove a frame was in a committed session.
-    /// @dev OpenZeppelin's verifier: keccak256, pairs hashed in sorted
-    ///      order. ingest/merkle.py builds trees to the same rules and
-    ///      promotes an odd node rather than duplicating it, so proofs
-    ///      generated there verify here.
+    /// @dev OpenZeppelin rules (keccak256, sorted pairs); ingest/merkle.py
+    ///      must match, including promoting odd nodes.
     function verifyInclusion(bytes32 sessionId, bytes32 leaf, bytes32[] calldata proof)
         external
         view

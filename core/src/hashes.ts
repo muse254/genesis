@@ -1,24 +1,11 @@
 /**
- * Decoding a photo to canonical RGB8, and the image record's two hashes.
+ * Decode to canonical RGB8 and compute the same `imageHash` (SHA-256) and
+ * `perceptualHash` (64-bit DCT pHash) as `ingest/hashing.py`.
  *
- * The same digests `ingest/hashing.py` computes: `imageHash` (SHA-256 over
- * canonical RGB8 pixels) and `perceptualHash` (64-bit DCT pHash).
- *
- * Decoding is split by format, because the pixel hash is exact and the
- * decoder decides the pixels:
- *
- * - JPEG goes through libjpeg-turbo compiled to WASM (`core/jpeg/`), the
- *   same version Pillow bundles, so it decodes to the same bytes. The Rust
- *   `image` crate does not (15% of bytes off on a real photo).
- * - PNG and TIFF go through the Rust crate (`rust/genesis-prnu-wasm`).
- *   Lossless, so any correct decoder agrees.
- * - RAW is refused here: developing one is LibRaw's job, and LibRaw has no
- *   WASM build. The desktop decodes RAW in Python and passes the result in
- *   (see `verify.ts`); the web page cannot.
- *
- * Both modules load lazily on first use and are cached. The pixels decoded
- * here are also what PRNU scoring reads (`analyse.ts`), so the hash and the
- * score always see the same image.
+ * The pixel hash is exact, so the decoder matters: JPEG uses libjpeg-turbo
+ * (`core/jpeg/`, the version Pillow bundles; the Rust `image` crate is 15% of
+ * bytes off). PNG/TIFF are lossless, so the Rust crate agrees. RAW is refused;
+ * the desktop decodes it in Python and passes pixels in.
  */
 
 import initPrnu, { decodeRgb, imageHashes } from "./wasm/genesis_prnu_wasm.js";
@@ -46,16 +33,12 @@ export function isRaw(fileName: string): boolean {
 let prnu: Promise<unknown> | undefined;
 let jpeg: Promise<LibJpeg> | undefined;
 
-/**
- * Optional override for where the Rust `.wasm` binary comes from. The pages
- * never pass it (the module finds its binary next to its JS); tests and
- * Node scripts do, because Node's `fetch` cannot read files.
- */
+/** The Rust `.wasm` bytes, for Node, whose `fetch` cannot read files. Pages omit it. */
 export interface Loaders {
   prnuWasm?: BufferSource;
 }
 
-/** Load the Rust WASM module once. Everything else in core that calls into it awaits this first. */
+/** Load the Rust WASM module once; await before calling into it. */
 export function ensurePrnu(loaders: Loaders = {}): Promise<unknown> {
   prnu ??= initPrnu(loaders.prnuWasm ? { module_or_path: loaders.prnuWasm } : undefined);
   return prnu;
@@ -65,10 +48,8 @@ export function ensurePrnu(loaders: Loaders = {}): Promise<unknown> {
 export async function warm(loaders: Loaders = {}): Promise<void> {
   jpeg ??= createLibJpeg();
   await Promise.all([ensurePrnu(loaders), jpeg]);
-  // Run the hot paths once. Browsers first run WASM in a quick-to-compile,
-  // slow-to-run tier and optimise only code that turns out to be hot, and
-  // the heap starts small; a first 24 MP photo paid for both (measured:
-  // 4.6 s to hash cold, under 0.5 s warm).
+  // Run the hot path once so the browser tiers it up and grows the heap
+  // (24 MP hash: 4.6 s cold, under 0.5 s warm).
   const width = 1500;
   const height = 1000;
   hashesOf({ rgb: new Uint8Array(width * height * 3), width, height });
@@ -85,7 +66,6 @@ export async function decode(bytes: Uint8Array, fileName: string, loaders: Loade
   return isJpeg(bytes) ? decodeJpeg(bytes) : decodeLossless(bytes);
 }
 
-/** Both hashes of pixels already decoded. */
 export function hashesOf({ rgb, width, height }: Decoded): Hashes {
   const hashes = imageHashes(rgb, width, height);
   try {
@@ -98,7 +78,6 @@ export function hashesOf({ rgb, width, height }: Decoded): Hashes {
   }
 }
 
-/** Decode and hash in one step. */
 export async function hashImage(bytes: Uint8Array, fileName: string, loaders: Loaders = {}): Promise<Hashes> {
   return hashesOf(await decode(bytes, fileName, loaders));
 }

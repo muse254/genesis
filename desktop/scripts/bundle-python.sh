@@ -1,19 +1,10 @@
 #!/usr/bin/env bash
 #
-# Assemble the Python runtime a release build bundles and embeds -- a
-# relocatable CPython (python-build-standalone, via `uv python install`)
-# plus this project's third-party dependencies installed into it, plus our
-# own pure-Python source. `cargo tauri build` copies the whole thing into
-# the app as a resource (tauri.conf.json's bundle.resources); the embedded
-# interpreter (desktop/src-tauri/src/lib.rs) points PYTHONHOME and sys.path
-# at it, so a machine with no Python at all can still run the app.
+# Assemble the Python runtime the release build bundles as a resource: a
+# relocatable CPython (python-build-standalone via uv), our dependencies, and
+# our pure-Python source, so the app runs on a machine with no Python.
 #
-#   desktop/scripts/bundle-python.sh
-#
-# Proven on macOS (measured: 2s cold start, a real CR3 decoded through the
-# bundled runtime, 17 Sept). The Linux and Windows branches below follow the
-# same pattern -- python-build-standalone ships all three -- but neither has
-# been run; say so rather than claim otherwise if you hit something here.
+# Only the macOS branch has been run; Linux and Windows are untested.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
@@ -50,26 +41,21 @@ echo "== copying it to $RUNTIME (a private copy -- pip-installing into it must n
 mkdir -p "$RESOURCES"
 rm -rf "$RUNTIME"
 cp -R "$SOURCE" "$RUNTIME"
-# This copy is ours now, not the one uv manages; PEP 668's marker would
-# otherwise refuse the pip install below. Not present on the Windows layout.
+# PEP 668's marker would refuse the pip install below. Absent on Windows.
 find "$RUNTIME" -maxdepth 3 -name "EXTERNALLY-MANAGED" -delete
 
 echo "== installing this project's dependencies into it"
 uv pip install --python "$PYTHON_BIN" -r "$ROOT/requirements.txt"
 
 echo "== checking it hashes images exactly as the verify page does"
-# The app and the web page must agree on a photo's pixel hash, or the same
-# JPEG reads "registered" in one and "no record" in the other. The JPEG
-# hash is defined by the libjpeg-turbo inside Pillow's wheel, which is
-# per platform, so check this platform's bundled interpreter against the
-# fixtures the browser build is tested on (verify/README.md).
+# App and web page must agree on pixel hashes. The JPEG hash depends on
+# Pillow's per-platform libjpeg-turbo, so check it against the browser fixtures.
 (cd "$ROOT" && "$PYTHON_BIN" -m ingest.dump_hash_fixtures --check)
 
 echo "== copying our own pure-Python source"
-# git-tracked .py files only, and never a test/validate_ module -- the
-# packages otherwise hold local fixtures (RAW frames, references) that must
-# never leave this machine, this project's whole security posture rests on
-# that (docs/security.md), and have no business in a shipped binary anyway.
+# git-tracked .py only, never validate_ modules: the packages hold local
+# fixtures (RAW frames, references) that must never leave this machine
+# (docs/security.md).
 rm -rf "$APP_SRC"
 mkdir -p "$APP_SRC"
 for pkg in console fingerprint ingest scoring; do

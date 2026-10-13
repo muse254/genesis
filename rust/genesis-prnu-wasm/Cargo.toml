@@ -2,7 +2,7 @@
 name = "genesis-prnu-wasm"
 version = "0.1.0"
 edition = "2021"
-description = "wasm-bindgen wrapper around genesis-prnu's scoring core: score(image_bytes, k_npz_bytes) -> PCE. K bytes never leave this call -- see docs/wasm-scoring-plan.md Phase 5 and docs/security.md 'Where K lives'."
+description = "wasm-bindgen wrapper around genesis-prnu's scoring core: score(image_bytes, k_npz_bytes) -> PCE. K bytes never leave this call (docs/security.md, 'Where K lives')."
 publish = false
 
 [lib]
@@ -20,10 +20,7 @@ serde-wasm-bindgen = "0.6"
 opt-level = "s"
 lto = true
 
-
-# wasm-opt off: the binaryen wasm-pack downloads differs by runner, and each
-# version rejects a different set of the features recent Rust emits (macOS:
-# "error in parsing input", then "Unknown option '--enable-multivalue'").
-# rustc's own release build (opt-level "s", lto) is what ships.
+# wasm-opt off: wasm-pack's binaryen differs by runner and each version rejects
+# different features recent Rust emits. rustc's release build is what ships.
 [package.metadata.wasm-pack.profile.release]
 wasm-opt = false

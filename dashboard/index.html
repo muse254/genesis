@@ -9,9 +9,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;600;700;800&display=swap" />
     <style>
-      /* Same header chrome as site/style.css and verify/index.html -- see
-         the comment there for why this is copied rather than shared.
-         Light only, matching the landing page. */
+      /* Header chrome duplicated in site/, verify/ and score/: keep in sync by hand. Light only. */
       :root {
         --ink: #1c1c1a; --paper: #fbfbf9; --line: #d8d6d0; --secondary: #6f6c66;
         --ui: Archivo, ui-sans-serif, system-ui, -apple-system, sans-serif;
@@ -69,13 +67,6 @@
         </nav>
       </div>
     </header>
-    <!--
-      Look up any address, no login. There is nothing behind this that isn't
-      already public on the subgraph -- a body's owner, its commitments, its
-      registered images -- so gating it behind a wallet signature would add
-      friction without adding privacy. Wallet-connect below is a convenience
-      for filling in "mine," not an access check.
-    -->
     <main>
       <h1>Dashboard</h1>
       <p class="lede">

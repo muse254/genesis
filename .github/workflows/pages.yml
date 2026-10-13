@@ -1,18 +1,9 @@
-# Publishes the static site to GitHub Pages: the landing/download page at
-# the root (site/, no build step), the verify SPA at /verify/, the
-# dashboard at /dashboard/, and the local scoring page at /score/ -- three
-# Vite builds (verify/dashboard/score), all with a relative base (their
-# vite.config.ts) so they work nested at that depth.
+# Publishes the static site to GitHub Pages: the landing page at the root
+# (site/, no build), plus three Vite builds at /verify/, /dashboard/ and
+# /score/ with a relative base so they work nested.
 #
-# Everything here is static: the landing page reads GitHub's Releases API
-# client-side (site/app.js), the verify page hashes the photo and reads the
-# chain client-side (verify/, on core/ -- the verification it shares with
-# the desktop app; JPEG decoding is libjpeg-turbo built with Emscripten),
-# the dashboard reads the subgraph client-side (dashboard/src/main.ts), and
-# the score page runs a WASM module compiled
-# from rust/genesis-prnu-wasm entirely in the browser (score/src/main.ts,
-# docs/wasm-scoring-plan.md Phase 5) -- none of them need a server of
-# their own, so all four fit on Pages.
+# Everything is client-side (GitHub Releases API, chain and subgraph reads,
+# WASM hashing and scoring), so none of them needs a server.
 name: pages
 
 on:
@@ -55,10 +46,8 @@ jobs:
           version: "latest"
       - uses: mymindstorm/setup-emsdk@v14
 
-      # core/'s tests check the hashes against Python's committed fixtures,
-      # JPEG included, as a last gate before deploy: a mismatch would turn
-      # every JPEG on the live page into "no record". (ci.yml runs the same
-      # on every PR.)
+      # Last gate before deploy: core/'s hashes against Python's fixtures,
+      # JPEG included. A mismatch would make every live JPEG "no record".
       - name: Shared verification (core)
         working-directory: core
         run: |
@@ -68,12 +57,8 @@ jobs:
 
       - name: Verify page
         working-directory: verify
-        # Public config only (an RPC URL, a contract address, a subgraph
-        # URL) -- nothing here is a secret, and none of it can be, since it
-        # all has to be readable by a browser that already fetched this
-        # page. The Base mainnet registry 1.0.0 (README, "Deployments"),
-        # deployed 12 Oct 2026. The Base Sepolia rehearsal registry and
-        # its subgraph stay readable, but the page no longer points there.
+        # Public config only: it all has to be readable by the browser.
+        # The Base mainnet registry 1.0.0 (README, "Deployments").
         env:
           VITE_RPC_URL: https://mainnet.base.org
           VITE_REGISTRY_ADDRESS: "0xBa5Ea549c9e1414C14038dB050e0caCB4f9E48cB"
@@ -98,12 +83,8 @@ jobs:
 
       - name: Score page
         working-directory: score
-        # No secrets or env config here (unlike verify/dashboard): scoring
-        # is entirely client-side against files the visitor picks locally,
-        # so there's nothing for this page to be configured with. `npm run
-        # build`'s `prebuild` script runs `wasm-pack build` against
-        # rust/genesis-prnu-wasm (see score/README.md) before `vite build`,
-        # so it goes before tsc, which needs that output to resolve imports.
+        # No config: scoring is client-side on local files. `prebuild` runs
+        # wasm-pack on rust/genesis-prnu-wasm before tsc, which needs its output.
         run: |
           npm ci
           npm run build

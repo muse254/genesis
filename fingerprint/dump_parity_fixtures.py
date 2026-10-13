@@ -1,16 +1,11 @@
 """Dump golden fixtures from the real fingerprint/prnu.py for the Rust port.
 
-THROWAWAY / DEV-ONLY. Not shipped, not imported by anything. Regenerate with
-(must be run as a module -- from the repo root -- not as a bare script, or
-`fingerprint/fingerprint.py` shadows the `fingerprint` package on sys.path):
+DEV-ONLY, synthetic data only. Run as a module from the repo root, or
+`fingerprint/fingerprint.py` shadows the package:
 
-    source .venv/bin/activate && python -m fingerprint.dump_parity_fixtures
-    # or: .venv/bin/python -m fingerprint.dump_parity_fixtures
+    .venv/bin/python -m fingerprint.dump_parity_fixtures
 
-Writes everything under rust/genesis-prnu/tests/fixtures/. Only ever writes
-*synthetic* data (the same deterministic-sensor construction as
-fingerprint/validate_synthetic.py) -- never a real photo or RAW frame. See
-that directory's README.md for what each file is.
+Writes under rust/genesis-prnu/tests/fixtures/ (see its README.md).
 """
 
 from __future__ import annotations
@@ -27,8 +22,7 @@ from fingerprint.validate_synthetic import simulate_exposure, simulate_sensor
 
 OUT = Path(__file__).resolve().parent.parent / "rust" / "genesis-prnu" / "tests" / "fixtures"
 
-# Non-trivial, fast, and at least one non-power-of-two size to stress
-# boundary handling (extension length / phase at odd dimensions).
+# Includes a non-power-of-two size to stress boundary handling.
 CASES = {
     "case_64x64": (64, 64),
     "case_128x128": (128, 128),
@@ -85,10 +79,7 @@ def main() -> None:
 
     # --- per-case fixtures ---------------------------------------------------
     for case_name, shape in CASES.items():
-        # A stable hash, not Python's `hash()` -- that's salted per-process
-        # (PYTHONHASHSEED) and made every fixture (including this seed
-        # field, which is metadata only, not re-derived by any test)
-        # non-reproducible across runs of this script.
+        # Not `hash()`: it is salted per process, so fixtures would not reproduce.
         seed = int(hashlib.sha256(case_name.encode()).hexdigest(), 16) % (2**31)
         sensor = simulate_sensor(shape=shape, seed=seed)
         plane = simulate_exposure(sensor, seed=seed + 1)
@@ -118,13 +109,11 @@ def main() -> None:
     sensor_a = simulate_sensor(shape=two_plane_shape, seed=seed_a)
     sensor_b = simulate_sensor(shape=two_plane_shape, seed=seed_b)
 
-    # candidate image planes (what score() receives as `planes`)
     candidate = {
         0: simulate_exposure(sensor_a, seed=seed_a + 100),
         1: simulate_exposure(sensor_b, seed=seed_b + 100),
     }
-    # "reference" fingerprint K per plane -- just the ground-truth sensor
-    # PRNU fields themselves, standing in for an enrolled K.
+    # Ground-truth PRNU stands in for an enrolled K.
     reference = {0: sensor_a, 1: sensor_b}
 
     dump_array("two_plane_candidate_0", candidate[0])
@@ -132,7 +121,6 @@ def main() -> None:
     dump_array("two_plane_reference_0", reference[0])
     dump_array("two_plane_reference_1", reference[1])
 
-    # cross_correlation on plane 0's residual vs expected, standalone
     residual_0 = prnu.noise_residual(candidate[0])
     expected_0 = candidate[0] * reference[0]
     cc_0 = prnu.cross_correlation(residual_0, expected_0)
@@ -152,15 +140,8 @@ def main() -> None:
         "score": score_value,
     }
 
-    # --- Phase 4: end-to-end K (.npz) + delivered PNG + score -----------------
-    # Mirrors validate_synthetic.py's _four_plane_body/enrol pattern and
-    # test_delivered_image_maps_back_to_the_photosite_lattice: a synthetic
-    # four-plane body, enrolled into a real save_fingerprint() .npz, then a
-    # held-out exposure rendered as a small RGB PNG the way a demosaic would,
-    # sampled back through the same CFA pattern. This is the fixture that
-    # proves the whole Rust pipeline (npz read + PNG decode + CFA sample +
-    # score) against one real Python score() call, not just each piece
-    # in isolation.
+    # --- end-to-end: K (.npz) + delivered PNG + score -------------------------
+    # Proves the whole Rust pipeline against one real Python score() call.
     from PIL import Image
 
     from fingerprint.validate_synthetic import FRAMES
@@ -180,9 +161,7 @@ def main() -> None:
     meta = {"cfa_pattern": pattern, "frames": FRAMES, "synthetic": True}
     prnu.save_fingerprint(k_path, k, meta)
 
-    # Held-out exposure -> demosaiced RGB image, exactly like
-    # test_delivered_image_maps_back_to_the_photosite_lattice but with real
-    # (non-constant) per-plane content instead of flat swatches.
+    # Held-out exposure -> demosaiced RGB image.
     held_out = {c: simulate_exposure(kk, seed=9000 + c) for c, kk in body.items()}
     ph, pw = e2e_shape
     rgb = np.zeros((ph * 2, pw * 2, 3), dtype=np.float32)
@@ -193,8 +172,6 @@ def main() -> None:
     image_path = OUT / "e2e_delivered.png"
     Image.fromarray((np.clip(rgb, 0.0, 1.0) * 255).astype(np.uint8)).save(image_path)
 
-    # Ground truth: run the same load_delivered_planes + score path Rust has
-    # to reproduce, over the files just written.
     delivered_planes = prnu.load_delivered_planes(image_path, pattern, channels)
     e2e_score = prnu.score(delivered_planes, k, mask_saturated=True)
 

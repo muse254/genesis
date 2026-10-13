@@ -86,7 +86,7 @@ the light did.**
 
 ## Scope
 
-Phone photographs are out of scope, and `docs/phones.md` is why: binned
+Phone photographs are out of scope because of binned
 output, multi-frame fusion, and no photosite lattice to sample onto. Say
 "outside its scope", not "not supported yet" and not "PRNU does not work on
 phones" — the first promises a roadmap that does not exist, the second is

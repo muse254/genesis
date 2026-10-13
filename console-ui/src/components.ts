@@ -1,29 +1,18 @@
 /**
- * The parts the design calls a system: the four verdict cards, the log rail
- * and the stage strip.
+ * Verdict cards, the log rail and the stage strip.
  *
- * One rule governs all of it, from board 2b: **the verdict word is the claim
- * and the score is only a measurement beside it.** A forged image scores
- * 82,190 and lands on `fingerprint-only`; a genuine degraded photograph
- * scores 37.3 and lands on `derived`. So nothing here lets magnitude, colour,
- * bar length or weight imply trust -- every PCE figure renders in identical
- * ink, and colour lives only on the verdict block.
+ * The verdict word is the claim; the score is only a measurement (a forgery
+ * can outscore a genuine photo). So PCE always renders in plain ink and
+ * colour lives only on the verdict block.
  */
 
 import { ETHERSCAN, GRAPH_STUDIO, readContractUrl, registryAddress } from "./api";
 import type { Signal, Stage, Verdict, VerifyResult } from "./api";
 
 /**
- * A value the registry holds, rendered so it can be checked rather than
- * merely read.
- *
- * Only for values that are actually on chain. A commitment computed at
- * enrolment is not one -- it goes on chain when the body is registered, and
- * linking it before then would tell the reader to look somewhere it is not.
- *
- * The link is the contract's verified Read Contract tab, because Etherscan
- * cannot deep-link a mapping read with its argument. The value is beside it
- * to paste in, and the title says which function to call.
+ * An on-chain value with a link to check it. Only for values actually on
+ * chain. Links to the Read Contract tab because Etherscan cannot deep-link a
+ * mapping read; the value sits beside it to paste in.
  */
 function onChain(value: string, call: string, display?: string): string {
   const url = readContractUrl();
@@ -111,8 +100,7 @@ export function verdictCard(result: VerifyResult): HTMLElement {
     row("Camera body", `<b>${escape(result.body.name ?? short(result.body.bodyId))}</b>`);
     row("Body id", onChain(result.body.bodyId, "bodies(bytes32)", short(result.body.bodyId)));
     if (result.body.commitment) {
-      // On chain because the body is registered -- this row only renders
-      // inside `result.body`, which is read from the registry.
+      // Only renders inside `result.body`, which is read from the registry.
       row(
         "Fingerprint commitment",
         onChain(result.body.commitment, "bodies(bytes32)", short(result.body.commitment)),
@@ -126,8 +114,7 @@ export function verdictCard(result: VerifyResult): HTMLElement {
       );
     }
     if (result.body.bodyCommitment && /[1-9a-f]/i.test(result.body.bodyCommitment.slice(2))) {
-      // A keyed commitment to make, model and serial. It proves nothing on
-      // its own; it is what a photographer reveals against in a dispute.
+      // Proves nothing alone; revealed against in a dispute.
       row(
         "Camera commitment",
         onChain(result.body.bodyCommitment, "bodies(bytes32)", short(result.body.bodyCommitment)) +
@@ -160,9 +147,7 @@ export function verdictCard(result: VerifyResult): HTMLElement {
     );
   }
 
-  // The sub-threshold sentence is required on `derived` and is the one piece
-  // of copy the handoff calls non-negotiable. Hiding it would let the
-  // strongest-looking row rest on the weakest evidence.
+  // Non-negotiable on `derived`: the strongest-looking row rests on weak evidence.
   const clears = result.pce >= result.threshold;
   row(
     "Pixels",
@@ -175,9 +160,7 @@ export function verdictCard(result: VerifyResult): HTMLElement {
             : "")),
   );
 
-  // A measured reason beats a bare "no record", which reads as "not your
-  // camera" — and for a soft frame or an in-camera JPEG that is the wrong
-  // thing for a photographer to conclude.
+  // A measured reason, so "no record" does not read as "not your camera".
   const diagnosis = result.diagnosis
     ? `<p class="diagnosis">${escape(result.diagnosis)}</p>`
     : "";
@@ -192,13 +175,8 @@ export function verdictCard(result: VerifyResult): HTMLElement {
 }
 
 /**
- * The PCE rail: logarithmic, 1 to 100,000, never a 0-100 bar.
- *
- * The handoff's formula is `log10(pce)/5`, which is undefined at or below
- * zero -- and negative scores are ordinary here, a different camera lands at
- * -30.9 and -44.0 routinely. Those clamp to the left edge and are labelled
- * `< 1`. The rail starts at 1 because that is where a log scale can start,
- * not because scores do.
+ * The PCE rail: log scale, 1 to 100,000. Scores <= 1 (negative ones are
+ * common) clamp to the left edge as `< 1`.
  */
 export function rail(marks: { pce: number; label: string }[], idle = false): HTMLElement {
   const position = (pce: number) =>
@@ -239,9 +217,7 @@ export function stageStrip(stages: Stage[]): HTMLElement {
     }
     return (value as Signal[])
       .map((signal) => {
-        // AUC drawn as a band on a shared 0.5-1.0 axis. Overlapping bands are
-        // the honest picture: at 0.517 the band spans nearly the whole axis,
-        // which is what "chance" looks like and is worth showing.
+        // AUC as a band on a shared 0.5-1.0 axis; near 0.5 it should look like chance.
         const auc = signal.auc ?? 0.5;
         const left = ((0.5 - 0.5) / 0.5) * 100;
         const width = ((auc - 0.5) / 0.5) * 100;

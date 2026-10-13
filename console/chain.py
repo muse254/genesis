@@ -1,13 +1,7 @@
-"""The chain reads the console needs, over raw JSON-RPC.
+"""Chain reads over raw JSON-RPC (getters return static structs, so no web3 needed).
 
-No web3 dependency. The registry's getters return fixed-size static structs,
-so encoding a call is a selector plus one word and decoding is slicing --
-which is less code than a dependency and leaves nothing to guess about what
-went over the wire.
-
-This module reads. It never signs. Signing lives in the endpoints that
-register, because `registerImage`'s owner check is the system's only real
-boundary (`docs/security.md`) and it should be obvious where it is exercised.
+Reads only, never signs: signing stays in the registering endpoints, where the
+`registerImage` owner check -- the real boundary (`docs/security.md`) -- is visible.
 """
 
 from __future__ import annotations
@@ -18,10 +12,8 @@ from dataclasses import dataclass
 import httpx
 from eth_utils import keccak
 
-#: Every chain the registry is deployed to, keyed by `GENESIS_CHAIN`. One
-#: place, so the chain id, the RPC and both explorers cannot disagree.
-#: Base mainnet is production (COLOSSEUM.md D1); Sepolia is the ETHOnline
-#: deployment, kept readable because its records are real.
+#: Every chain the registry is deployed to, keyed by `GENESIS_CHAIN`. Base is
+#: production; Sepolia stays readable because its records are real.
 CHAINS = {
     "base": {
         "name": "Base",
@@ -51,8 +43,7 @@ if CHAIN_KEY not in CHAINS:
     raise RuntimeError(f"GENESIS_CHAIN={CHAIN_KEY!r}; expected one of {sorted(CHAINS)}")
 CHAIN = CHAINS[CHAIN_KEY]
 
-#: `RPC_URL` is the name now; `SEPOLIA_RPC_URL` is honoured only on Sepolia,
-#: so an old `.env` cannot quietly point a Base console at the wrong chain.
+#: `SEPOLIA_RPC_URL` is honoured only on Sepolia, so an old `.env` cannot point Base at the wrong chain.
 RPC_URL = (
     os.environ.get("RPC_URL")
     or (os.environ.get("SEPOLIA_RPC_URL") if CHAIN_KEY == "sepolia" else None)
@@ -60,8 +51,7 @@ RPC_URL = (
 )
 REGISTRY = (os.environ.get("REGISTRY_ADDRESS") or "").strip()
 
-#: A demo that silently talked to the wrong chain would look like it worked,
-#: so `/state` reports this and the console shows it before recording.
+#: Reported by `/state`: a wrong chain would otherwise look like it worked.
 EXPECTED_CHAIN_ID = CHAIN["chainId"]
 CHAIN_NAME = CHAIN["name"]
 
@@ -69,8 +59,7 @@ EXPLORER = CHAIN["blockscout"]
 
 
 class ChainError(RuntimeError):
-    """The RPC could not answer. Never swallowed: a verdict that degrades
-    because the network blinked is a comfortable lie (`docs/console-server.md`)."""
+    """The RPC could not answer. Never swallowed into a verdict."""
 
 
 def _selector(signature: str) -> str:
@@ -95,8 +84,7 @@ def _rpc(method: str, params: list, timeout: float = 15.0):
 
 
 def _call(signature: str, argument: str = "") -> bytes:
-    """One `eth_call`. `argument` is a single bytes32-shaped word, or nothing
-    for a no-argument getter like `testMode()`."""
+    """One `eth_call` with an optional single bytes32 word argument."""
     if not REGISTRY:
         raise ChainError("REGISTRY_ADDRESS is not set")
     encoded = argument.removeprefix("0x").rjust(64, "0") if argument else ""
@@ -134,11 +122,9 @@ class BodyRecord:
 
 
 def image(image_hash: str) -> ImageRecord | None:
-    """`images(bytes32)`. ``None`` for a hash nobody registered.
+    """`images(bytes32)`, or ``None`` (zeroed struct) if unregistered.
 
-    An unregistered hash reads back as a zeroed struct rather than an error,
-    so the zero check is the registration check -- and it is the *only* thing
-    that may produce a `registered` verdict.
+    This zero check is the *only* thing that may produce a `registered` verdict.
     """
     raw = _call("images(bytes32)", image_hash)
     if len(raw) < 256 or not any(_word(raw, 0)):
@@ -168,25 +154,12 @@ def body(body_id: str) -> BodyRecord | None:
     )
 
 
-#: `testMode` is `immutable` in the contract, so for a given registry the
-#: answer can never change. Asking once per process rather than once per
-#: `/state` poll matters: the public RPC is the slowest thing the console
-#: touches, and `/state` is polled.
+#: `testMode` is immutable per registry address, so cache it; `/state` is polled and the RPC is slow.
 _TEST_MODE: dict[str, bool] = {}
 
 
 def test_mode() -> bool:
-    """`testMode()`. True on a registry whose records can be wiped.
-
-    Read from the contract rather than from configuration, because it is the
-    contract's answer that matters: a console that believed a `.env` flag
-    could offer a reset button on a registry that has no reset, or hide one
-    that does.
-
-    Memoised per registry address. The value is immutable on chain, so a
-    cached answer cannot go stale -- only a redeployment changes it, and that
-    changes the address too.
-    """
+    """`testMode()`: True if the registry can be wiped. Read from the contract, not config."""
     if REGISTRY in _TEST_MODE:
         return _TEST_MODE[REGISTRY]
     try:
@@ -231,34 +204,24 @@ def explorer_url(tx_or_address: str, kind: str = "tx") -> str:
     return f"{EXPLORER}/{kind}/{tx_or_address}"
 
 
-#: The second explorer, on purpose. The registry is verified on both, so a
-#: reader who distrusts one has another that serves the same ABI.
+#: A second explorer on purpose: the registry is verified on both.
 ETHERSCAN = CHAIN["etherscan"]
 
-#: Where the subgraph can actually be looked at. The query endpoint in `.env`
-#: answers POSTs and is no use in a browser; the Studio page is the one a
-#: person can open.
+#: Browsable subgraph page (the `.env` query endpoint only answers POSTs).
 GRAPH_STUDIO = "https://thegraph.com/studio/subgraph/genesis"
 
 
 def reference_links(tx_hash: str = "") -> list[dict]:
-    """Every place a claim made here can be checked by someone else.
+    """Every place a claim made here can be checked by someone else (`docs/claims.md`).
 
-    Returned by the server rather than assembled in the frontend, for the same
-    reason verdicts are: the console knows the addresses and the frontend
-    should not be a second place that has to be kept in step with them.
-
-    The point is not decoration. `docs/claims.md` says a registration is
-    "verifiable by anyone against the registry without taking our word for
-    it", and a claim nobody is shown how to check is a claim taken on trust.
+    Built server-side so the frontend is not a second copy of the addresses.
     """
     links: list[dict] = []
     if tx_hash:
         links.append({"label": "Transaction · Etherscan", "url": f"{ETHERSCAN}/tx/{tx_hash}"})
         links.append({"label": "Transaction · Blockscout", "url": f"{EXPLORER}/tx/{tx_hash}"})
     if REGISTRY:
-        # Verified source, so the Read Contract tab needs no wallet -- this is
-        # the link that lets someone check the record themselves.
+        # Verified source: the Read Contract tab needs no wallet.
         links.append({
             "label": "Registry · Etherscan (read contract)",
             "url": f"{ETHERSCAN}/address/{REGISTRY}#readContract",
@@ -272,8 +235,7 @@ def reference_links(tx_hash: str = "") -> list[dict]:
 
 
 def block_age_seconds() -> int:
-    """How stale the head is. A chain that stopped advancing looks identical
-    to one that is fine, until a transaction never confirms on camera."""
+    """Seconds since the latest block: a stalled chain otherwise looks fine."""
     import time
 
     block = _rpc("eth_getBlockByNumber", ["latest", False])

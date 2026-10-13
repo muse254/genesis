@@ -1,10 +1,4 @@
-"""Tests for the console API.
-
-The chain is stubbed and no fingerprint is needed on disk. What these pin is
-the one rule the whole system now rests on: `registered` is decided by a chain
-read and by nothing else, and a missing chain does not degrade into a verdict
-that looks like success.
-"""
+"""Console API tests, chain stubbed. Core rule: only a chain read decides `registered`."""
 
 import json
 
@@ -17,15 +11,7 @@ from console import chain
 
 @pytest.fixture(autouse=True)
 def _isolated_catalogue(tmp_path, monkeypatch):
-    """Point the catalogue at a temp file for every test in this module.
-
-    Without this the suite writes into `data/catalogue.db` -- the operator's
-    real archive -- because these tests drive the real endpoints through
-    TestClient. It did: a fixture body `0x0202…` and two files named IMG_0.CR3
-    showed up in a live archive and made the statistics say two bodies when
-    one camera existed. A test that pollutes production data is worse than no
-    test, so this is autouse rather than opt-in.
-    """
+    """Temp catalogue for every test; otherwise the suite writes into the real `data/catalogue.db`."""
     import importlib
 
     from console import catalogue as cat
@@ -40,36 +26,16 @@ def _isolated_catalogue(tmp_path, monkeypatch):
 
 @pytest.fixture(autouse=True)
 def _isolated_references(tmp_path, monkeypatch):
-    """Point `GENESIS_REFERENCES` at a temp directory for every test here.
-
-    The same lesson as `_isolated_catalogue`, learned the same way and one
-    step worse. `/reset` deletes enrolled fingerprints, `clear_enrolments`
-    defaults to true, and one test drove that endpoint without isolating the
-    directory -- so running the suite deleted the operator's real `.npz`. A
-    catalogue row can be re-registered; a reference cannot be recreated
-    identically, because `save_fingerprint` does not record which frames went
-    into it.
-
-    Autouse, and covering every test rather than the reset ones, because the
-    next endpoint to touch that directory should not have to remember.
-    """
-    # Dot-prefixed so it cannot show up in a `/browse` listing, which is
-    # rooted at a temp directory in its own tests.
-    # `/state` is cached for a few seconds and the cache is module-level, so
-    # one test's gate would answer for the next one's. Dropped on both sides:
-    # a stale gate is exactly the bug the cache could introduce, and a suite
-    # that tolerated it here would not catch it in the product.
+    """Temp references dir for every test: `/reset` deletes real `.npz` files, which can't be recreated."""
+    # The `/state` cache is module-level; clear it so tests don't share a gate.
     from console.app import invalidate_state
 
     invalidate_state()
 
-    references = tmp_path / ".genesis-references"
+    references = tmp_path / ".genesis-references"  # dot: hidden from `/browse`
     references.mkdir()
-    # The env var covers anything reading it at call time -- `/reset`'s
-    # deletion, and `/enrol`'s output path.
     monkeypatch.setenv("GENESIS_REFERENCES", str(references))
-    # And the module constant, which `scoring.app._bodies` resolved at import
-    # and would otherwise still glob the operator's real directory.
+    # The module constant was resolved at import, so patch it too.
     monkeypatch.setattr("scoring.app.REFERENCES", references)
     yield
     invalidate_state()
@@ -155,8 +121,7 @@ def test_register_body_refuses_a_slot_that_is_taken(client, monkeypatch):
 
 
 def test_register_body_refuses_a_malformed_camera_commitment(client, monkeypatch):
-    """Checked before any gas is spent: a truncated hex string would be padded
-    by `cast` into a commitment nobody can ever reproduce."""
+    """Refused before gas: `cast` would pad short hex into an unreproducible commitment."""
     monkeypatch.setattr(
         console_app, "_bodies",
         lambda: {"b1": {"name": "r10", "commitment": "cc", "planes": {}, "meta": {}}},
@@ -281,8 +246,7 @@ def test_a_camera_comes_back_from_its_fingerprint_file(client, tmp_path, monkeyp
 
 
 def test_the_hmac_key_becomes_bytes():
-    """It arrives from the environment as str; hmac.new rejects that with a
-    TypeError inside the request, which surfaced as a bare 500."""
+    """The env var is str; hmac.new needs bytes."""
     from console import registry as reg
 
     import os
@@ -297,11 +261,7 @@ def test_the_hmac_key_becomes_bytes():
 
 
 def test_every_hash_field_is_padded_to_a_word(monkeypatch):
-    """The perceptual hash is eight bytes and the ABI wants bytes32.
-
-    Unpadded, `cast` fails with a bare "parser error" naming no field, which
-    reads on camera as the chain refusing a genuine photograph.
-    """
+    """The 8-byte pHash must be padded to bytes32, or `cast` fails with a bare "parser error"."""
     from console import registry as reg
 
     class Built:
@@ -352,8 +312,7 @@ def test_browse_refuses_to_escape_its_root(client, monkeypatch, tmp_path):
 
 
 def test_browse_counts_raw_frames_per_folder(client, monkeypatch, tmp_path):
-    """The count is the point: Gate A wants 40-50, and a picker that does not
-    say which folders qualify makes the operator guess."""
+    """Gate A wants 40-50 frames, so the picker shows counts."""
     from console import app as ca
 
     (tmp_path / "shoot").mkdir()
@@ -431,9 +390,7 @@ def test_a_session_with_nothing_acceptable_signs_nothing(client, monkeypatch):
 
 
 def test_the_catalogue_never_leaves_the_machine(tmp_path, monkeypatch):
-    """It holds file paths and free text. Both are local-only by construction:
-    a path maps to a RAW and a RAW is a forgery kit; a caption is unbounded
-    personal data that would be permanent if published."""
+    """Paths and captions are local-only (see `console/catalogue.py`)."""
     import importlib
 
     monkeypatch.setenv("GENESIS_CATALOGUE", str(tmp_path / "c.db"))
@@ -462,8 +419,7 @@ def test_the_catalogue_never_leaves_the_machine(tmp_path, monkeypatch):
 
 
 def test_re_registering_the_same_pixels_keeps_the_newer_path(tmp_path, monkeypatch):
-    """Registering the same photograph from a different folder should update
-    where it is, not create a second row for one on-chain record."""
+    """Same pixels from a new folder update the path, not add a row."""
     import importlib
 
     monkeypatch.setenv("GENESIS_CATALOGUE", str(tmp_path / "c.db"))
@@ -483,16 +439,9 @@ def test_re_registering_the_same_pixels_keeps_the_newer_path(tmp_path, monkeypat
 
 
 def test_registration_scores_with_the_shared_scorer(monkeypatch):
-    """Registration and verification diverged once and it cost a 500 on every
-    portrait photograph: build_record's own scoring is the aligned path only,
-    and a portrait frame raised `image is (3000, 2000), fingerprint is (2000,
-    3000)`. /verify fell through to the orientation search; registration did not.
+    """Registration uses `_score_against`, which core/'s Rust port is parity-tested against.
 
-    Registration still scores in Python, with `_score_against`. Verification
-    now runs the Rust port of that same function in core/, which
-    `rust/genesis-prnu/tests/search_parity.rs` holds to it on every path (and
-    which matched it to four decimals on real photos). Moving registration
-    onto core/ too is the rest of docs/shared-verify-plan.md.
+    `build_record`'s own scoring is aligned-only and fails on portrait frames.
     """
     from console import registry as reg
     from scoring.app import _score_against
@@ -532,8 +481,7 @@ def test_a_duplicate_registration_says_so_plainly(monkeypatch):
 
 
 def test_a_session_records_which_body_it_scored_against(client, monkeypatch):
-    """Without this the archive counts a session's frames as belonging to no
-    body, and the statistics undercount."""
+    """Else session frames count as belonging to no body."""
     from console import catalogue as cat
     from console import registry as reg
 
@@ -563,13 +511,7 @@ def test_a_session_records_which_body_it_scored_against(client, monkeypatch):
 
 
 def test_enrolment_refuses_a_folder_holding_two_cameras(monkeypatch):
-    """The archive folder that holds the enrolment frames also holds the
-    negatives, and `/enrol` took every RAW in it.
-
-    `docs/gates.md` makes the serial check the first thing done to any file,
-    and this endpoint skipped it. Averaging two sensors produces a fingerprint
-    belonging to neither -- silently, with a commitment that looks fine.
-    """
+    """Averaging two sensors silently yields a K belonging to neither (`docs/gates.md`)."""
     from pathlib import Path
 
     from console.app import _serials_disagree
@@ -611,12 +553,7 @@ def test_a_missing_serial_does_not_block_enrolment(monkeypatch):
 
 
 def test_reset_refuses_a_production_registry(client, monkeypatch):
-    """The gate is the contract's answer, not a local flag.
-
-    A console that trusted configuration could offer a wipe against a registry
-    that has no wipe, and the failure would arrive as an unexplained revert
-    mid-demo. Worse, it could hide the control on a registry that does.
-    """
+    """The gate is the contract's `testMode()`, not a local flag."""
     monkeypatch.setattr(chain, "REGISTRY", "0x" + "11" * 20)
     monkeypatch.setattr(chain, "test_mode", lambda: False)
 
@@ -655,12 +592,7 @@ def test_reset_sends_one_transaction_when_confirmed(client, monkeypatch):
 
 
 def test_reset_clears_enrolments_when_asked(client, monkeypatch, tmp_path):
-    """A wipe that leaves the references behind is not a clean slate.
-
-    `resetAll` clears the chain; the enrolled fingerprints are files on this
-    machine and it never touched them, so the console went on reporting a body
-    with nothing on chain behind it — and demo step 1 had nothing to do.
-    """
+    """A wipe that leaves the references behind is not a clean slate."""
     from console import registry as registry_module
 
     (tmp_path / "r10.npz").write_bytes(b"not a real reference")
@@ -682,8 +614,7 @@ def test_reset_clears_enrolments_when_asked(client, monkeypatch, tmp_path):
 
 
 def test_reset_leaves_enrolments_alone_when_not_asked(client, monkeypatch, tmp_path):
-    """The chain wipe and the local wipe are separable, because one is
-    reversible by re-registering and the other is not."""
+    """Separable: the chain wipe is reversible by re-registering; deleting K is not."""
     from console import registry as registry_module
 
     (tmp_path / "r10.npz").write_bytes(b"not a real reference")
@@ -704,12 +635,7 @@ def test_reset_leaves_enrolments_alone_when_not_asked(client, monkeypatch, tmp_p
 
 
 def test_the_scorer_notices_a_reference_disappearing(tmp_path, monkeypatch):
-    """The cross-process half of the same bug.
-
-    The console and the scorer are separate processes. The cache used to say
-    "restart to pick up a new enrolment", so clearing through one left the
-    other scoring against a fingerprint that no longer existed on disk.
-    """
+    """The scorer is a separate process; it must notice the directory change without a restart."""
     import numpy as np
 
     from fingerprint import prnu
@@ -733,13 +659,7 @@ def test_the_scorer_notices_a_reference_disappearing(tmp_path, monkeypatch):
 
 
 def test_register_image_refuses_an_unregistered_body_before_scoring(client, monkeypatch):
-    """Enrolled is not registered, and the difference costs a minute.
-
-    `registerImage` reverts `unknown body` when the id has no record on chain.
-    Reaching that revert means paying for the PRNU scale search first and then
-    being handed hex. Both routes there are ordinary: a fresh enrolment, and a
-    `resetAll` that cleared the chain out from under an existing one.
-    """
+    """Enrolled is not registered; refuse before a minute of scoring ends in a revert."""
     import io
 
     from console import registry as registry_module
@@ -765,18 +685,7 @@ def test_register_image_refuses_an_unregistered_body_before_scoring(client, monk
 
 
 def test_no_user_facing_copy_claims_origin():
-    """The claim `docs/adversarial.md` falsifies, guarded across both frontends.
-
-    `registerImage` checks only that the body's owner sent the transaction, so
-    a registration establishes who claimed an image and when -- **not where
-    the light fell**. `mcp/` has had a test for this since the wording was
-    corrected there; the frontends had none, and the console drifted back to
-    "states where these pixels came from" without anything objecting.
-
-    Source-level because the copy is the product here. A verdict card that
-    overclaims is the failure this repository is most exposed to, and it costs
-    nothing to pin.
-    """
+    """A registration proves who claimed an image and when, **not where the light fell** (`docs/adversarial.md`)."""
     import re
     from pathlib import Path
 
@@ -799,8 +708,7 @@ def test_no_user_facing_copy_claims_origin():
                 for match in re.finditer(pattern, text, re.IGNORECASE):
                     line = text[: match.start()].count("\n") + 1
                     context = text.splitlines()[line - 1].strip()
-                    # A negation is the correct use: the copy is allowed to say
-                    # what the system does *not* claim.
+                    # Negations are allowed: copy may say what is *not* claimed.
                     if re.search(r"\b(not|never|does not|nor)\b", context, re.I):
                         continue
                     offences.append(f"{source}:{line}: {context[:100]}")
@@ -808,13 +716,7 @@ def test_no_user_facing_copy_claims_origin():
 
 
 def test_reset_clears_the_archive(client, monkeypatch, tmp_path):
-    """The archive describes the chain, so it cannot outlive a wipe.
-
-    Every row is keyed by an image hash that, after `resetAll`, resolves to
-    nothing. Left alone, screen 06 goes on presenting withdrawn registrations
-    as registered work -- the same shape as the enrolled references, and the
-    same reason it has to go.
-    """
+    """The archive describes the chain, so it cannot outlive a wipe."""
     from console import catalogue
     from console import registry as registry_module
 
@@ -843,11 +745,7 @@ def test_reset_clears_the_archive(client, monkeypatch, tmp_path):
 
 
 def test_enrol_accepts_uploaded_frames(client, monkeypatch, tmp_path):
-    """The console path: frames chosen in the operating system's own dialog.
-
-    A browser cannot hand a server a path, so the picker uploads. The service
-    stages them, enrols, and removes the staging whether or not it worked.
-    """
+    """Frames uploaded from the OS file dialog are staged and enrolled."""
     import console.app as ca
 
     seen: dict = {}
@@ -881,9 +779,7 @@ def test_enrol_accepts_uploaded_frames(client, monkeypatch, tmp_path):
 
 
 def test_enrol_refuses_a_selection_with_no_raw(client, monkeypatch, tmp_path):
-    """A developed JPEG has been through the camera's own noise reduction,
-    which is the thing that removes the fingerprint -- so this is refused with
-    the reason rather than enrolled into something meaningless."""
+    """Developed JPEGs have had the fingerprint denoised away."""
     monkeypatch.setenv("GENESIS_REFERENCES", str(tmp_path))
 
     response = client.post(
@@ -901,12 +797,7 @@ def test_enrol_needs_either_files_or_a_folder(client):
 
 
 def test_the_suite_cannot_touch_the_operators_references():
-    """A canary for the fixture above.
-
-    This suite deleted a real enrolled fingerprint once. `_isolated_references`
-    is what stops it; this is what notices if that fixture is removed, renamed
-    or stops applying.
-    """
+    """Canary: fails if `_isolated_references` stops applying."""
     import os
     from pathlib import Path
 
@@ -917,13 +808,8 @@ def test_the_suite_cannot_touch_the_operators_references():
 
 
 def test_the_desktop_app_s_webview_can_preflight_across_the_private_network(client):
-    """WKWebView preflights every cross-origin request from the app's
-    tauri:// page to this loopback server as Private Network Access, and
-    fails closed -- silently, as a bare "Load failed" with nothing in this
-    server's log -- if the preflight is refused. Starlette refuses it by
-    default; `allow_private_network=True` is the whole fix, and this is the
-    regression a browser catches that no unit test run through requests or
-    TestClient's default OPTIONS handling would.
+    """WKWebView sends Private Network Access preflights to loopback and fails silently
+    ("Load failed") if refused; Starlette refuses by default without `allow_private_network`.
     """
     response = client.options(
         "/state",
@@ -937,7 +823,7 @@ def test_the_desktop_app_s_webview_can_preflight_across_the_private_network(clie
     assert response.headers["access-control-allow-private-network"] == "true"
 
 
-# --- what core/ needs from this machine (docs/shared-verify-plan.md) ------
+# --- what core/ needs from this machine ------------------------------------
 
 
 @pytest.fixture
@@ -965,8 +851,7 @@ def test_a_fingerprint_is_served_from_the_enrolled_directory(enrolled):
 
 
 def test_a_fingerprint_is_readable_only_from_the_apps_own_origins(enrolled):
-    """K never leaves the machine. CORS is what stops a web page the operator
-    happens to have open from reading it off this loopback server."""
+    """CORS stops any other open web page from reading K off loopback."""
     path = f"/bodies/{'ab' * 32}/fingerprint"
     stranger = enrolled.get(path, headers={"Origin": "https://evil.example"})
     assert "access-control-allow-origin" not in stranger.headers
@@ -1073,8 +958,7 @@ def test_the_console_no_longer_computes_a_verdict(client):
 
 
 def test_catalogue_sync_follows_the_chain():
-    """The chain is the record: its rows arrive, its values win, local captions
-    stay, rows it lacks go -- except one newer than the index has reached."""
+    """Chain rows arrive and win; captions stay; missing rows go unless newer than the index."""
     from console import catalogue as cat
 
     body = "0xb0"

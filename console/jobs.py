@@ -1,13 +1,6 @@
-"""Long-running work with a progress stream.
+"""Long-running work (e.g. `/enrol`, minutes of RAW reads) on a thread, with a progress stream.
 
-`/enrol` reads forty-odd 24-megapixel RAWs and takes minutes. A demo that
-shows nothing for that long looks hung, and a presenter cannot tell a slow
-enrolment from a stuck one -- so the work runs on a thread and every frame it
-finishes becomes an event.
-
-Deliberately in memory and deliberately not durable. This is a demo driver
-(`docs/security.md`); a job that does not survive a restart is correct here,
-and a job store that did would be one more thing to go wrong on camera.
+In memory and not durable on purpose: this is a demo driver (`docs/security.md`).
 """
 
 from __future__ import annotations
@@ -28,10 +21,7 @@ class Job:
     result: dict | None = None
     error: str | None = None
 
-    #: When the job started, so every event can carry how far into the work it
-    #: happened. A label alone says what is running; a label with a clock says
-    #: whether it is progressing, which is the question an operator watching a
-    #: slow step is actually asking.
+    #: So each event carries elapsed time: shows whether a slow step is progressing.
     started: float = field(default_factory=time.time)
 
     def emit(self, **event) -> None:

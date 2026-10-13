@@ -1,19 +1,8 @@
 /*
- * JPEG -> 8-bit RGB with libjpeg-turbo, compiled to WASM by build.sh.
- *
- * This exists because the pixel hash is exact (ingest/hashing.py): the
- * browser has to decode a JPEG to the very bytes Pillow decodes it to, and
- * only the same libjpeg-turbo, at the same version, does that. The Rust
- * `image` crate's decoder was measured 15% of bytes off on a real photo.
- *
- * Settings are libjpeg's defaults, which are what Pillow uses: ISLOW IDCT,
- * fancy upsampling, full scale. Pillow asks libjpeg for RGB on colour
- * files and for greyscale on grey ones, then replicates grey into three
- * channels in convert("RGB"); asking libjpeg for RGB from a grey file
- * replicates the same way. CMYK/YCCK is refused -- Pillow's conversion from
- * those is its own formula, not libjpeg's, and a wrong hash would read as
- * "no record" rather than as an error.
- *
+ * JPEG -> RGB8 with libjpeg-turbo (WASM, build.sh). The pixel hash is exact,
+ * so this must match Pillow byte for byte: same library, same version,
+ * libjpeg defaults. CMYK/YCCK is refused: Pillow converts those with its own
+ * formula, and a wrong hash would read as "no record", not an error.
  * One image at a time: decode() replaces the previous result.
  */
 #include <setjmp.h>
@@ -41,13 +30,8 @@ static void on_error(j_common_ptr cinfo) {
   longjmp(err->jump, 1);
 }
 
-/*
- * libjpeg's warnings are not fatal, and Pillow ignores them too -- except
- * running out of data. libjpeg pads a truncated file with grey and carries
- * on; Pillow refuses it ("image file is truncated"). Padding would give a
- * hash nothing is registered under, shown as "no record" rather than as an
- * error, so a truncated file fails here as it does in Python.
- */
+/* Warnings are ignored, as in Pillow, except truncation: Pillow refuses it,
+ * while libjpeg would pad with grey and give a silently wrong hash. */
 static void on_warning(j_common_ptr cinfo, int level) {
   if (level < 0 && cinfo->err->msg_code == JWRN_JPEG_EOF) {
     strcpy(message, "the file is truncated");

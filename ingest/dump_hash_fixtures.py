@@ -1,31 +1,11 @@
-"""Dump golden fixtures for the Rust/WASM port of ``ingest/hashing.py``.
+"""DEV-ONLY: dump golden fixtures (synthetic images only) for the Rust/WASM port of ``hashing.py``.
 
-DEV-ONLY, like ``fingerprint/dump_parity_fixtures.py``. Regenerate from the
-repo root with:
+    .venv/bin/python -m ingest.dump_hash_fixtures           # regenerate
+    python -m ingest.dump_hash_fixtures --check             # check this interpreter
 
-    .venv/bin/python -m ingest.dump_hash_fixtures
-
-or, to check an interpreter against the committed fixtures without writing
-anything (``desktop/scripts/bundle-python.sh`` does this with the Python it
-bundles, so the desktop app hashes exactly as the verify page does):
-
-    python -m ingest.dump_hash_fixtures --check
-
-Writes synthetic images only (never a real photo) plus the hashes Python
-computes for them to ``rust/genesis-prnu/tests/fixtures/hashing/``:
-
-* PNGs -- lossless, so they test the Rust decoder and the hashes together.
-* JPEGs -- the part the Rust decoder cannot do. ``core/jpeg/`` decodes
-  these with libjpeg-turbo in WASM, and ``core/test/hashes.test.ts`` checks
-  both hashes against this manifest. The sampling variants cover the
-  chroma upsampling paths, which is where decoders disagree.
-
-Cases with ``"expect": "refused"`` are ones the browser must reject
-with an error rather than hash: a wrong hash would read as "no record"
-instead of as a failure. The reason is in ``"why"``.
-
-``manifest.json`` also records the Pillow and libjpeg-turbo versions,
-because the JPEG pixel hashes are only defined relative to them.
+``"expect": "refused"`` cases must error in the browser: a wrong hash would read
+as "no record". JPEG hashes are only defined relative to the recorded
+Pillow/libjpeg-turbo versions; chroma-sampling variants are where decoders disagree.
 """
 
 from __future__ import annotations
@@ -95,9 +75,8 @@ def main() -> None:
     Image.fromarray(synthetic(150, 110, 8)).convert("L").save(OUT / "png_grey.png")
     record("png_grey", OUT / "png_grey.png", "png")
 
-    # Metadata must not move the pixel hash: same pixels as png_97x65, plus
-    # text chunks. The JPEG equivalent (an inserted EXIF segment) is built
-    # in the browser tests, since re-saving a JPEG here would re-encode it.
+    # Metadata must not move the pixel hash. (JPEG equivalent lives in the
+    # browser tests: re-saving a JPEG here would re-encode it.)
     info = PngImagePlugin.PngInfo()
     info.add_text("Author", "someone")
     info.add_text("Comment", "metadata is not pixels")

@@ -9,7 +9,7 @@ dataSources:
     name: Registry
     network: anvil
     source:
-      # Fill in after the day-4 deploy, then freeze.
+      # The address contracts/script/local-e2e.sh deploys to on a fresh anvil.
       address: "0x5FbDB2315678afecb367f032d93F642f64180aa3"
       abi: Registry
       startBlock: 0

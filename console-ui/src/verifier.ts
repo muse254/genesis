@@ -1,17 +1,8 @@
 /**
- * Verification for the desktop app: `@genesis/core`, the same code the web
- * page runs (`docs/shared-verify-plan.md`), fed with what only this machine
- * has.
- *
- * - The enrolled K files, from the console (`GET /bodies/{id}/fingerprint`),
- *   loaded into core's worker once per session. They never leave this
- *   machine: the console is on loopback and answers only this app.
- * - RAW decoding, which is LibRaw's job and LibRaw has no WASM build
- *   (`POST /raw/develop`, `POST /raw/planes`).
- * - The chain and The Graph, read through the console's read-only proxies
- *   (`/rpc`, `/subgraph`) so a key in either URL stays out of this webview.
- *
- * The verdict is core's. Nothing here decides anything.
+ * Desktop verification: `@genesis/core` (same as the web page), fed with the
+ * local K files, LibRaw decoding (no WASM build) and the console's read-only
+ * `/rpc` and `/subgraph` proxies, which keep API keys out of this webview.
+ * The verdict is core's; nothing here decides anything.
  */
 
 import {

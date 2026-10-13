@@ -1,18 +1,6 @@
 /**
- * The photographer's app: a sidebar and five destinations, replacing the
- * eight-screen presenter console (`main.ts` + `screens.ts`, kept for
- * reference and still buildable, just no longer the entry point).
- *
- * What merged: Negative, Survival and Verdict were three demo scenarios for
- * the same one thing -- dropping an image and reading its verdict. They are
- * all just Verify here, and it renders the exact four-verdict card
- * (`components.ts:verdictCard`) with the claims-discipline copy verbatim.
- * Pre-flight becomes a status dot in the sidebar footer, shown in detail only
- * in Settings; the registry reset control does not exist in this app at all
- * -- it is a testnet-only escape hatch, not a photographer-facing feature.
- *
- * Everything here still talks to the same `console/app.py`. Nothing about
- * where K lives changes: enrolment and scoring stay on this machine
+ * The photographer's app: a sidebar and five destinations over `console/app.py`.
+ * No registry reset here: that is a testnet tool. K stays on this machine
  * (`docs/security.md`, "Where K lives").
  */
 
@@ -23,7 +11,6 @@ import { api, ETHERSCAN, readContractUrl } from "./api";
 import type { ReferenceLink, State } from "./api";
 import { el, escape, short, utc, verdictCard } from "./components";
 import { verifyStreaming } from "./verifier";
-// The version shown in Settings is the one the installer was built as.
 import tauriConf from "../../desktop/src-tauri/tauri.conf.json";
 
 type ViewId = "home" | "photos" | "verify" | "cameras" | "settings";
@@ -113,12 +100,7 @@ function render(id: ViewId) {
 
 // --- Shared cache -----------------------------------------------------
 
-/**
- * `/state` and `/catalogue` are read by every view, and re-fetching on each
- * click makes the sidebar feel like a page load. Cached for a few seconds
- * and invalidated by anything that changes what they report, the same rule
- * the old console's `/state` cache used server-side.
- */
+/** `/state` and `/catalogue`, cached briefly and invalidated by any change to them. */
 const cache: { state?: State; statePromise?: Promise<State>; catalogue?: CatalogueResult } = {};
 
 interface CatalogueImage {
@@ -184,9 +166,7 @@ function explorerLink(explorerUrl: string, links?: ReferenceLink[]): string {
   return extra || `<a class="mono" href="${escape(explorerUrl)}" target="_blank" rel="noreferrer">View transaction ↗</a>`;
 }
 
-/** The camera-commitment field every registration form offers: optional,
- *  32 bytes of hex, checked before anything is sent (matches the server's
- *  own check in `console/registry.py`). */
+/** Optional 32-byte hex camera commitment; same check as `console/registry.py`. */
 function commitmentField(): HTMLElement {
   return el(`
     <div class="field">
@@ -677,11 +657,7 @@ async function renderCameras(host: HTMLElement) {
   host.append(grid);
 }
 
-/**
- * "I already have a camera": a camera enrolled before comes back from its
- * fingerprint file. Enrolling again would not work, since a fresh enrolment
- * is a different fingerprint than the one on the record.
- */
+/** Restore a camera from its fingerprint file; re-enrolling would give a different fingerprint. */
 function restoreCamera(done: () => void, align: "center" | "flex-start" = "center"): HTMLElement {
   const box = el(`
     <div style="display:flex;flex-direction:column;align-items:${align};gap:8px;margin-bottom:16px">
@@ -714,8 +690,7 @@ function restoreCamera(done: () => void, align: "center" | "flex-start" = "cente
 // --- Settings ---------------------------------------------------------
 
 async function renderSettings(host: HTMLElement) {
-  // Written for photographers: no keys, chains or environment variables.
-  // Those are the developer console's business, not this app's.
+  // For photographers: no keys, chains or environment variables.
   let state: State | undefined;
   try {
     state = await getState(true);
@@ -760,8 +735,7 @@ async function heartbeat() {
     const attention = (state.bodyStatus ?? []).some((b) => !b.registered);
     badge.hidden = !attention;
     if (currentView === "home" || currentView === "cameras") {
-      // The two views most likely to be looked at right after a change land
-      // (a fresh registration, a body just enrolled) get a quiet refresh.
+      // Quietly refresh the views most likely to show a just-landed change.
     }
   } catch {
     status.classList.add("down");
@@ -770,13 +744,8 @@ async function heartbeat() {
 }
 
 /**
- * The desktop build's backend is a frozen Python one-file binary that
- * unpacks itself on every launch -- measured at 13 to 35 seconds cold
- * (`desktop/README.md`). The page loads and runs its scripts long before
- * that finishes, and a plain `getState()` failure at that point looks
- * identical to a genuinely dead console. So the first render waits for
- * `/health` to actually answer, with its own visible state, rather than
- * showing "unreachable" for something that is simply still starting.
+ * The desktop backend takes 13-35 s to unpack on a cold start, so wait for
+ * `/health` before the first render instead of showing "unreachable".
  */
 async function waitForBackend(): Promise<void> {
   const started = Date.now();

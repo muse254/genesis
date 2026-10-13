@@ -1,8 +1,6 @@
 /**
- * Just enough EXIF to read IFD0's Make (271) and Software (305), for the
- * "this looks like an in-camera JPEG" diagnosis (`verify.ts`). Reads a JPEG's
- * APP1 segment, a PNG's eXIf chunk, or a TIFF directly. Anything malformed
- * yields nothing: a diagnosis is a courtesy, never worth an error.
+ * Just enough EXIF to read IFD0's Make (271) and Software (305) for the
+ * in-camera-JPEG diagnosis. Malformed input yields null: a diagnosis is never worth an error.
  */
 
 export interface Exif {

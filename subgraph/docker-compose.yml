@@ -1,5 +1,4 @@
-# A local Graph stack, so the subgraph can be run against real events before
-# anything touches a testnet. anvil must already be listening on 8545.
+# Local Graph stack; anvil must already be listening on 8545.
 #
 #   anvil &
 #   docker compose -f subgraph/docker-compose.yml up -d

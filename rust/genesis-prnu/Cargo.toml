@@ -2,7 +2,7 @@
 name = "genesis-prnu"
 version = "0.1.0"
 edition = "2021"
-description = "PRNU sensor-fingerprint scoring core (wavelet Wiener denoiser, correlation, PCE) -- a Rust port of fingerprint/prnu.py's scoring path. See docs/wasm-scoring-plan.md."
+description = "PRNU sensor-fingerprint scoring core (wavelet Wiener denoiser, correlation, PCE) -- a Rust port of fingerprint/prnu.py's scoring path."
 publish = false
 
 [lib]

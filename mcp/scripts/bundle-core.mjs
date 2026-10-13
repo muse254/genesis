@@ -1,18 +1,6 @@
-// Copy core/'s hashing into dist/core, so verify_image_file hashes a photo
-// with exactly the code the verify page runs. Nothing is reimplemented here.
-//
-//   core/src/hashes.ts            -> dist/core/hashes.js   (types stripped)
-//   core/src/chain.ts             -> dist/core/chain.js    (for `nearest`)
-//   core/src/wasm/*  (wasm-pack)  -> dist/core/wasm/
-//   core/src/jpeg/*  (Emscripten) -> dist/core/jpeg/
-//
-// The two WASM modules are not committed; `npm run wasm` in core/ builds
-// them (Rust + wasm-pack + emcc, see core/README.md). Without them this
-// prints how to get them and exits 0, so the three hash-lookup tools still
-// build and run; verify_image_file then says what is missing. Set
-// GENESIS_REQUIRE_CORE=1 to make a missing build an error instead.
-//
-// Types are stripped, not checked: core/'s own CI job type-checks it.
+// Copy core/'s hashing (types stripped, not checked) and WASM into dist/core,
+// so verify_image_file runs the verify page's exact code. Missing WASM is a
+// warning (exit 0) unless GENESIS_REQUIRE_CORE=1.
 import { copyFileSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";

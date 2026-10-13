@@ -3,11 +3,8 @@
 //
 //   npm run parity -- ~/photos/a.jpg ~/photos/b.png
 //
-// Each photo is hashed by Python (PYTHON, default .venv/bin/python) and by
-// the WASM modules, and the two must agree exactly. The committed synthetic
-// fixtures are covered by `npm test` (test/hashes.test.ts); this is the
-// check on real camera output, worth running after bumping libjpeg-turbo or
-// Pillow. Needs `npm run wasm` first.
+// Run after bumping libjpeg-turbo or Pillow. PYTHON defaults to
+// .venv/bin/python. Needs `npm run wasm` first.
 import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { basename, dirname, join, resolve } from "node:path";

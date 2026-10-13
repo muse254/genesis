@@ -1,7 +1,4 @@
-/**
- * The Web Worker that runs `analyse.ts`. One request at a time per message
- * id; progress is posted back as it happens.
- */
+/** The Web Worker that runs `analyse.ts`; progress is posted back per message id. */
 
 import { analyse, loadBody, type AnalyseRequest } from "./analyse";
 import { warm } from "./hashes";
@@ -16,8 +13,7 @@ export type WorkerReply =
   | { id: number; result: unknown }
   | { id: number; error: string };
 
-// The two members of the worker scope this file uses. (The WebWorker lib
-// conflicts with DOM, which the rest of core is typed against.)
+// Hand-typed: the WebWorker lib conflicts with DOM, which the rest of core uses.
 const scope = self as unknown as {
   onmessage: ((event: MessageEvent<WorkerMessage>) => void) | null;
   postMessage(message: WorkerReply): void;

@@ -1,23 +1,14 @@
 //! The two content hashes of an image record -- a Rust port of
-//! `ingest/hashing.py`'s `pixel_sha256` and `perceptual_hash`, so the verify
-//! page and the desktop app (`core/`) compute them in the browser instead of
-//! posting the photo to a scoring service.
+//! `ingest/hashing.py`'s `pixel_sha256` and `perceptual_hash`.
 //!
-//! Both start from canonical 8-bit RGB, row-major. **Producing those bytes is
-//! the caller's job, and it is the fragile part**: `pixel_sha256` is exact, so
-//! a decoder that differs from Python's by one level in one pixel gives a
-//! different hash. Python decodes JPEG with the libjpeg-turbo that Pillow
-//! bundles (3.1.4.1 for Pillow 12.3.0), and the `image` crate's JPEG decoder
-//! does *not* reproduce it -- measured on `a-piece-of-quiet.jpg`, 15% of bytes
-//! differed, by up to 5 levels. The verify page therefore decodes JPEG with
-//! that same libjpeg-turbo compiled to WASM (`core/jpeg/`) and hands the
-//! RGB here. [`decode_rgb8`] is only for the lossless formats, where any
-//! correct decoder agrees.
+//! Both take canonical RGB8, and `pixel_sha256` is exact, so the caller's
+//! decoder must match Python's to the bit. The `image` crate's JPEG decoder
+//! does not match Pillow's libjpeg-turbo (15% of bytes differed, by up to 5
+//! levels), so the verify page decodes JPEG with that libjpeg-turbo in WASM
+//! (`core/jpeg/`). [`decode_rgb8`] is only for lossless formats.
 //!
-//! `perceptual_hash` reproduces Pillow's integer `convert("L")` and its
-//! fixed-point LANCZOS resize bit for bit (ported from Pillow 12.3.0's
-//! `Convert.c` and `Resample.c`), so it matches exactly in practice rather
-//! than only within the verify page's 10-bit Hamming slack.
+//! `perceptual_hash` ports Pillow 12.3.0's `convert("L")` and fixed-point
+//! LANCZOS bit for bit, so it matches exactly, not just within 10 bits.
 
 use sha2::{Digest, Sha256};
 
@@ -208,9 +199,8 @@ mod tests {
     fn perceptual_hash_survives_a_downscale() {
         // The job the pHash exists for: a smaller copy still links back. The
         // verify page allows 10 bits; a clean halving should be far inside it.
-        // A photo-like fixture, not `gradient`: a pure gradient has dozens of
-        // near-zero DCT terms sitting on the median, and Python's own pHash
-        // moves 28 bits on it under the same halving.
+        // A photo-like fixture, not `gradient`: a gradient's many near-median
+        // DCT terms move 28 bits even in Python.
         let bytes = std::fs::read(concat!(
             env!("CARGO_MANIFEST_DIR"),
             "/tests/fixtures/hashing/png_180x260.png"

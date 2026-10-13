@@ -2,15 +2,9 @@
 //
 //   node core/raw/parity.mjs <raw> [raw ...]
 //
-// For each file, every field enrolment reads (fingerprint/prnu.py
-// load_raw_planes and cfa_pattern) is compared exactly: the visible mosaic
-// (by SHA-256), its size, raw_pattern, raw_colors_visible (every pixel),
-// black_level_per_channel and white_level. The body serial is compared with
-// exiftool's, which the desktop's enrolment check uses today. Python comes
-// from PYTHON (default .venv/bin/python). Needs `./core/raw/build.sh` first.
-//
-// Pass real camera files. They are not committed, and neither is where they
-// live: one RAW off a body is enough to forge its fingerprint.
+// Compares every field load_raw_planes reads, exactly; the serial against
+// exiftool. PYTHON defaults to .venv/bin/python. Needs `./core/raw/build.sh`.
+// Never commit the RAW files or their location: one RAW can forge a body's fingerprint.
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
@@ -91,9 +85,7 @@ for (const path of process.argv.slice(2)) {
 
   const checks = want.flat
     ? ["flat", "size", "mosaic", "pattern", "colors", "black", "white"].map((k) => [k, JSON.stringify(got[k]) === JSON.stringify(want[k])])
-    : // Not a mosaic: rawpy opens it and load_raw_planes refuses it; this
-      // build may refuse it earlier (no lossy-DNG JPEG support). Either way
-      // it must not come back as a mosaic.
+    : // Not a mosaic: must be refused (possibly earlier than rawpy refuses it).
       [["refused, as load_raw_planes refuses it", got.flat !== true]];
   if (want.flat && want.serial) checks.push(["serial", got.serial === want.serial]);
   const ok = checks.every(([, pass]) => pass);
