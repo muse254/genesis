@@ -4,7 +4,7 @@
  * API key stays out of the webview.
  */
 
-import { createPublicClient, http, type Address, type Chain } from "viem";
+import { createPublicClient, http, parseEventLogs, type Address, type Chain } from "viem";
 import { anvil, base, baseSepolia, sepolia } from "viem/chains";
 
 /** Same keys as `GENESIS_CHAIN` in `console/chain.py`. */
@@ -16,6 +16,8 @@ export interface ImageRecord {
   perceptualHash: `0x${string}`;
   bodyId: `0x${string}`;
   modificationLevel: 0 | 1 | 2;
+  /** All zeros for an original. */
+  parentImageHash: `0x${string}`;
   pceScore: number;
   /** Unix seconds. */
   registeredAt: number;
@@ -29,14 +31,26 @@ export interface BodyRecord {
   revoked: boolean;
 }
 
+export interface RegistrationTx {
+  txHash: `0x${string}`;
+  /** The transaction's sender; `msg.sender` when `to` is the registry. */
+  from: `0x${string}`;
+  to: `0x${string}` | null;
+}
+
 export interface ChainReader {
   registry: Address;
+  chainId: number;
   /** `{explorer}/address/{registry}`, for linking a registration. */
   explorerUrl?: string;
+  /** Block explorer base URL: the configured one, else the chain's default. */
+  explorer?: string;
   /** `images(bytes32)`; null for a hash nobody registered. Throws if the RPC cannot answer. */
   image(hash: `0x${string}`): Promise<ImageRecord | null>;
   /** `bodies(bytes32)`; null for a body nobody registered. */
   body(bodyId: `0x${string}`): Promise<BodyRecord | null>;
+  /** `txHash` if its receipt holds the registry's `ImageRegistered` log for `hash`, else null. */
+  registrationTx(hash: `0x${string}`, txHash: `0x${string}`): Promise<RegistrationTx | null>;
   /** `testMode()`: whether the registry can be wiped. False for a registry predating the flag. */
   testMode(): Promise<boolean>;
   /** A reverse ENS name that forward-resolves to `owner`, or null. Never throws. */
@@ -72,6 +86,15 @@ const REGISTRY_ABI = [
       { name: "revoked", type: "bool" },
     ],
   },
+  {
+    type: "event",
+    name: "ImageRegistered",
+    inputs: [
+      { name: "imageHash", type: "bytes32", indexed: true },
+      { name: "bodyId", type: "bytes32", indexed: true },
+      { name: "pceScore", type: "uint32", indexed: false },
+    ],
+  },
   { type: "function", name: "testMode", stateMutability: "view", inputs: [], outputs: [{ name: "", type: "bool" }] },
 ] as const;
 
@@ -92,7 +115,9 @@ export function createChainReader(config: ChainConfig): ChainReader {
 
   return {
     registry: address,
+    chainId: client.chain.id,
     explorerUrl: config.explorer ? `${config.explorer}/address/${address}` : undefined,
+    explorer: config.explorer ?? client.chain.blockExplorers?.default.url,
 
     async image(hash) {
       const r = await client.readContract({ address, abi: REGISTRY_ABI, functionName: "images", args: [hash] });
@@ -104,6 +129,7 @@ export function createChainReader(config: ChainConfig): ChainReader {
         perceptualHash: r[1],
         bodyId: r[2],
         modificationLevel: Number(r[3]) as 0 | 1 | 2,
+        parentImageHash: r[4],
         pceScore: Number(r[6]),
         registeredAt: Number(r[7]),
       };
@@ -113,6 +139,16 @@ export function createChainReader(config: ChainConfig): ChainReader {
       const r = await client.readContract({ address, abi: REGISTRY_ABI, functionName: "bodies", args: [bodyId] });
       if (isZero(r[0])) return null;
       return { fingerprintCommitment: r[0], owner: r[1], bodyCommitment: r[2], revoked: r[3] };
+    },
+
+    async registrationTx(hash, txHash) {
+      // One receipt rather than eth_getLogs, which public RPCs throttle hardest.
+      const receipt = await client.getTransactionReceipt({ hash: txHash });
+      const logged = parseEventLogs({ abi: REGISTRY_ABI, eventName: "ImageRegistered", logs: receipt.logs }).some(
+        (log) => log.address.toLowerCase() === address.toLowerCase() && log.args.imageHash === hash,
+      );
+      if (receipt.status !== "success" || !logged) return null;
+      return { txHash, from: receipt.from, to: receipt.to };
     },
 
     testMode() {

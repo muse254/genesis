@@ -1,0 +1,17 @@
+// Genesis read API: GET /v1/images/{imageHash}, confirmed against the registry.
+// Base mainnet is the default; vars switch the registry (README, "Deployments").
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "genesis-api",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-09-01",
+  "vars": {
+    "RPC_URL": "https://mainnet.base.org",
+    "CHAIN": "base",
+    "REGISTRY_ADDRESS": "0xBa5Ea549c9e1414C14038dB050e0caCB4f9E48cB",
+    "SUBGRAPH_URL": "https://api.studio.thegraph.com/query/1758974/genesis/v1.0.0-base"
+  },
+  // Per client IP. Cached answers are served before the limiter.
+  "ratelimits": [{ "name": "LIMITER", "namespace_id": "8453", "simple": { "limit": 60, "period": 60 } }],
+  "observability": { "enabled": true }
+}

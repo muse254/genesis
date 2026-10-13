@@ -4,7 +4,22 @@
  * so this page never reaches `fingerprint-only`.
  */
 
-import { createChainReader, verify, workerEngine, type ChainKey, type VerifyResult } from "@genesis/core";
+import {
+  createChainReader,
+  HASH_SCOPE,
+  IMAGE_HASH,
+  MODIFICATION_LEVELS,
+  NO_RECORD,
+  ORIGIN_CAVEAT,
+  readRecord,
+  REVOKED,
+  scoreNote,
+  scoreValue,
+  verify,
+  workerEngine,
+  type ChainKey,
+  type VerifyResult,
+} from "@genesis/core";
 
 const REGISTRY = import.meta.env.VITE_REGISTRY_ADDRESS as `0x${string}` | undefined;
 const RPC = import.meta.env.VITE_RPC_URL as string | undefined;
@@ -43,11 +58,8 @@ function render(result: VerifyResult): void {
     // Neutral on purpose: absence means nothing (`docs/claims.md`).
     section.className = "no-record";
     rows.push("<h2>No record</h2>");
-    rows.push(
-      `<p>No registration matches this image${
-        result.pce !== null ? `: best score ${result.pce.toFixed(1)} against a threshold of ${result.threshold}` : ""
-      }. That means we have no record — not that the image is fake.</p>`,
-    );
+    rows.push(`<p>${NO_RECORD}</p>`);
+    if (result.pce !== null) say("Best score", `${result.pce.toFixed(1)} against a threshold of ${result.threshold}`);
   } else if (!result.registered) {
     // NOT a pass and must not look like one: a planted fingerprint outscores a
     // genuine frame (393,382 vs 56,255 at 51.6 dB; `docs/adversarial.md`).
@@ -106,22 +118,16 @@ function render(result: VerifyResult): void {
     sayIdentity(result, say);
     if (result.registration) {
       // Owner-reported; the contract does not check it (docs/security.md).
-      say(
-        "PCE at registration",
-        `${result.registration.pceAtRegistration.toFixed(1)} (threshold ${result.threshold}) — reported by the owner`,
-      );
+      sayScore(result.registration.pceAtRegistration, result.registration.registeredAt, say);
     }
     say("Matched by", "exact pixel hash");
     if (registeredAt) say("First registered", registeredAt);
     if (result.registration) {
-      say("Modification level", ["unedited raw", "adjusted", "generative edit"][result.registration.modificationLevel]);
+      say("Modification level", MODIFICATION_LEVELS[result.registration.modificationLevel]);
     }
     sayTestRegistry(result, rows);
     sayCompeting(result, rows);
-    rows.push(
-      "<p class=\"caveat\">Origin, not truth. The owner of this body signed for " +
-        "this image at the time shown. That does not say the scene was real.</p>",
-    );
+    rows.push(`<p class="caveat">${ORIGIN_CAVEAT}</p>`);
   }
 
   section.innerHTML = `<dl>${rows.join("")}</dl>`;
@@ -149,7 +155,12 @@ function sayCompeting(result: VerifyResult, rows: string[]): void {
   }
 }
 
-function sayTestRegistry(result: VerifyResult, rows: string[]): void {
+/** The stored score, with its threshold and who computed it when (`core/src/record.ts`). */
+function sayScore(pce: number, registeredAt: number, say: (label: string, value: string) => void): void {
+  say("PCE at registration", `${scoreValue(pce)}<br><span class="caveat">${scoreNote(registeredAt)}</span>`);
+}
+
+function sayTestRegistry(result: Pick<VerifyResult, "resettableRegistry">, rows: string[]): void {
   if (!result.resettableRegistry) return;
   // Above the caveat: on a wipeable registry the date is what stops being true.
   rows.push(
@@ -170,15 +181,12 @@ function sayIdentity(result: VerifyResult, say: (label: string, value: string) =
     say("Registered by", body.owner);
   }
   if (body?.revoked) {
-    say("Body status", "revoked — the owner withdrew this body's signing key");
+    say("Body status", REVOKED);
   }
 }
 
-const input = document.getElementById("file") as HTMLInputElement | null;
-input?.addEventListener("change", async () => {
-  const file = input.files?.[0];
-  if (!file) return;
-
+/** Runs the normal verify on one file, showing progress in `#result`. */
+async function check(file: File): Promise<void> {
   const section = document.getElementById("result");
   const status = (text: string) => {
     if (!section) return;
@@ -196,4 +204,93 @@ input?.addEventListener("change", async () => {
       section.innerHTML = `<p>${(error as Error).message}</p>`;
     }
   }
+}
+
+const input = document.getElementById("file") as HTMLInputElement | null;
+input?.addEventListener("change", () => {
+  const file = input.files?.[0];
+  if (file) void check(file);
 });
+
+/** Larger than any photograph a page would serve; stops a link from pulling something huge. */
+const MAX_SRC_BYTES = 50 * 1024 * 1024;
+
+/** `?src=https://…`: fetch a public image (the host must allow CORS) and verify it like a dropped file. */
+async function checkUrl(src: URL): Promise<void> {
+  try {
+    const response = await fetch(src, { credentials: "omit" });
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const blob = await response.blob();
+    if (!blob.type.startsWith("image/") || blob.size > MAX_SRC_BYTES) throw new Error("not an image this page can check");
+    await check(new File([blob], src.pathname.split("/").pop() || "image", { type: blob.type }));
+  } catch (error) {
+    const section = document.getElementById("result");
+    if (!section) return;
+    section.className = "error";
+    section.hidden = false;
+    section.innerHTML =
+      `<p>Could not fetch <code>${escapeHtml(src.href)}</code> (${escapeHtml((error as Error).message)}). ` +
+      "The site may not allow other pages to read its images. Save the image and choose it below instead.</p>";
+  }
+}
+
+const escapeHtml = (text: string) =>
+  text.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
+
+/** `?hash=0x…`: the record for a hash, read off the registry. Not a check of any file. */
+async function showHash(hash: string): Promise<void> {
+  const section = document.getElementById("record");
+  if (!section) return;
+  section.hidden = false;
+  section.className = "working";
+  section.innerHTML = "<p>Reading the chain…</p>";
+  if (!chain) {
+    section.className = "error";
+    section.innerHTML = "<p>No registry is configured for this page.</p>";
+    return;
+  }
+
+  let view;
+  try {
+    view = await readRecord(chain, hash, SUBGRAPH);
+  } catch (error) {
+    section.className = "error";
+    section.innerHTML = `<p>chain read failed, verdict withheld: ${(error as Error).message}</p>`;
+    return;
+  }
+
+  const rows: string[] = [];
+  const say = (label: string, value: string) => rows.push(`<div class="row"><dt>${label}</dt><dd>${value}</dd></div>`);
+  say("Image hash", `<code>${short(hash)}</code>`);
+  if (!view.registered) {
+    section.className = "no-record";
+    rows.unshift("<h2>No record</h2>", `<p>${NO_RECORD}</p>`);
+  } else {
+    section.className = "registered";
+    rows.unshift("<h2>Registered by the body’s owner</h2>");
+    say("Body", `<code>${short(view.bodyId)}</code>`);
+    say("Registered by", `<code>${view.owner}</code>`);
+    if (view.bodyRevoked) say("Body status", REVOKED);
+    say("First registered", `${new Date(view.registeredAt * 1000).toISOString()} (block time)`);
+    if (view.txHash) {
+      say("Transaction", view.txUrl ? `<a href="${view.txUrl}">${short(view.txHash)}</a>` : `<code>${short(view.txHash)}</code>`);
+    }
+    sayScore(view.pceScore, view.registeredAt, say);
+    say("Modification level", MODIFICATION_LEVELS[view.modificationLevel]);
+    if (view.parentImageHash) say("Derived from", `<a href="?hash=${view.parentImageHash}">${short(view.parentImageHash)}</a>`);
+    sayTestRegistry({ resettableRegistry: view.testMode }, rows);
+    rows.push(`<p class="caveat">${ORIGIN_CAVEAT}</p>`);
+  }
+  rows.push(`<p class="caveat">${HASH_SCOPE}</p>`);
+  section.innerHTML = `<dl>${rows.join("")}</dl>`;
+}
+
+const short = (hex: string) => `${hex.slice(0, 10)}…${hex.slice(-8)}`;
+
+// Anything but an exact lowercase hash is ignored: the page behaves as if no parameter was given.
+const hashParam = new URLSearchParams(location.search).get("hash");
+if (hashParam && IMAGE_HASH.test(hashParam)) void showHash(hashParam);
+
+const srcParam = new URLSearchParams(location.search).get("src");
+const src = srcParam && URL.canParse(srcParam) ? new URL(srcParam) : null;
+if (src?.protocol === "https:") void checkUrl(src);

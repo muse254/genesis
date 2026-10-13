@@ -47,19 +47,21 @@ function engine(candidates: Candidate[] = [], signals: Analysis["signals"] = nul
 }
 
 function record(hash: `0x${string}`, level = 0): ImageRecord {
-  return { imageHash: hash, perceptualHash: PHASH, bodyId: BODY, modificationLevel: level as 0, pceScore: 812, registeredAt: 1_750_000_000 };
+  return { imageHash: hash, perceptualHash: PHASH, bodyId: BODY, modificationLevel: level as 0, parentImageHash: `0x${"0".repeat(64)}`, pceScore: 812, registeredAt: 1_750_000_000 };
 }
 
 function chain(images: Record<string, ImageRecord> = {}, opts: { failOn?: string; testMode?: boolean } = {}): ChainReader {
   const body: BodyRecord = { fingerprintCommitment: `0x${"22".repeat(32)}`, owner: OWNER, bodyCommitment: `0x${"0".repeat(64)}`, revoked: false };
   return {
     registry: "0x0C0F3Ec87339F985c509c01dEE8474BB8f5b0EB2",
+    chainId: 84532,
     explorerUrl: "https://sepolia.basescan.org/address/0x0C0F3Ec87339F985c509c01dEE8474BB8f5b0EB2",
     image: async (hash) => {
       if (opts.failOn === hash) throw new Error("rpc down");
       return images[hash] ?? null;
     },
     body: async () => body,
+    registrationTx: async () => null,
     testMode: async () => opts.testMode ?? false,
     ensName: async () => null,
   };
