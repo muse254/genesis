@@ -241,6 +241,18 @@ const escapeHtml = (text: string) =>
 async function showHash(hash: string): Promise<void> {
   const section = document.getElementById("record");
   if (!section) return;
+  // Say why this record is on screen, and which hash it is, before the record itself.
+  document.title = "Genesis — record for one image hash";
+  document.getElementById("title")!.textContent = "Record for one image hash";
+  const from = referrerHost();
+  document.getElementById("lede")!.textContent = from ? `${HASH_SCOPE} You came here from ${from}.` : HASH_SCOPE;
+  const shown = document.getElementById("hash")!;
+  shown.innerHTML = `<span>Image hash</span>${hash}`;
+  shown.hidden = false;
+  const another = document.getElementById("another")!;
+  another.classList.add("below-record");
+  another.querySelectorAll<HTMLElement>("h2, p").forEach((el) => (el.hidden = false));
+
   section.hidden = false;
   section.className = "working";
   section.innerHTML = "<p>Reading the chain…</p>";
@@ -261,7 +273,6 @@ async function showHash(hash: string): Promise<void> {
 
   const rows: string[] = [];
   const say = (label: string, value: string) => rows.push(`<div class="row"><dt>${label}</dt><dd>${value}</dd></div>`);
-  say("Image hash", `<code>${short(hash)}</code>`);
   if (!view.registered) {
     section.className = "no-record";
     rows.unshift("<h2>No record</h2>", `<p>${NO_RECORD}</p>`);
@@ -281,8 +292,17 @@ async function showHash(hash: string): Promise<void> {
     sayTestRegistry({ resettableRegistry: view.testMode }, rows);
     rows.push(`<p class="caveat">${ORIGIN_CAVEAT}</p>`);
   }
-  rows.push(`<p class="caveat">${HASH_SCOPE}</p>`);
   section.innerHTML = `<dl>${rows.join("")}</dl>`;
+}
+
+/** The linking site, when the browser says and it is not this page. */
+function referrerHost(): string | null {
+  try {
+    const host = document.referrer ? new URL(document.referrer).hostname : "";
+    return host && host !== location.hostname ? host : null;
+  } catch {
+    return null;
+  }
 }
 
 const short = (hex: string) => `${hex.slice(0, 10)}…${hex.slice(-8)}`;

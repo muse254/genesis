@@ -75,7 +75,8 @@ export const NO_RECORD = "No registration matches this image. That means we have
 
 /** The verify page's `?hash=` mode checks a hash, not the visitor's file. */
 export const HASH_SCOPE =
-  "This shows the record for that hash. It does not check a file you hold: to check your own copy, choose it below.";
+  "You followed a link to the record for the image hash below, usually from a site showing this photograph. " +
+  "This is what the registry holds for that hash. It does not check a file you hold.";
 
 export const ORIGIN_CAVEAT =
   "Origin, not truth. The owner of this body signed for this image at the time shown. That does not say the scene was real.";

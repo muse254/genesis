@@ -28,7 +28,7 @@
       main { max-width: 42rem; margin: 0 auto; padding: 3rem 1.25rem; }
       h1 { font-size: 1.6rem; margin: 0 0 .35rem; letter-spacing: -.01em; }
       .lede { margin: 0 0 2rem; opacity: .75; }
-      input[type=file] { display: block; width: 100%; padding: 1.75rem 1rem;
+      input[type=file] { display: block; width: 100%; box-sizing: border-box; padding: 1.75rem 1rem;
         border: 1.5px dashed var(--line); border-radius: .6rem; background: transparent;
         color: inherit; cursor: pointer; }
       #result, #record { margin-top: 1.75rem; padding: 1.1rem 1.25rem; border: 1px solid var(--line);
@@ -49,6 +49,12 @@
       dt { flex: 0 0 9.5rem; opacity: .7; }
       dd { margin: 0; font-variant-numeric: tabular-nums; }
       .caveat, footer p { font-size: .875rem; opacity: .7; }
+      .hash { margin: -1rem 0 2rem; font: .85rem/1.5 ui-monospace, SFMono-Regular, Menlo, monospace;
+        word-break: break-all; padding: .6rem .8rem; border: 1px solid var(--line); border-radius: .4rem; }
+      .hash span { display: block; font: 600 .75rem/1.4 var(--ui); opacity: .6; letter-spacing: .03em; text-transform: uppercase; }
+      #another.below-record { margin-top: 2.5rem; padding-top: 1.5rem; border-top: 1px solid var(--line); }
+      #another h2 { font-size: 1.1rem; margin: 0 0 .25rem; }
+      #another p { margin: 0 0 1rem; }
       footer { margin-top: 2.5rem; padding-top: 1rem; border-top: 1px solid var(--line); }
     </style>
   </head>
@@ -66,11 +72,17 @@
       </div>
     </header>
     <main>
-      <h1>Verify an image</h1>
-      <p class="lede">Drop a photograph. We tell you whether its owner registered it — or that we have no record.</p>
+      <h1 id="title">Verify an image</h1>
+      <p class="lede" id="lede">Drop a photograph. We tell you whether its owner registered it — or that we have no record.</p>
+      <p class="hash" id="hash" hidden></p>
       <section id="record" hidden></section>
-      <input id="file" type="file" accept="image/*" />
-      <section id="result" hidden></section>
+      <section id="another">
+        <!-- Shown only under a ?hash= record, which is about that hash and not a file. -->
+        <h2 hidden>Check another image?</h2>
+        <p class="caveat" hidden>Choose your own copy of this photograph, or any other image, to check it against the registry. It is hashed in your browser and never uploaded.</p>
+        <input id="file" type="file" accept="image/*" />
+        <section id="result" hidden></section>
+      </section>
       <footer>
         <p>
           We certify origin, not truth: body X’s owner registered this image
