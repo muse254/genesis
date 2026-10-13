@@ -4,7 +4,7 @@ One image's record, as JSON, for a partner's server. It reads the registry
 contract through `core/` (`core/src/record.ts`), the same code and the same
 wording as the verify page's `?hash=` mode, so the two cannot disagree.
 
-**Base URL:** `https://genesis-api.<subdomain>.workers.dev` (set on first deploy; replace this line with it).
+**Base URL:** `https://genesis-api.genesis-api.workers.dev`
 
 ## `GET /v1/images/{imageHash}`
 
@@ -69,7 +69,10 @@ added under `/v1`; removing or renaming one needs `/v2`. Either way, bump
   (`immutable`): it cannot change. No record, a test registry, or a record
   without its tx is cached for 60 seconds.
 - `502` means the chain could not be read; the record is withheld, never
-  reported as missing.
+  reported as missing. Retry it. The Worker reads through free public Base
+  RPCs (`RPC_URL`, tried in order), which throttle Cloudflare's shared IPs:
+  in a burst of 49 uncached lookups, 4 came back `502` and 10 without a
+  `txHash`. A keyed RPC as the first entry would remove most of that.
 
 ## Develop and deploy
 

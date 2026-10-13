@@ -4,7 +4,7 @@
  * API key stays out of the webview.
  */
 
-import { createPublicClient, http, parseEventLogs, type Address, type Chain } from "viem";
+import { createPublicClient, fallback, http, parseEventLogs, type Address, type Chain } from "viem";
 import { anvil, base, baseSepolia, sepolia } from "viem/chains";
 
 /** Same keys as `GENESIS_CHAIN` in `console/chain.py`. */
@@ -101,7 +101,8 @@ const REGISTRY_ABI = [
 const isZero = (word: string) => /^0x0*$/.test(word);
 
 export interface ChainConfig {
-  rpcUrl: string;
+  /** Several are tried in order: public RPCs throttle shared egress (a Worker's) unpredictably. */
+  rpcUrl: string | string[];
   chain: ChainKey;
   registry: Address;
   /** Block explorer base URL, e.g. https://sepolia.basescan.org */
@@ -109,7 +110,11 @@ export interface ChainConfig {
 }
 
 export function createChainReader(config: ChainConfig): ChainReader {
-  const client = createPublicClient({ chain: CHAINS[config.chain] ?? anvil, transport: http(config.rpcUrl) });
+  // Batched: one request per tick instead of one per call, which throttled RPCs count.
+  const transport = Array.isArray(config.rpcUrl)
+    ? fallback(config.rpcUrl.map((url) => http(url, { batch: true })))
+    : http(config.rpcUrl);
+  const client = createPublicClient({ chain: CHAINS[config.chain] ?? anvil, transport });
   const address = config.registry;
   let testMode: Promise<boolean> | undefined;
 

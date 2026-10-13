@@ -6,7 +6,8 @@
   "main": "src/index.ts",
   "compatibility_date": "2026-09-01",
   "vars": {
-    "RPC_URL": "https://mainnet.base.org",
+    // Comma-separated, tried in order: mainnet.base.org alone throttles Cloudflare's shared IPs, and publicnode refuses receipts (tx lookup only), so it goes last.
+    "RPC_URL": "https://base.drpc.org,https://mainnet.base.org,https://1rpc.io/base,https://base-rpc.publicnode.com",
     "CHAIN": "base",
     "REGISTRY_ADDRESS": "0xBa5Ea549c9e1414C14038dB050e0caCB4f9E48cB",
     "SUBGRAPH_URL": "https://api.studio.thegraph.com/query/1758974/genesis/v1.0.0-base"

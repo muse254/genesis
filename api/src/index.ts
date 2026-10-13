@@ -53,7 +53,7 @@ export default {
     }
 
     const chain = createChainReader({
-      rpcUrl: env.RPC_URL,
+      rpcUrl: env.RPC_URL.split(","),
       chain: env.CHAIN as ChainKey,
       registry: env.REGISTRY_ADDRESS as `0x${string}`,
     });

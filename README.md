@@ -90,7 +90,7 @@ that exists; in-camera signing (C2PA) covers what is shot from now on.
 | --- | --- | --- |
 | **Base mainnet** registry | [`0xBa5Ea549c9e1414C14038dB050e0caCB4f9E48cB`](https://basescan.org/address/0xBa5Ea549c9e1414C14038dB050e0caCB4f9E48cB) | Live since 12 Oct 2026, block 52505470 ([deploy tx](https://basescan.org/tx/0x24d5f952de05e5280406923be51c281dd1b1feb5bf174141ee079d90e4da6582)). `testMode` false, `VERSION` 1.0.0, verified on Basescan. Subgraph `genesis` v1.0.0-base; what the verify page reads |
 | Base Sepolia test registry | [`0x0C0F3Ec87339F985c509c01dEE8474BB8f5b0EB2`](https://sepolia.basescan.org/address/0x0c0f3ec87339f985c509c01dee8474bb8f5b0eb2) | Rehearsal only; its records can be wiped. Subgraph `genesis` v0.1.0-base-sepolia |
-| Read API | `GET /v1/images/{imageHash}` on Cloudflare Workers | The registry's record for a hash as JSON, read from the contract. No key; 60 requests a minute per client. See [`api/`](api/) |
+| Read API | [`genesis-api.genesis-api.workers.dev`](https://genesis-api.genesis-api.workers.dev/v1/images/0xabb28fddf9e37f9bda989e5afdcd63a092327b379210f96117e9b0da7fd28011)`/v1/images/{imageHash}` | The registry's record for a hash as JSON, read from the contract. No key; 60 requests a minute per client. See [`api/`](api/) |
 | Ethereum Sepolia (ETHOnline) | `0xd1bbDB8A6BfD25563d2e6444fA41E4C5230Ed3C9` | Historical; no longer used |
 
 The Base Sepolia registry is a **test** registry: `testMode` is true, so its

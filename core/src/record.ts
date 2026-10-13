@@ -164,7 +164,8 @@ async function findTx(chain: ChainReader, hash: `0x${string}`, subgraphUrl: stri
     const payload = (await response.json()) as { data?: { commitLogs?: { id: string }[] } };
     const id = payload.data?.commitLogs?.[0]?.id;
     return id ? await chain.registrationTx(hash, id.slice(0, 66) as `0x${string}`) : null;
-  } catch {
+  } catch (error) {
+    console.warn(`tx lookup for ${hash} failed:`, error instanceof Error ? error.message.split("\n")[0] : error);
     return null;
   }
 }
