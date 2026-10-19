@@ -7,7 +7,7 @@
     <link rel="icon" href="./brand/genesis-mark-ink.png" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;600;700;800&display=swap" />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@125,800;125,900&family=IBM+Plex+Mono:wght@400;600&family=Source+Sans+3:wght@400;600&display=swap" />
     <style>
       /* Header chrome duplicated in site/, score/ and dashboard/ (separate
          Vite builds, no shared stylesheet): keep in sync by hand. Light only. */
@@ -56,18 +56,60 @@
       #another h2 { font-size: 1.1rem; margin: 0 0 .25rem; }
       #another p { margin: 0 0 1rem; }
       footer { margin-top: 2.5rem; padding-top: 1rem; border-top: 1px solid var(--line); }
+      /* The landing page's look (site/index.html): dark nav, Archivo display, Plex Mono labels, square corners. */
+      :root { --display: Archivo, ui-sans-serif, system-ui, sans-serif; --mono: "IBM Plex Mono", ui-monospace, monospace;
+        --ui: "Source Sans 3", ui-sans-serif, system-ui, sans-serif; --line: #d9d6cf; }
+      body { font: 17px/1.55 var(--ui); }
+      a:hover { color: #0a8f4d; }
+      :focus-visible { outline: 2px solid #2f5fd0; outline-offset: 2px; }
+      header.top { background: #141412; color: #f1efe9; border-bottom: 0; }
+      header.top .wrap { flex-wrap: wrap; padding-top: 20px; padding-bottom: 20px; }
+      header.top .mark { display: flex; align-items: center; gap: 12px; color: #f1efe9; text-decoration: none;
+        font: 800 17px/1 var(--display); font-stretch: 125%; letter-spacing: .1em; }
+      header.top .mark span { display: grid; grid-template-columns: repeat(3, 6px); gap: 2px; }
+      header.top .mark i { height: 6px; background: #f1efe9; }
+      header.top .mark i:nth-child(4) { background: #d6392b; }
+      header.top .mark i:nth-child(5) { background: #18a058; }
+      header.top .mark i:nth-child(6) { background: #2f5fd0; }
+      /* Same nav as the landing page: wide, sticky, pale "Check a photo" button. */
+      header.top { position: sticky; top: 0; z-index: 50; }
+      header.top .wrap { max-width: 1280px; padding: 20px clamp(16px, 4vw, 48px); justify-content: space-between; gap: 16px 32px; box-sizing: border-box; }
+      header.top nav { margin-left: 0; flex-wrap: wrap; align-items: center; gap: 8px 28px; }
+      header.top nav a { font: 400 16px/1.5 var(--ui); color: #c9c5bc; letter-spacing: 0; }
+      header.top nav a:hover, header.top nav a[aria-current="page"] { color: #ffffff; }
+      header.top nav a.cta { color: #141412; background: #f1efe9; padding: 8px 14px; font-weight: 600; }
+      header.top nav a.cta:hover { background: #ffffff; color: #141412; }
+      @media (max-width: 640px) { header.top nav a:not(.cta) { display: none; } }
+      h1 { font: 800 clamp(30px, 5vw, 48px)/1.02 var(--display); font-stretch: 125%; letter-spacing: -.02em;
+        margin: 0 0 1rem; text-wrap: balance; }
+      h1::before { content: ""; display: block; width: 28px; height: 8px; margin-bottom: 20px;
+        background: linear-gradient(90deg, #d6392b 0 8px, transparent 8px 10px, #18a058 10px 18px, transparent 18px 20px, #2f5fd0 20px 28px); }
+      h2 { font-family: var(--display); font-stretch: 125%; font-weight: 800; letter-spacing: -.01em; }
+      .lede { color: #3d3b37; opacity: 1; font-size: 1.1rem; text-wrap: pretty; }
+      dt, label, .hash span { font-family: var(--mono) !important; font-size: 12px !important; letter-spacing: .1em;
+        text-transform: uppercase; color: #6f6c66; opacity: 1 !important; }
+      dd, .hash, code, td.hash { font-family: var(--mono); font-size: 14px; }
+      input[type=file] { border: 1.5px dashed #2f5fd0; font: 14px var(--mono); padding: 2rem 1rem; }
+      input[type=text], button { font-family: var(--ui); }
+      input[type=file], input[type=text], button, #result, #record, .hash, section.body-card { border-radius: 0 !important; }
+      button { min-height: 44px; font-weight: 600; }
+      button:not(:disabled):hover { background: #2f5fd0; border-color: #2f5fd0; color: #f1efe9; }
+      footer { border-top: 0; position: relative; padding-top: 1.5rem; }
+      footer::before { content: ""; position: absolute; top: 0; left: 0; right: 0; height: 6px;
+        background: repeating-linear-gradient(90deg, #d6392b 0 16px, #18a058 16px 32px, #2f5fd0 32px 48px, #0088b0 48px 64px, #d6006c 64px 80px, #f2b705 80px 96px); }
     </style>
   </head>
   <body>
     <header class="top">
       <div class="wrap">
-        <a href="../"><img src="./brand/genesis-lockup-horizontal-ink.png" alt="Genesis" /></a>
+        <a href="../" class="mark" aria-label="Genesis home"><span aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span>GENESIS</a>
         <nav>
-          <a href="../">Home</a>
-          <a href="./" aria-current="page">Verify</a>
+          <a href="../#registered">In use</a>
+          <a href="../#download">Download</a>
           <a href="../score/">Score</a>
           <a href="../dashboard/">Dashboard</a>
           <a href="https://github.com/muse254/genesis">Source</a>
+          <a href="../verify/" class="cta" aria-current="page">Check a photo</a>
         </nav>
       </div>
     </header>

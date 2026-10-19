@@ -375,7 +375,7 @@
 </style>
 
 <style>
-html{scroll-behavior:smooth}
+html{scroll-behavior:smooth;scroll-padding-top:84px}
 body{margin:0;background:#fbfbf9;-webkit-font-smoothing:antialiased}
 a{color:inherit;text-decoration-thickness:1px;text-underline-offset:3px}
 a:hover{color:#0a8f4d}
@@ -386,10 +386,8 @@ a:hover{color:#0a8f4d}
 <div style="background:#fbfbf9;color:#1c1c1a;font-family:'Source Sans 3',sans-serif;font-size:18px;line-height:1.5;overflow-x:clip">
 <div aria-hidden="true" style="height:6px;background:repeating-linear-gradient(90deg,#d6392b 0 16px,#18a058 16px 32px,#2f5fd0 32px 48px,#0088b0 48px 64px,#d6006c 64px 80px,#f2b705 80px 96px)"></div>
 
-<header data-screen-label="Hero" sc-camel-on-pointer-move="{{ onHeroMove }}" sc-camel-on-pointer-leave="{{ onHeroLeave }}" style="position:relative;background:#141412;color:#f1efe9;overflow:hidden">
-  <canvas ref="{{ r.field }}" aria-hidden="true" style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none"></canvas>
-  <div ref="{{ r.grainHero }}" aria-hidden="true" style="position:absolute;inset:0;pointer-events:none;opacity:0;background-size:140px 140px"></div>
-  <nav style="position:relative;max-width:1280px;margin:0 auto;padding:20px clamp(16px,4vw,48px);display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:16px 32px">
+<div style="position:sticky;top:0;z-index:50;background:#141412;color:#f1efe9">
+  <nav style="max-width:1280px;margin:0 auto;padding:20px clamp(16px,4vw,48px);display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:16px 32px">
     <a href="#top" aria-label="Genesis home" style="display:flex;align-items:center;gap:12px;text-decoration:none;color:#f1efe9">
       <span aria-hidden="true" style="display:grid;grid-template-columns:repeat(3,6px);gap:2px">
         <span style="height:6px;background:#f1efe9"></span><span style="height:6px;background:#f1efe9"></span><span style="height:6px;background:#f1efe9"></span>
@@ -399,14 +397,18 @@ a:hover{color:#0a8f4d}
       <span style="font-family:'Archivo',sans-serif;font-stretch:125%;font-weight:800;font-size:17px;letter-spacing:0.1em">GENESIS</span>
     </a>
     <div style="display:flex;flex-wrap:wrap;align-items:center;gap:8px 28px;font-size:16px">
-      <a class="gn-navlink" href="#how" style="text-decoration:none;color:#c9c5bc">How it works</a>
-      <a class="gn-navlink" href="#attacks" style="text-decoration:none;color:#c9c5bc">Attacks</a>
-      <a class="gn-navlink" href="#organisations" style="text-decoration:none;color:#c9c5bc">Organisations</a>
+      <a class="gn-navlink" href="#registered" style="text-decoration:none;color:#c9c5bc">In use</a>
+      <a class="gn-navlink" href="#download" style="text-decoration:none;color:#c9c5bc">Download</a>
+      <a class="gn-navlink" href="score/" style="text-decoration:none;color:#c9c5bc">Score</a>
+      <a class="gn-navlink" href="dashboard/" style="text-decoration:none;color:#c9c5bc">Dashboard</a>
       <a class="gn-navlink" href="https://github.com/muse254/genesis" style="text-decoration:none;color:#c9c5bc">Source</a>
-      <a class="gn-navlink" href="https://muse254.github.io/genesis/dashboard/" style="text-decoration:none;color:#c9c5bc">Dashboard</a>
-      <a href="https://muse254.github.io/genesis/verify/" style="text-decoration:none;color:#141412;background:#f1efe9;padding:8px 14px;font-weight:600" style-hover="background:#ffffff;color:#141412">Check a photo</a>
+      <a href="verify/" style="text-decoration:none;color:#141412;background:#f1efe9;padding:8px 14px;font-weight:600" style-hover="background:#ffffff;color:#141412">Check a photo</a>
     </div>
   </nav>
+</div>
+<header data-screen-label="Hero" sc-camel-on-pointer-move="{{ onHeroMove }}" sc-camel-on-pointer-leave="{{ onHeroLeave }}" style="position:relative;background:#141412;color:#f1efe9;overflow:hidden">
+  <canvas ref="{{ r.field }}" aria-hidden="true" style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none"></canvas>
+  <div ref="{{ r.grainHero }}" aria-hidden="true" style="position:absolute;inset:0;pointer-events:none;opacity:0;background-size:140px 140px"></div>
 
   <div id="top" style="position:relative;max-width:1280px;margin:0 auto;padding:clamp(40px,7vw,96px) clamp(16px,4vw,48px) clamp(48px,6vw,80px);display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,440px),1fr));gap:clamp(40px,5vw,72px);align-items:end">
     <div style="display:flex;flex-direction:column;gap:28px;max-width:640px">
@@ -530,53 +532,6 @@ a:hover{color:#0a8f4d}
   </div>
 </section>
 
-<section data-screen-label="Origin, not truth" style="background:#f2b705;color:#1c1c1a"><div style="max-width:1280px;margin:0 auto;padding:clamp(72px,10vw,140px) clamp(16px,4vw,48px);display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr));gap:clamp(24px,5vw,72px);align-items:end">
-  <h2 style="margin:0;font-family:'Archivo',sans-serif;font-stretch:125%;font-weight:800;font-size:clamp(44px,8vw,120px);line-height:0.95;letter-spacing:-0.03em">Origin, not truth.</h2>
-  <div style="display:flex;flex-direction:column;gap:16px;max-width:36em;font-size:clamp(17px,1.4vw,20px);text-wrap:pretty">
-    <p style="margin:0">Others try to prove a photo isn't AI. That's proving a negative. Genesis records a positive: this camera, its owner, this date.</p>
-  </div>
-</div></section>
-
-<section id="how" data-screen-label="How it works" style="max-width:1280px;margin:0 auto;padding:clamp(48px,7vw,96px) clamp(16px,4vw,48px)">
-  <p style="margin:0 0 40px;font-family:'IBM Plex Mono',monospace;font-size:13px;letter-spacing:0.12em;text-transform:uppercase;color:#6f6c66">How it works</p>
-  <ol style="list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:clamp(40px,4vw,56px)">
-    <li style="display:flex;flex-direction:column;gap:18px;padding-top:20px;border-top:6px solid #d6392b">
-      <span style="font-family:'Archivo',sans-serif;font-stretch:125%;font-weight:900;font-size:56px;line-height:1;color:#d6392b">01</span>
-      <div aria-hidden="true" style="height:132px;display:flex;align-items:flex-end">
-        <div style="display:grid;grid-template-columns:repeat(10,14px);gap:4px">
-          <sc-for list="{{ rawFiles }}" as="f" hint-placeholder-count="40">
-            <span style="height:18px;background:{{ f.c }}"></span>
-          </sc-for>
-        </div>
-      </div>
-      <h3 style="margin:0;font-family:'Archivo',sans-serif;font-stretch:125%;font-weight:800;font-size:clamp(22px,2vw,28px);line-height:1.1">Add your camera</h3>
-      <p style="margin:0;color:#3d3b37;text-wrap:pretty">About 40 RAW files you already have. The fingerprint is read on your machine.</p>
-    </li>
-    <li style="display:flex;flex-direction:column;gap:18px;padding-top:20px;border-top:6px solid #18a058">
-      <span style="font-family:'Archivo',sans-serif;font-stretch:125%;font-weight:900;font-size:56px;line-height:1;color:#0a8f4d">02</span>
-      <div aria-hidden="true" style="height:132px;display:flex;align-items:flex-end">
-        <div style="width:min(100%,260px);display:flex;flex-direction:column;gap:6px;font-family:'IBM Plex Mono',monospace;font-size:12px">
-          <div style="display:flex;justify-content:space-between;padding:8px 10px;background:#eae8e2"><span>IMG_0191.CR3</span><span style="color:#0a8f4d;font-weight:600">fingerprint ✓</span></div>
-          <div style="display:flex;justify-content:space-between;padding:8px 10px;background:#eae8e2"><span>IMG_0192.CR3</span><span style="color:#0a8f4d;font-weight:600">fingerprint ✓</span></div>
-          <div style="display:flex;justify-content:space-between;padding:8px 10px;border:1px solid #1c1c1a"><span>recorded</span><span>2026-10-12 11:13Z</span></div>
-        </div>
-      </div>
-      <h3 style="margin:0;font-family:'Archivo',sans-serif;font-stretch:125%;font-weight:800;font-size:clamp(22px,2vw,28px);line-height:1.1">Register your photos</h3>
-      <p style="margin:0;color:#3d3b37;text-wrap:pretty">Each photo is checked against the fingerprint, then recorded with the date.</p>
-    </li>
-    <li style="display:flex;flex-direction:column;gap:18px;padding-top:20px;border-top:6px solid #2f5fd0">
-      <span style="font-family:'Archivo',sans-serif;font-stretch:125%;font-weight:900;font-size:56px;line-height:1;color:#2f5fd0">03</span>
-      <div aria-hidden="true" style="height:132px;display:flex;align-items:flex-end">
-        <div style="width:min(100%,260px);height:116px;border:1.5px dashed #2f5fd0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;font-family:'IBM Plex Mono',monospace;font-size:12px;color:#6f6c66">
-          <span style="color:#1c1c1a">drop a copy here</span><span>no account · stays on this device</span>
-        </div>
-      </div>
-      <h3 style="margin:0;font-family:'Archivo',sans-serif;font-stretch:125%;font-weight:800;font-size:clamp(22px,2vw,28px);line-height:1.1">Anyone can check</h3>
-      <p style="margin:0;color:#3d3b37;text-wrap:pretty">Drop a copy into the <a href="https://muse254.github.io/genesis/verify/">verify page</a>. No account. Nothing is uploaded.</p>
-    </li>
-  </ol>
-</section>
-
 <section id="check" data-screen-label="Check a photo" sc-camel-on-drag-over="{{ onDOver }}" sc-camel-on-drag-leave="{{ onDLeave }}" sc-camel-on-drop="{{ onDDrop }}" style="position:relative;background:#141412;color:#f1efe9">
   <input ref="{{ r.dinput }}" id="gx-drop" type="file" accept=".jpg,.jpeg,.png,.tif,.tiff,image/jpeg,image/png,image/tiff" sc-camel-on-change="{{ onDPick }}" style="position:absolute;width:1px;height:1px;opacity:0;pointer-events:none">
   <div style="max-width:1280px;margin:0 auto;padding:clamp(64px,9vw,128px) clamp(16px,4vw,48px);box-sizing:border-box;display:flex;flex-wrap:wrap-reverse;align-items:flex-end;gap:clamp(28px,4vw,64px)">
@@ -660,73 +615,15 @@ a:hover{color:#0a8f4d}
   </div>
 </section>
 
-<section id="copy" ref="{{ r.copy }}" data-screen-label="The copy that already left" style="max-width:1280px;margin:0 auto;padding:clamp(64px,9vw,128px) clamp(16px,4vw,48px)">
-  <div style="display:flex;flex-direction:column;gap:16px;max-width:760px;margin-bottom:clamp(40px,5vw,64px)">
-    <h2 style="margin:0;font-family:'Archivo',sans-serif;font-stretch:125%;font-weight:800;font-size:clamp(32px,4.4vw,64px);line-height:1;letter-spacing:-0.02em">The copy that already left.</h2>
-    <p style="margin:0;font-size:clamp(17px,1.4vw,20px);color:#3d3b37;text-wrap:pretty">It gets posted, lifted and shrunk. It still resolves to the same record.</p>
-  </div>
-  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,380px),1fr));gap:clamp(40px,5vw,72px)">
+<section id="registered" data-screen-label="Customer: OsoroPrints" aria-label="A customer: OsoroPrints" style="background:#e9eff5;color:#1c1c1a;border-top:6px solid #1b5183">
+  <div style="max-width:1280px;margin:0 auto;padding:clamp(64px,9vw,128px) clamp(16px,4vw,48px);box-sizing:border-box">
+  <p style="margin:0 0 20px;display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;font-family:'IBM Plex Mono',monospace;font-size:13px;letter-spacing:0.12em;text-transform:uppercase;color:#1b5183"><span style="padding:3px 9px;background:#1b5183;color:#ffffff">Customer</span>A separate site that uses Genesis</p>
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr));gap:24px clamp(32px,5vw,72px);align-items:end;margin-bottom:clamp(40px,5vw,64px)">
     <div style="display:flex;flex-direction:column;gap:20px">
-      <div class="gn-copyframe" style="height:clamp(200px,26vw,340px);display:flex;align-items:flex-start">
-        <div style="overflow:hidden;position:relative;width:100%;max-width:510px;aspect-ratio:3/2;background:#eae8e2"><img src="assets/photos/fish-market.jpg" alt="A busy fish market on the shore" width="2400" height="1600" loading="lazy" style="display:block;position:absolute;inset:0;width:100%;height:100%;object-fit:cover"></div>
-      </div>
-      <h3 style="margin:0;font-family:'Archivo',sans-serif;font-stretch:125%;font-weight:800;font-size:22px;display:flex;align-items:center;gap:10px"><span aria-hidden="true" style="width:12px;height:12px;background:#18a058"></span>Original</h3>
-      <dl style="margin:0;font-family:'IBM Plex Mono',monospace;font-size:14px;display:grid;grid-template-columns:minmax(0,9em) minmax(0,1fr)">
-        <dt style="padding:9px 0;border-top:1px solid #d8d6d0;color:#6f6c66">Dimensions</dt><dd style="margin:0;padding:9px 0;border-top:1px solid #d8d6d0">6000 × 4000</dd>
-        <dt style="padding:9px 0;border-top:1px solid #d8d6d0;color:#6f6c66">File size</dt><dd style="margin:0;padding:9px 0;border-top:1px solid #d8d6d0">19.7 MB</dd>
-        <dt style="padding:9px 0;border-top:1px solid #d8d6d0;color:#6f6c66">Format</dt><dd style="margin:0;padding:9px 0;border-top:1px solid #d8d6d0">JPEG, full resolution</dd>
-        <dt style="padding:9px 0;border-top:1px solid #d8d6d0;color:#6f6c66">Camera</dt><dd style="margin:0;padding:9px 0;border-top:1px solid #d8d6d0">Canon EOS R10</dd>
-        <dt style="padding:9px 0;border-top:1px solid #d8d6d0;color:#6f6c66">Lens</dt><dd style="margin:0;padding:9px 0;border-top:1px solid #d8d6d0">Tamron 18–300mm F3.5–6.3</dd>
-        <dt style="padding:9px 0;border-top:1px solid #d8d6d0;color:#6f6c66">Captured</dt><dd style="margin:0;padding:9px 0;border-top:1px solid #d8d6d0">2026:07:28 13:43:27</dd>
-        <dt style="padding:9px 0;border-top:1px solid #d8d6d0;color:#6f6c66">GPS</dt><dd style="margin:0;padding:9px 0;border-top:1px solid #d8d6d0">recorded</dd>
-        <dt style="padding:9px 0;border-top:1px solid #d8d6d0;border-bottom:1px solid #d8d6d0;color:#6f6c66">Serial</dt><dd style="margin:0;padding:9px 0;border-top:1px solid #d8d6d0;border-bottom:1px solid #d8d6d0">recorded</dd>
-      </dl>
-    </div>
-    <div style="display:flex;flex-direction:column;gap:20px">
-      <div class="gn-copyframe" style="height:clamp(200px,26vw,340px);display:flex;align-items:flex-start">
-        <div style="overflow:hidden;position:relative;width:34%;max-width:180px;aspect-ratio:3/2;background:#eae8e2"><img src="assets/photos/fish-market-web-copy.jpg" alt="The same fish market photo, as a small web copy" width="1200" height="800" loading="lazy" style="display:block;position:absolute;inset:0;width:100%;height:100%;object-fit:cover"></div>
-      </div>
-      <h3 style="margin:0;font-family:'Archivo',sans-serif;font-stretch:125%;font-weight:800;font-size:22px;display:flex;align-items:center;gap:10px"><span aria-hidden="true" style="width:12px;height:12px;background:#2f5fd0"></span>Web copy</h3>
-      <dl style="margin:0;font-family:'IBM Plex Mono',monospace;font-size:14px;display:grid;grid-template-columns:minmax(0,9em) minmax(0,1fr)">
-        <dt style="padding:9px 0;border-top:1px solid #d8d6d0;color:#6f6c66">Dimensions</dt><dd style="margin:0;padding:9px 0;border-top:1px solid #d8d6d0">1200 × 800</dd>
-        <dt style="padding:9px 0;border-top:1px solid #d8d6d0;color:#6f6c66">File size</dt><dd style="margin:0;padding:9px 0;border-top:1px solid #d8d6d0">87 KB</dd>
-        <dt style="padding:9px 0;border-top:1px solid #d8d6d0;color:#6f6c66">Format</dt><dd style="margin:0;padding:9px 0;border-top:1px solid #d8d6d0">JPEG, quality 72</dd>
-        <dt style="padding:9px 0;border-top:1px solid #d8d6d0;color:#6f6c66">Camera</dt><dd style="margin:0;padding:9px 0;border-top:1px solid #d8d6d0;display:flex;gap:10px;flex-wrap:wrap"><span data-strike="" style="text-decoration:line-through;color:#6f6c66">Canon EOS R10</span><span data-gone="">stripped</span></dd>
-        <dt style="padding:9px 0;border-top:1px solid #d8d6d0;color:#6f6c66">Lens</dt><dd style="margin:0;padding:9px 0;border-top:1px solid #d8d6d0;display:flex;gap:10px;flex-wrap:wrap"><span data-strike="" style="text-decoration:line-through;color:#6f6c66">Tamron 18–300mm F3.5–6.3</span><span data-gone="">stripped</span></dd>
-        <dt style="padding:9px 0;border-top:1px solid #d8d6d0;color:#6f6c66">Captured</dt><dd style="margin:0;padding:9px 0;border-top:1px solid #d8d6d0;display:flex;gap:10px;flex-wrap:wrap"><span data-strike="" style="text-decoration:line-through;color:#6f6c66">2026:07:28 13:43:27</span><span data-gone="">stripped</span></dd>
-        <dt style="padding:9px 0;border-top:1px solid #d8d6d0;color:#6f6c66">GPS</dt><dd style="margin:0;padding:9px 0;border-top:1px solid #d8d6d0;display:flex;gap:10px;flex-wrap:wrap"><span data-strike="" style="text-decoration:line-through;color:#6f6c66">recorded</span><span data-gone="">stripped</span></dd>
-        <dt style="padding:9px 0;border-top:1px solid #d8d6d0;border-bottom:1px solid #d8d6d0;color:#6f6c66">Serial</dt><dd style="margin:0;padding:9px 0;border-top:1px solid #d8d6d0;border-bottom:1px solid #d8d6d0;display:flex;gap:10px;flex-wrap:wrap"><span data-strike="" style="text-decoration:line-through;color:#6f6c66">recorded</span><span data-gone="">stripped</span></dd>
-      </dl>
-    </div>
-  </div>
-  <div aria-hidden="true" data-draw="" style="margin:28px 12% 0;height:28px;border:1px solid #1c1c1a;border-top:none;transform-origin:center top"></div>
-  <div style="display:flex;justify-content:center;margin-top:-1px">
-    <div style="display:flex;flex-direction:column;align-items:center;gap:12px">
-      <div style="width:1px;height:28px;background:#1c1c1a"></div>
-      <div style="display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:12px 20px;padding:14px 20px;background:#eae8e2;font-family:'IBM Plex Mono',monospace;font-size:14px">
-        <span style="color:#6f6c66">Both resolve to</span>
-        <span>record 0x8ef2…0039</span>
-        <span data-stamp4="" style="display:flex;align-items:center;gap:8px;padding:4px 10px;border:1.5px solid #0a8f4d;color:#0a8f4d;font-weight:600;letter-spacing:0.14em;text-transform:uppercase;font-size:12px;transform:rotate(-3deg);background:#fbfbf9"><span aria-hidden="true" style="width:6px;height:6px;background:#0a8f4d;display:inline-block"></span>Registered</span>
-      </div>
-      <p style="margin:0;font-size:15px;color:#6f6c66;text-align:center;max-width:32em">Checked in the browser. Nothing is uploaded.</p>
-    </div>
-  </div>
-</section>
-
-<section id="registered" data-screen-label="Registered photos" style="max-width:1280px;margin:0 auto;padding:clamp(64px,9vw,128px) clamp(16px,4vw,48px);box-sizing:border-box">
-  <div style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:flex-end;gap:16px 48px;margin-bottom:clamp(32px,4vw,56px)">
-    <div style="display:flex;flex-direction:column;gap:16px;max-width:720px">
-      <p style="margin:0;font-family:'IBM Plex Mono',monospace;font-size:13px;letter-spacing:0.12em;text-transform:uppercase;color:#6f6c66;display:flex;align-items:center;gap:10px"><span aria-hidden="true" style="width:8px;height:8px;background:#0a8f4d"></span>On the public record</p>
-      <h2 style="margin:0;font-family:'Archivo',sans-serif;font-stretch:125%;font-weight:800;font-size:clamp(32px,4.4vw,64px);line-height:1;letter-spacing:-0.02em;text-wrap:balance">Registered on Genesis.</h2>
-      <p style="margin:0;font-size:clamp(17px,1.4vw,20px);color:#3d3b37;text-wrap:pretty">Each of these traces back to its camera and its owner. Save one, shrink it, strip it, then <a href="#check">check it above</a>.</p>
-    </div>
-  </div>
-  <div data-screen-label="Partner" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:24px clamp(32px,4vw,56px);align-items:start;padding-top:20px;border-top:1px solid #1c1c1a;margin-bottom:clamp(40px,5vw,72px)">
-    <div style="display:flex;flex-direction:column;gap:14px">
-      <p style="margin:0;font-family:'IBM Plex Mono',monospace;font-size:13px;letter-spacing:0.12em;text-transform:uppercase;color:#6f6c66">In use at</p>
-      <!-- OsoroPrints' own header mark (osoroprints internal/web/templates/partials/nav.html), accent from its tokens.css -->
-      <a href="https://osoroprints.com" aria-label="OsoroPrints" style="display:inline-flex;align-items:center;gap:12px;align-self:flex-start;text-decoration:none;color:#1c1c1a;font-family:'Archivo',sans-serif;font-weight:800;font-size:28px">
-        <svg width="40" height="40" viewBox="0 0 44 44" aria-hidden="true" focusable="false">
+      <h2 style="margin:0;font-family:'Archivo',sans-serif;font-stretch:125%;font-weight:800;font-size:clamp(32px,4.4vw,64px);line-height:1.05;letter-spacing:-0.02em">Already in use at</h2>
+      <!-- OsoroPrints' own header lockup (osoroprints internal/web/templates/partials/nav.html) at 1.5x, accent from its tokens.css -->
+      <a href="https://osoroprints.com" aria-label="OsoroPrints" style="display:inline-flex;align-items:center;gap:18px;align-self:flex-start;text-decoration:none;color:#1c1c1a;font-family:'Archivo',sans-serif;font-weight:800;font-size:42px;line-height:1">
+        <svg width="60" height="60" viewBox="0 0 44 44" aria-hidden="true" focusable="false">
           <path d="M2 12 V2 H12" fill="none" stroke="#1b5183" stroke-width="4"/>
           <path d="M32 2 H42 V12" fill="none" stroke="#1b5183" stroke-width="4"/>
           <path d="M42 32 V42 H32" fill="none" stroke="#1b5183" stroke-width="4"/>
@@ -734,27 +631,14 @@ a:hover{color:#0a8f4d}
           <text x="22" y="31" text-anchor="middle" font-family="Archivo, system-ui, sans-serif" font-weight="800" font-size="24" fill="currentColor">O</text>
         </svg><span>OsoroPrints</span>
       </a>
-      <p style="margin:0;font-family:'IBM Plex Mono',monospace;font-size:13px;color:#6f6c66">osoroprints.com</p>
     </div>
-    <div style="display:flex;flex-direction:column;gap:12px">
-      <p style="margin:0;font-family:'IBM Plex Mono',monospace;font-size:13px;letter-spacing:0.12em;text-transform:uppercase;color:#6f6c66">How it's used</p>
-      <p style="margin:0;font-size:clamp(17px,1.4vw,20px);color:#3d3b37;text-wrap:pretty">Each registered print's page shows a “Registered with Genesis” badge with its date, and a “Check this copy” button that opens the print's record here.</p>
-      <a href="https://osoroprints.com" style="margin-top:4px;font-weight:600;align-self:flex-start">Visit osoroprints.com →</a>
+    <div style="display:flex;flex-direction:column;gap:16px;max-width:36em">
+      <p style="margin:0;font-size:clamp(17px,1.4vw,20px);color:#3d3b37;text-wrap:pretty">OsoroPrints sells prints. Each registered print's page shows a “Registered with Genesis” badge with its date, and a “Check this copy” button that opens the print's record here.</p>
+      <p style="margin:0;padding-left:14px;border-left:3px solid #1b5183;font-size:16px;color:#3d3b37;text-wrap:pretty">OsoroPrints is the Genesis creator's own print shop: every print there is registered with Genesis first. We eat our own dog food.</p>
+      <a href="https://osoroprints.com" style="align-self:flex-start;display:inline-flex;align-items:center;min-height:48px;padding:0 22px;background:#1b5183;color:#ffffff;text-decoration:none;font-weight:600" style-hover="background:#0f3a63;color:#ffffff">Visit osoroprints.com ↗</a>
     </div>
   </div>
-  <sc-if value="{{ hasLatest }}" hint-placeholder-val="{{ false }}">
-    <div role="status" aria-label="Latest registrations" style="margin-bottom:clamp(32px,4vw,56px);font-family:'IBM Plex Mono',monospace;font-size:13px">
-      <p style="margin:0 0 8px;font-size:12px;letter-spacing:0.12em;text-transform:uppercase;color:#6f6c66;display:flex;align-items:center;gap:10px"><span aria-hidden="true" style="width:7px;height:7px;background:#0a8f4d"></span>Latest registrations · live</p>
-      <sc-for list="{{ latest }}" as="i" hint-placeholder-count="3">
-        <div style="display:flex;flex-wrap:wrap;justify-content:space-between;gap:4px 16px;padding:10px 0;border-top:1px solid #d9d6cf">
-          <span>{{ i.hash }}</span>
-          <span style="color:#6f6c66">Camera {{ i.camera }} · PCE {{ i.pce }} · {{ i.when }}</span>
-          <a href="{{ i.owner }}" style="color:#6f6c66">Owner's record ↗</a>
-        </div>
-      </sc-for>
-    </div>
-  </sc-if>
-  <p style="margin:0 0 16px;font-family:'IBM Plex Mono',monospace;font-size:13px;letter-spacing:0.12em;text-transform:uppercase;color:#6f6c66">Prints from osoroprints.com</p>
+  <p style="margin:0 0 16px;padding-top:20px;border-top:1px solid #1b5183;font-family:'IBM Plex Mono',monospace;font-size:13px;letter-spacing:0.12em;text-transform:uppercase;color:#1b5183">Prints from osoroprints.com · each one traces back to its camera. Save one, shrink it, then <a href="#check">check it</a>.</p>
   <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(max(calc((100% - 32px) / 3),min(100%,calc((640px - 100%) * 999))),1fr));gap:clamp(20px,2.4vw,32px) 16px;align-items:start">
     <figure style="margin:0;display:flex;flex-direction:column;gap:10px;min-width:0">
       <img src="assets/photos/hero-carpenter.jpg" alt="A carpenter cutting timber with an angle grinder" loading="lazy" style="display:block;width:100%;height:auto;background:#eae8e2">
@@ -769,40 +653,22 @@ a:hover{color:#0a8f4d}
       <figcaption style="display:flex;flex-direction:column;gap:4px;font-family:'IBM Plex Mono',monospace;font-size:12px;line-height:1.5"><span style="display:flex;align-items:center;gap:8px"><span aria-hidden="true" style="width:7px;height:7px;background:#2f5fd0;flex:none"></span>Bird on a line · Canon R10 ··3b37 · registered 13 Oct 2026</span><span style="display:flex;flex-wrap:wrap;gap:4px 16px"><a href="https://osoroprints.com/shop/bird-on-a-line" style="color:#6f6c66">In the shop ↗</a><a href="https://muse254.github.io/genesis/verify/?hash=0xf80c4b595f1eb0f15a80874603a55328a6d6867987cc5a9f52931dd736f09995" style="color:#077a41;font-weight:600;text-decoration:underline;white-space:nowrap" style-hover="color:#1c1c1a">Check OnChain →</a></span></figcaption>
     </figure>
   </div>
-  </section>
-
-<section id="attacks" data-screen-label="We attacked our own system" style="background:#141412;color:#f1efe9">
-  <div style="max-width:1280px;margin:0 auto;padding:clamp(64px,9vw,128px) clamp(16px,4vw,48px);display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:clamp(32px,4vw,56px);align-items:start">
-    <h2 style="margin:0;font-family:'Archivo',sans-serif;font-stretch:125%;font-weight:800;font-size:clamp(32px,4vw,56px);line-height:1;letter-spacing:-0.02em;text-wrap:balance">We attacked our <span style="color:#ff6fb0">own</span> system.</h2>
-    <div style="display:flex;flex-direction:column;gap:12px">
-      <p style="margin:0;font-family:'IBM Plex Mono',monospace;font-size:13px;letter-spacing:0.12em;text-transform:uppercase;color:#ff6fb0;display:flex;align-items:center;gap:8px"><span aria-hidden="true" style="width:8px;height:8px;background:#d6006c"></span>The attack</p>
-      <p style="margin:0;text-wrap:pretty;color:#d6d2c9">One RAW file is enough to plant your camera's fingerprint in another image. We did it. So the fingerprint alone is never the claim.</p>
-    </div>
-    <div style="display:flex;flex-direction:column;gap:12px">
-      <p style="margin:0;font-family:'IBM Plex Mono',monospace;font-size:13px;letter-spacing:0.12em;text-transform:uppercase;color:#3ccf7f;display:flex;align-items:center;gap:8px"><span aria-hidden="true" style="width:8px;height:8px;background:#18a058"></span>The claim</p>
-      <p style="margin:0;text-wrap:pretty;color:#d6d2c9">Only the camera's owner can register to it, and every registration is dated. A planted fingerprint can match a camera. It can't forge the owner's record.</p>
-      <a href="https://github.com/muse254/genesis/blob/main/docs/adversarial.md" style="margin-top:8px;font-weight:600;align-self:flex-start;color:#f1efe9" style-hover="color:#ff6fb0">Read the attacks →</a>
-    </div>
   </div>
 </section>
-
-<section id="organisations" data-screen-label="For organisations" style="background:#d7eef6"><div style="max-width:1280px;margin:0 auto;padding:clamp(64px,9vw,128px) clamp(16px,4vw,48px);display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:clamp(32px,4vw,56px);align-items:start">
-  <div style="display:flex;flex-direction:column;gap:18px">
-    <span style="align-self:flex-start;padding:3px 9px;background:#0088b0;color:#ffffff;font-family:'IBM Plex Mono',monospace;font-size:12px;letter-spacing:0.12em;text-transform:uppercase">Coming</span>
-    <h2 style="margin:0;font-family:'Archivo',sans-serif;font-stretch:125%;font-weight:800;font-size:clamp(28px,3.2vw,44px);line-height:1.05;letter-spacing:-0.015em;text-wrap:balance">For contests, archives and marketplaces.</h2>
-    <p style="margin:0;color:#3d3b37;text-wrap:pretty">Know where a submitted photo came from.</p>
-    <a href="#registered" style="font-weight:600;align-self:flex-start">Already in use at osoroprints.com.</a>
-  </div>
-  <div style="display:flex;flex-direction:column;gap:12px;padding-top:20px;border-top:1px solid #1c1c1a">
-    <h3 style="margin:0;font-family:'Archivo',sans-serif;font-stretch:125%;font-weight:800;font-size:22px">Intake check</h3>
-    <p style="margin:0;color:#3d3b37;text-wrap:pretty">See which submissions trace back to a registration, and to whom.</p>
-  </div>
-  <div style="display:flex;flex-direction:column;gap:12px;padding-top:20px;border-top:1px solid #1c1c1a">
-    <h3 style="margin:0;font-family:'Archivo',sans-serif;font-stretch:125%;font-weight:800;font-size:22px">Shareable verification links</h3>
-    <p style="margin:0;color:#3d3b37;text-wrap:pretty">Send a link to one photo's record. A missing record tells you nothing.</p>
-    <a href="https://github.com/muse254/genesis" style="margin-top:8px;font-weight:600;align-self:flex-start">Follow progress on GitHub →</a>
-  </div>
-</div></section>
+<div style="max-width:1280px;margin:0 auto;padding:0 clamp(16px,4vw,48px);box-sizing:border-box">
+  <sc-if value="{{ hasLatest }}" hint-placeholder-val="{{ false }}">
+    <div role="status" aria-label="Latest registrations" style="margin:clamp(32px,4vw,56px) 0;font-family:'IBM Plex Mono',monospace;font-size:13px">
+      <p style="margin:0 0 8px;font-size:12px;letter-spacing:0.12em;text-transform:uppercase;color:#6f6c66;display:flex;align-items:center;gap:10px"><span aria-hidden="true" style="width:7px;height:7px;background:#0a8f4d"></span>Latest registrations · live</p>
+      <sc-for list="{{ latest }}" as="i" hint-placeholder-count="3">
+        <div style="display:flex;flex-wrap:wrap;justify-content:space-between;gap:4px 16px;padding:10px 0;border-top:1px solid #d9d6cf">
+          <span>{{ i.hash }}</span>
+          <span style="color:#6f6c66">Camera {{ i.camera }} · PCE {{ i.pce }} · {{ i.when }}</span>
+          <a href="{{ i.owner }}" style="color:#6f6c66">Owner's record ↗</a>
+        </div>
+      </sc-for>
+    </div>
+  </sc-if>
+</div>
 
 <section id="download" data-screen-label="Downloads" style="background:#141412;color:#f1efe9;border-bottom:1px solid #3d3b37">
   <div style="max-width:1280px;margin:0 auto;padding:clamp(64px,9vw,128px) clamp(16px,4vw,48px);box-sizing:border-box;display:flex;flex-direction:column;gap:clamp(28px,4vw,48px)">
