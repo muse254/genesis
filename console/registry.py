@@ -26,6 +26,18 @@ router = APIRouter()
 
 CAST_TIMEOUT = 180
 
+#: Base Builder Code as the dashboard shows it (e.g. `bc_a1b2c3d4`), not hex. Blank sends untagged.
+BUILDER_CODE = os.environ.get("BASE_BUILDER_CODE", "").strip()
+
+
+def _erc8021_suffix(code: str) -> str:
+    """ERC-8021 schema 0 for one code: `code || len || 0x00 || 8021*8`, hex, no `0x`.
+
+    shortcut: our code only; ERC-8021 comma-joins codes if a wallet's must ride too.
+    """
+    if not code.isascii() or "," in code or len(code) > 255:
+        raise HTTPException(503, "BASE_BUILDER_CODE must be ASCII, without commas, under 256 bytes")
+    return code.encode("ascii").hex() + f"{len(code):02x}" + "00" + "8021" * 8
 
 
 #: Owner named in the metadata commitment. `ENS_PARENT_NAME` fallback keeps old `.env`s committing the same string.
@@ -76,6 +88,16 @@ def _invalidate_state() -> None:
     invalidate_state()
 
 
+def _tagged_calldata(args: list[str]) -> str:
+    """Calldata for `cast_send`'s args, Builder Code appended: `cast send` has no suffix flag."""
+    done = subprocess.run(
+        ["cast", "calldata", *args], capture_output=True, text=True, timeout=CAST_TIMEOUT
+    )
+    if done.returncode != 0:
+        raise HTTPException(502, f"calldata encoding failed: {done.stderr.strip()[:200]}")
+    return done.stdout.strip() + _erc8021_suffix(BUILDER_CODE)
+
+
 def cast_send(args: list[str]) -> dict:
     """One transaction and its receipt fields. Raises on failure, so a failed registration can't be reported as one."""
     if not chain.REGISTRY:
@@ -85,13 +107,15 @@ def cast_send(args: list[str]) -> dict:
     # is visible in `ps` for one transaction. OK for a localhost demo driver
     # (`docs/security.md`); this must never become hosted.
     wallet, secret = _signer()
-    command = [
-        "cast", "send", chain.REGISTRY, *args,
-        "--rpc-url", chain.RPC_URL,
-        *wallet,
-        "--json",
-    ]
     try:
+        # Untagged keeps cast's own argv, so a node without a code sends exactly what it did before.
+        call = [_tagged_calldata(args)] if BUILDER_CODE else args
+        command = [
+            "cast", "send", chain.REGISTRY, *call,
+            "--rpc-url", chain.RPC_URL,
+            *wallet,
+            "--json",
+        ]
         done = subprocess.run(
             command,
             capture_output=True,

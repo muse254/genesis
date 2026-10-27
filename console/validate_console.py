@@ -218,6 +218,55 @@ def test_a_keystore_signs_without_the_key_on_argv(tmp_path, monkeypatch):
     assert wallet == ["--private-key", "0x" + "11" * 32] and secret == "0x" + "11" * 32
 
 
+def test_a_builder_code_rides_on_every_transaction_and_its_absence_changes_nothing(monkeypatch):
+    """Base attributes by the calldata's tail; with no code, `cast send` gets its old argv."""
+    import subprocess
+
+    from fastapi import HTTPException
+
+    from console import registry as reg
+
+    runs = []
+
+    class Done:
+        returncode = 0
+        stdout = '{"status": "0x1", "transactionHash": "0xabc", "blockNumber": "0x2"}'
+        stderr = ""
+
+    def run(command, **kwargs):
+        runs.append(command)
+        done = Done()
+        if command[1] == "calldata":
+            done.stdout = "0x5e8b2a9e\n"
+        return done
+
+    monkeypatch.setattr(subprocess, "run", run)
+    monkeypatch.setenv("DEPLOYER_PRIVATE_KEY", "0x" + "11" * 32)
+    monkeypatch.setattr(reg.chain, "REGISTRY", "0xreg")
+
+    monkeypatch.setattr(reg, "BUILDER_CODE", "")
+    reg.cast_send(["resetAll()"])
+    assert runs == [["cast", "send", "0xreg", "resetAll()", *runs[0][4:]]]
+
+    runs.clear()
+    monkeypatch.setattr(reg, "BUILDER_CODE", "bc_a1b2c3d4")
+    reg.cast_send(["resetAll()"])
+    assert runs[0] == ["cast", "calldata", "resetAll()"]
+    assert runs[1][3] == "0x5e8b2a9e" + "62635f6131623263336434" + "0b" + "00" + "8021" * 8
+
+    monkeypatch.setattr(reg, "BUILDER_CODE", "bc_émoji")
+    with pytest.raises(HTTPException) as refused:
+        reg.cast_send(["resetAll()"])
+    assert refused.value.status_code == 503
+
+
+def test_the_builder_code_suffix_matches_the_erc_8021_test_vector():
+    """eip.tools/eip/8021's own worked example, so the encoding is pinned to the spec."""
+    from console import registry as reg
+
+    assert reg._erc8021_suffix("baseapp") == "62617365617070" + "07" + "00" + "8021" * 8
+
+
 def test_a_camera_comes_back_from_its_fingerprint_file(client, tmp_path, monkeypatch):
     import io
     import numpy as np
